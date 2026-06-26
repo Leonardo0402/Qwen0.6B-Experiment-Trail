@@ -1,0 +1,38 @@
+# HuggingFace cache (redirected to E: drive inside project)
+.hf_cache/
+
+# Model weights (downloaded, not versioned)
+models/Qwen3-0.6B/
+
+# Trained adapters' weight blobs (keep config/metadata, ignore large blobs)
+adapters/**/adapter_model.safetensors
+adapters/**/*.bin
+
+# Generated / verified / rejected data blobs
+data/generated/*
+data/verified/*
+data/rejected/*
+data/splits/*.jsonl
+!data/**/.gitkeep
+
+# Evaluation large outputs
+evaluations/checkpoints/*.json
+evaluations/baselines/*.json
+!evaluations/**/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Env / secrets
+.env
+*.log
+
+# OS
+Thumbs.db
+desktop.ini

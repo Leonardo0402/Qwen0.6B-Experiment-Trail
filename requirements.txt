@@ -1,0 +1,25 @@
+# Core ML — install torch separately with the correct CUDA wheel index first:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+#   (fallback: cu121)
+transformers
+datasets
+accelerate
+peft
+trl
+safetensors
+sentencepiece
+huggingface_hub
+
+# Data factory / validation / tooling
+pytest
+pytest-timeout
+hypothesis
+ruff
+mypy
+pydantic
+pyyaml
+psutil
+rich
+
+# NOTE: pinned, verified versions are written to requirements-lock.txt after a
+# successful install (pip freeze). This file lists direct deps only.
