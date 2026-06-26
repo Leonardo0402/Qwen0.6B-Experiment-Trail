@@ -25,14 +25,20 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+import scripts.check_environment as ce  # noqa: E402
 from scripts.check_environment import (  # noqa: E402
     CheckResult,
     check_cuda_available,
     check_cuda_smoke,
     check_disk_space,
+    check_gpu_name,
     check_hf_cache,
+    check_library_versions,
     check_model_dir,
+    check_pytorch,
     check_python_version,
+    check_vram,
+    main,
     summarize,
 )
 
@@ -331,8 +337,221 @@ class TestCudaChecksReturnCheckResult:
         result = check_cuda_smoke()
         assert isinstance(result, CheckResult)
         assert result.name == "CUDA smoke test"
-        assert result.status in ("PASS", "FAIL")
+        # WARN is possible when CUDA is unavailable (skipped, not a hard fail).
+        assert result.status in ("PASS", "WARN", "FAIL")
 
     def test_cuda_available_value_is_bool_like(self):
         result = check_cuda_available()
         assert result.value in ("True", "False", "torch not installed")
+
+
+# ---------------------------------------------------------------------------
+# I-1: torch / library import-failure handling (simulate missing DLL etc.)
+# ---------------------------------------------------------------------------
+
+
+class TestTorchImportFailure:
+    """When torch failed to import (e.g. missing CUDA DLL → OSError), the
+    GPU-dependent checks must report a clean FAIL rather than raising."""
+
+    def test_pytorch_check_fail_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        monkeypatch.setattr(ce, "_TORCH_IMPORT_ERROR", "OSError: [WinError 126] DLL not found")
+        monkeypatch.setattr(ce, "_TORCH_VERSION", None)
+        result = check_pytorch()
+        assert result.status == "FAIL"
+        assert "WinError 126" in result.detail
+
+    def test_cuda_available_fail_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        result = check_cuda_available()
+        assert result.status == "FAIL"
+        assert "torch not installed" in result.value
+
+    def test_gpu_name_fail_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        result = check_gpu_name()
+        assert result.status == "FAIL"
+
+    def test_vram_fail_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        result = check_vram()
+        assert result.status == "FAIL"
+
+    def test_cuda_smoke_fail_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        result = check_cuda_smoke()
+        assert result.status == "FAIL"
+
+    def test_no_check_raises_when_torch_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_torch", None)
+        # None of these should raise even with torch unavailable.
+        for fn in (check_pytorch, check_cuda_available, check_gpu_name,
+                   check_vram, check_cuda_smoke):
+            assert isinstance(fn(), CheckResult)
+
+
+class TestCudaUnavailableIsWarn:
+    """M-2: when CUDA is unavailable (torch present), the dependent checks
+    WARN/skip rather than FAIL so only the CUDA-available check fails."""
+
+    class _FakeCuda:
+        @staticmethod
+        def is_available():
+            return False
+
+    class _FakeTorch:
+        cuda = None  # set in fixture
+
+    @pytest.fixture
+    def fake_torch_no_cuda(self, monkeypatch):
+        fake = self._FakeTorch()
+        fake.cuda = self._FakeCuda()
+        monkeypatch.setattr(ce, "_torch", fake)
+        return fake
+
+    def test_cuda_available_fails(self, fake_torch_no_cuda):
+        assert check_cuda_available().status == "FAIL"
+
+    def test_gpu_name_warns(self, fake_torch_no_cuda):
+        result = check_gpu_name()
+        assert result.status == "WARN"
+        assert result.value == "skipped"
+
+    def test_vram_warns(self, fake_torch_no_cuda):
+        result = check_vram()
+        assert result.status == "WARN"
+        assert result.value == "skipped"
+
+    def test_cuda_smoke_warns(self, fake_torch_no_cuda):
+        result = check_cuda_smoke()
+        assert result.status == "WARN"
+        assert result.value == "skipped"
+
+
+# ---------------------------------------------------------------------------
+# I-2: check_library_versions — PASS and FAIL branches
+# ---------------------------------------------------------------------------
+
+
+class TestCheckLibraryVersions:
+    def test_pass_when_all_present(self, monkeypatch):
+        monkeypatch.setattr(
+            ce, "_LIB_VERSIONS",
+            {"transformers": "5.0", "peft": "0.1", "datasets": "3.0", "accelerate": "1.0"},
+        )
+        monkeypatch.setattr(ce, "_LIB_MISSING", {})
+        result = check_library_versions()
+        assert result.status == "PASS"
+        assert "transformers=5.0" in result.value
+
+    def test_fail_when_a_lib_missing(self, monkeypatch):
+        monkeypatch.setattr(
+            ce, "_LIB_VERSIONS",
+            {"transformers": "5.0", "peft": "0.1", "accelerate": "1.0"},
+        )
+        monkeypatch.setattr(
+            ce, "_LIB_MISSING",
+            {"datasets": "OSError: [WinError 126] The specified module could not be found"},
+        )
+        result = check_library_versions()
+        assert result.status == "FAIL"
+        assert "datasets" in result.value
+        # The captured reason is surfaced in the detail.
+        assert "WinError 126" in result.detail
+
+    def test_fail_lists_all_missing(self, monkeypatch):
+        monkeypatch.setattr(ce, "_LIB_VERSIONS", {"transformers": "5.0"})
+        monkeypatch.setattr(
+            ce, "_LIB_MISSING",
+            {"peft": "ImportError: no peft", "datasets": "ImportError: no datasets"},
+        )
+        # accelerate is neither in versions nor missing dict -> also reported missing
+        result = check_library_versions(
+            libs=["transformers", "peft", "datasets", "accelerate"]
+        )
+        assert result.status == "FAIL"
+        for lib in ("peft", "datasets", "accelerate"):
+            assert lib in result.value
+
+    def test_returns_check_result_instance(self, monkeypatch):
+        monkeypatch.setattr(ce, "_LIB_VERSIONS", {"transformers": "5.0"})
+        monkeypatch.setattr(ce, "_LIB_MISSING", {})
+        result = check_library_versions(libs=["transformers"])
+        assert isinstance(result, CheckResult)
+        assert result.name == "Library versions"
+
+
+# ---------------------------------------------------------------------------
+# M-4: check_disk_space exception path
+# ---------------------------------------------------------------------------
+
+
+class TestCheckDiskSpaceErrors:
+    def test_fail_when_disk_usage_raises(self, monkeypatch, tmp_path):
+        import shutil as _shutil
+
+        def _boom(_path):
+            raise OSError("disk gone")
+
+        monkeypatch.setattr(_shutil, "disk_usage", _boom)
+        result = check_disk_space(project_root=tmp_path)
+        assert result.status == "FAIL"
+        assert "disk gone" in result.detail
+
+
+# ---------------------------------------------------------------------------
+# M-3: check_model_dir filesystem-error path
+# ---------------------------------------------------------------------------
+
+
+class TestCheckModelDirErrors:
+    def test_warn_when_exists_raises(self, monkeypatch, tmp_path):
+        # Simulate a PermissionError while probing the filesystem.
+        import pathlib
+
+        def _boom(self):
+            raise PermissionError("access denied")
+
+        monkeypatch.setattr(pathlib.Path, "exists", _boom)
+        result = check_model_dir(project_root=tmp_path)
+        assert result.status == "WARN"
+        assert "access denied" in result.detail
+
+
+# ---------------------------------------------------------------------------
+# I-3: main() exit-code contract
+# ---------------------------------------------------------------------------
+
+
+class TestMainExitCode:
+    def test_returns_0_when_no_fail(self, monkeypatch, capsys):
+        stubs = [
+            lambda: CheckResult("A", "PASS", "ok"),
+            lambda: CheckResult("B", "WARN", "meh"),
+        ]
+        monkeypatch.setattr(ce, "ALL_CHECKS", stubs)
+        rc = main()
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Status: READY" in out
+
+    def test_returns_1_when_fail_present(self, monkeypatch, capsys):
+        stubs = [
+            lambda: CheckResult("A", "PASS", "ok"),
+            lambda: CheckResult("B", "FAIL", "broken"),
+        ]
+        monkeypatch.setattr(ce, "ALL_CHECKS", stubs)
+        rc = main()
+        assert rc == 1
+        out = capsys.readouterr().out
+        assert "Status: NOT READY" in out
+        assert "B" in out
+
+    def test_warnings_alone_are_ready(self, monkeypatch):
+        stubs = [
+            lambda: CheckResult("A", "WARN", "x"),
+            lambda: CheckResult("B", "WARN", "y"),
+        ]
+        monkeypatch.setattr(ce, "ALL_CHECKS", stubs)
+        assert main() == 0

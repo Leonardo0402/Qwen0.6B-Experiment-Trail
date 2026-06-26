@@ -38,25 +38,31 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 _REQUIRED_LIBS: List[str] = ["datasets", "transformers", "peft", "accelerate"]
 _LIB_VERSIONS: Dict[str, str] = {}
-_LIB_MISSING: List[str] = []
+# Maps lib name -> reason it is unavailable (e.g. "ImportError: ..." or a
+# missing-DLL OSError string).  Keys present here are treated as missing.
+_LIB_MISSING: Dict[str, str] = {}
 
 for _lib_name in _REQUIRED_LIBS:
+    # Catch OSError too: on Windows a missing CUDA/native DLL surfaces as
+    # OSError [WinError 126] rather than ImportError.  Crashing here would
+    # take down the whole module and defeat the purpose of this checker.
     try:
         _mod = importlib.import_module(_lib_name)
         _LIB_VERSIONS[_lib_name] = getattr(_mod, "__version__", "unknown")
-    except ImportError:
-        _LIB_MISSING.append(_lib_name)
+    except (ImportError, OSError) as _exc:
+        _LIB_MISSING[_lib_name] = f"{type(_exc).__name__}: {_exc}"
 
 # torch import — done after datasets/transformers/peft/accelerate.
+# Broaden the except clause for the same Windows missing-DLL reason as above.
 try:
     import torch as _torch
 
     _TORCH_VERSION: Optional[str] = _torch.__version__
     _TORCH_IMPORT_ERROR: Optional[str] = None
-except ImportError as _exc:
+except (ImportError, OSError) as _exc:
     _torch = None  # type: ignore[assignment]
     _TORCH_VERSION = None
-    _TORCH_IMPORT_ERROR = str(_exc)
+    _TORCH_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -126,7 +132,9 @@ def check_gpu_name() -> CheckResult:
     if _torch is None:
         return CheckResult("GPU name", "FAIL", "N/A", "torch not installed")
     if not _torch.cuda.is_available():
-        return CheckResult("GPU name", "FAIL", "N/A", "CUDA not available")
+        # WARN (not FAIL) so a single root cause — CUDA unavailable — doesn't
+        # inflate the NOT READY list. The CUDA-available check owns the FAIL.
+        return CheckResult("GPU name", "WARN", "skipped", "CUDA not available — see check above")
     try:
         name = _torch.cuda.get_device_name(0)
         return CheckResult("GPU name", "PASS", name)
@@ -139,7 +147,8 @@ def check_vram(warn_free_gb: float = 2.5) -> CheckResult:
     if _torch is None:
         return CheckResult("VRAM", "FAIL", "N/A", "torch not installed")
     if not _torch.cuda.is_available():
-        return CheckResult("VRAM", "FAIL", "N/A", "CUDA not available")
+        # WARN (not FAIL): CUDA-available check owns the single FAIL.
+        return CheckResult("VRAM", "WARN", "skipped", "CUDA not available — see check above")
     try:
         props = _torch.cuda.get_device_properties(0)
         total_bytes = props.total_memory
@@ -159,7 +168,10 @@ def check_vram(warn_free_gb: float = 2.5) -> CheckResult:
         return CheckResult("VRAM", "FAIL", "error", str(exc))
 
 
-# Public name for callers who want to check a specific subset.
+# Display order for the report. NOTE: this is a *display* list only — the
+# import-safety order (datasets before torch) is enforced by _REQUIRED_LIBS
+# above. Do NOT unify these two lists or reorder the imports, or the Windows
+# datasets-after-CUDA access-violation crash will reappear.
 REQUIRED_LIBS: List[str] = ["transformers", "peft", "datasets", "accelerate"]
 
 
@@ -169,11 +181,15 @@ def check_library_versions(libs: Optional[List[str]] = None) -> CheckResult:
         libs = REQUIRED_LIBS
     missing = [lib for lib in libs if lib in _LIB_MISSING or lib not in _LIB_VERSIONS]
     if missing:
+        # Include the captured reason (e.g. missing-DLL OSError) for the first
+        # failure so the report is actionable rather than just "MISSING".
+        reasons = [_LIB_MISSING[lib] for lib in missing if lib in _LIB_MISSING]
+        detail = reasons[0] if reasons else ("pip install " + " ".join(missing))
         return CheckResult(
             "Library versions",
             "FAIL",
             f"MISSING: {', '.join(missing)}",
-            "pip install " + " ".join(missing),
+            detail,
         )
     ver_str = ", ".join(
         f"{lib}={_LIB_VERSIONS[lib]}" for lib in libs if lib in _LIB_VERSIONS
@@ -258,36 +274,41 @@ def check_model_dir(project_root: Optional[Path] = None) -> CheckResult:
         project_root = Path(__file__).resolve().parent.parent
     model_dir = project_root / "models" / "Qwen3-0.6B"
 
-    if not model_dir.exists():
+    try:
+        if not model_dir.exists():
+            return CheckResult(
+                "Model directory",
+                "WARN",
+                "MISSING",
+                f"{model_dir} not found — download the model in a later task step.",
+            )
+
+        config_json = model_dir / "config.json"
+        safetensors_files = list(model_dir.glob("*.safetensors"))
+
+        if config_json.exists() and safetensors_files:
+            n = len(safetensors_files)
+            return CheckResult(
+                "Model directory",
+                "PASS",
+                f"PRESENT ({n} safetensors file(s))",
+            )
+
+        missing_parts: List[str] = []
+        if not config_json.exists():
+            missing_parts.append("config.json")
+        if not safetensors_files:
+            missing_parts.append("*.safetensors")
         return CheckResult(
             "Model directory",
             "WARN",
-            "MISSING",
-            f"{model_dir} not found — download the model in a later task step.",
+            "INCOMPLETE",
+            f"Directory exists but missing: {', '.join(missing_parts)}",
         )
-
-    config_json = model_dir / "config.json"
-    safetensors_files = list(model_dir.glob("*.safetensors"))
-
-    if config_json.exists() and safetensors_files:
-        n = len(safetensors_files)
-        return CheckResult(
-            "Model directory",
-            "PASS",
-            f"PRESENT ({n} safetensors file(s))",
-        )
-
-    missing_parts: List[str] = []
-    if not config_json.exists():
-        missing_parts.append("config.json")
-    if not safetensors_files:
-        missing_parts.append("*.safetensors")
-    return CheckResult(
-        "Model directory",
-        "WARN",
-        "INCOMPLETE",
-        f"Directory exists but missing: {', '.join(missing_parts)}",
-    )
+    except Exception as exc:  # noqa: BLE001
+        # A PermissionError (or similar) while probing the filesystem must not
+        # crash the whole report.
+        return CheckResult("Model directory", "WARN", "error", str(exc))
 
 
 def check_cuda_smoke() -> CheckResult:
@@ -295,7 +316,10 @@ def check_cuda_smoke() -> CheckResult:
     if _torch is None:
         return CheckResult("CUDA smoke test", "FAIL", "skipped", "torch not installed")
     if not _torch.cuda.is_available():
-        return CheckResult("CUDA smoke test", "FAIL", "skipped", "CUDA not available")
+        # WARN (not FAIL): CUDA-available check owns the single FAIL.
+        return CheckResult(
+            "CUDA smoke test", "WARN", "skipped", "CUDA not available — see check above"
+        )
     try:
         a = _torch.ones(64, 64, device="cuda")
         b = _torch.ones(64, 64, device="cuda")
@@ -341,7 +365,10 @@ def render_report(results: List[CheckResult]) -> None:
         status_col = f"{color}{icon} {r.status:<4}{_RESET}"
         print(f"  {status_col}  {name_col}  {r.value}")
         if r.detail:
-            indent = " " * (2 + 2 + 1 + 4 + 2 + max_name + 2)
+            # Align under the value column. Leading "  " (2) + status col
+            # visible width (icon 1 + space 1 + status:<4 = 6) + "  " (2)
+            # + name col (max_name) + "  " (2).
+            indent = " " * (2 + 6 + 2 + max_name + 2)
             print(f"{indent}-> {r.detail}")
     print("-" * 76)
 
