@@ -105,6 +105,15 @@ class TestValidConstruction:
         assert s.verification.ruff_ok is True
         assert s.verification.timeout is False
 
+    def test_code_generation_without_optional_keys(self):
+        # broken_code / execution_feedback omitted entirely should default to None
+        data = _base_sample()
+        del data["broken_code"]
+        del data["execution_feedback"]
+        s = Sample(**data)
+        assert s.broken_code is None
+        assert s.execution_feedback is None
+
 
 # ---------------------------------------------------------------------------
 # Part A – validation rejections
@@ -163,6 +172,32 @@ class TestValidationErrors:
         with pytest.raises(ValidationError):
             Sample(**_base_sample(public_tests=""))
 
+    # --- whitespace-only rejections ---
+
+    def test_whitespace_instruction(self):
+        with pytest.raises(ValidationError):
+            Sample(**_base_sample(instruction="   \n\t "))
+
+    def test_whitespace_target_code(self):
+        with pytest.raises(ValidationError):
+            Sample(**_base_sample(target_code="   \n  "))
+
+    def test_whitespace_public_tests(self):
+        with pytest.raises(ValidationError):
+            Sample(**_base_sample(public_tests="  \t\n"))
+
+    def test_whitespace_broken_code_static_repair(self):
+        with pytest.raises(ValidationError):
+            Sample(**_repair_sample(broken_code="   \n "))
+
+    def test_whitespace_broken_code_execution_repair(self):
+        with pytest.raises(ValidationError):
+            Sample(**_exec_repair_sample(broken_code="  \t "))
+
+    def test_whitespace_execution_feedback(self):
+        with pytest.raises(ValidationError):
+            Sample(**_exec_repair_sample(execution_feedback="   \n  "))
+
 
 # ---------------------------------------------------------------------------
 # Part A – round-trip serialisation
@@ -174,21 +209,17 @@ class TestJsonLineSerialization:
         line = original.to_json_line()
         assert "\n" not in line, "JSONL line must not contain embedded newlines"
         restored = Sample.from_json_line(line)
-        assert restored.sample_id == original.sample_id
-        assert restored.task_type == original.task_type
-        assert restored.difficulty == original.difficulty
-        assert restored.target_code == original.target_code
-        assert restored.verification.pytest_ok == original.verification.pytest_ok
+        assert restored == original
 
     def test_roundtrip_static_repair(self):
         original = Sample(**_repair_sample())
         restored = Sample.from_json_line(original.to_json_line())
-        assert restored.broken_code == original.broken_code
+        assert restored == original
 
     def test_roundtrip_execution_repair(self):
         original = Sample(**_exec_repair_sample())
         restored = Sample.from_json_line(original.to_json_line())
-        assert restored.execution_feedback == original.execution_feedback
+        assert restored == original
 
     def test_jsonline_is_valid_json(self):
         s = Sample(**_base_sample())
@@ -240,9 +271,7 @@ class TestToChatml:
         s = Sample(**_base_sample())
         user_content = to_chatml(s)["messages"][1]["content"]
         assert s.instruction in user_content
-        assert "broken_code" not in user_content.lower() or s.broken_code is None
-        # No broken_code fence expected
-        assert "```python" not in user_content or "broken_code" not in user_content
+        assert user_content.rstrip().endswith("请输出完整代码")
 
     def test_code_generation_no_broken_code_in_user(self):
         s = Sample(**_base_sample())

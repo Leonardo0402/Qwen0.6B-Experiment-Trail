@@ -61,10 +61,14 @@ class Sample(BaseModel):
     language: str
     skill_tags: list[str]
     instruction: str
-    broken_code: Optional[str]
-    execution_feedback: Optional[str]
+    broken_code: Optional[str] = None
+    execution_feedback: Optional[str] = None
     target_code: str
     public_tests: str
+    # hidden_tests is a required str but intentionally NOT subjected to the
+    # non-empty validator: the spec only mandates non-empty
+    # instruction/target_code/public_tests, and some samples may legitimately
+    # ship without hidden tests.
     hidden_tests: str
     verified: bool
     verification: Verification
@@ -86,6 +90,10 @@ class Sample(BaseModel):
     @field_validator("language")
     @classmethod
     def language_must_be_python(cls, v: str) -> str:
+        # Intentionally strict: the data contract requires the canonical
+        # lowercase token "python". Variants like "Python" or " python " are
+        # rejected so upstream formatting bugs surface instead of being
+        # silently normalised away.
         if v not in _ALLOWED_LANGUAGES:
             raise ValueError(f"language must be one of {_ALLOWED_LANGUAGES}, got {v!r}")
         return v
@@ -93,8 +101,8 @@ class Sample(BaseModel):
     @field_validator("instruction", "target_code", "public_tests")
     @classmethod
     def non_empty_string(cls, v: str) -> str:
-        if not v:
-            raise ValueError("field must be a non-empty string")
+        if not v or not v.strip():
+            raise ValueError("field must be a non-empty, non-blank string")
         return v
 
     # ------------------------------------------------------------------
@@ -103,22 +111,21 @@ class Sample(BaseModel):
 
     @model_validator(mode="after")
     def check_repair_fields(self) -> "Sample":
+        # With use_enum_values=True, task_type is stored as a plain str.
         tt = self.task_type
-        # Support both enum member and its string value (use_enum_values=True serialises to str)
-        tt_val = tt if isinstance(tt, str) else tt.value
 
-        if tt_val == TaskType.static_repair.value:
-            if not self.broken_code:
+        if tt == TaskType.static_repair.value:
+            if not (self.broken_code or "").strip():
                 raise ValueError(
                     "static_repair task requires non-empty broken_code"
                 )
 
-        if tt_val == TaskType.execution_repair.value:
-            if not self.broken_code:
+        if tt == TaskType.execution_repair.value:
+            if not (self.broken_code or "").strip():
                 raise ValueError(
                     "execution_repair task requires non-empty broken_code"
                 )
-            if not self.execution_feedback:
+            if not (self.execution_feedback or "").strip():
                 raise ValueError(
                     "execution_repair task requires non-empty execution_feedback"
                 )
@@ -147,7 +154,8 @@ class Sample(BaseModel):
 
 def to_chatml(sample: Sample) -> dict:
     """Convert a Sample to a ChatML-formatted dict with system/user/assistant messages."""
-    tt = sample.task_type if isinstance(sample.task_type, str) else sample.task_type.value
+    # With use_enum_values=True, task_type is stored as a plain str.
+    tt = sample.task_type
 
     # --- user content ---
     parts: list[str] = [sample.instruction]
