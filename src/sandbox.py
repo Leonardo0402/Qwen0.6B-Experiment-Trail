@@ -15,8 +15,18 @@ independent process Code always runs in a child subprocess, never in-process.
 cleanup            The temp directory is unconditionally deleted in a finally
                    block via shutil.rmtree(..., ignore_errors=True).
 
-Advisory / best-effort only
-----------------------------
+Known limitations (best-effort only)
+------------------------------------
+grandchild procs   Only the DIRECT child process is killed on timeout
+                   (TerminateProcess on Windows; no Job Object / process-tree
+                   kill is used).  If untrusted code spawns its own
+                   subprocess, that grandchild survives the kill.  A surviving
+                   grandchild can hold a file handle open inside the temp
+                   directory, in which case ``shutil.rmtree(ignore_errors=True)``
+                   silently fails and the temp directory is leaked.  Children
+                   are launched in a new process group on Windows
+                   (CREATE_NEW_PROCESS_GROUP) for isolation, but this does NOT
+                   kill descendants.
 check_code_safety  A lightweight AST-based static pre-screen.  This is NOT a
                    real security boundary — determined adversarial code can
                    bypass it trivially.  No OS-level sandboxing (AppContainer,
@@ -47,13 +57,20 @@ def _truncate(s: str, max_chars: int) -> str:
     return s
 
 
-def _decode_output(v: bytes | str | None) -> str:
-    """Safely decode subprocess output that may be bytes, str, or None."""
-    if v is None:
-        return ""
-    if isinstance(v, bytes):
-        return v.decode("utf-8", errors="replace")
-    return v
+def _decode_output(v: str | None) -> str:
+    """Normalise subprocess output to a string.
+
+    Every subprocess in this module runs with ``text=True``, so output is
+    already ``str``.  The only special case is ``None`` — no output was
+    captured before a timeout/kill — which becomes the empty string.
+    """
+    return v if v is not None else ""
+
+
+# On Windows, launch children in their own process group so that, in principle,
+# group-level signalling is possible and the child is cleanly isolated from the
+# parent's console.  On POSIX this flag does not exist; 0 means "no extra flags".
+_CREATIONFLAGS = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +120,12 @@ class PytestResult:
     num_passed:
         Number of tests reported as passing (parsed from pytest output).
     num_failed:
-        Number of tests reported as failing (parsed from pytest output).
+        Number of non-passing tests: assertion failures PLUS collection/import/
+        fixture errors.  Guaranteed ``>= 1`` whenever ``passed`` is ``False``,
+        so downstream consumers can rely on it to detect any non-success.
+    num_errors:
+        Subset of ``num_failed`` that pytest classified as "error" (collection
+        / import / fixture errors) rather than ordinary test "failed".
     timed_out:
         ``True`` when the timeout fired.
     returncode:
@@ -119,6 +141,7 @@ class PytestResult:
     passed: bool
     num_passed: int
     num_failed: int
+    num_errors: int
     timed_out: bool
     returncode: int | None
     stdout: str
@@ -182,14 +205,17 @@ def run_python_code(
                 timeout=timeout_s,
                 capture_output=True,
                 text=True,
+                creationflags=_CREATIONFLAGS,
             )
             returncode = proc.returncode
             stdout = proc.stdout or ""
             stderr = proc.stderr or ""
         except subprocess.TimeoutExpired as exc:
-            # subprocess.run kills the child on TimeoutExpired (Python ≥ 3.3).
-            # On Windows a second communicate() populates exc.stdout/stderr.
-            # Guard against bytes (partial-read path) and None (no output yet).
+            # subprocess.run kills the direct child and waits for it
+            # (communicate) before re-raising, so the child is dead before the
+            # finally-block rmtree runs.  Grandchildren are NOT killed — see the
+            # module docstring's "Known limitations" section.  exc.stdout/stderr
+            # may be None (no output captured before the kill).
             timed_out = True
             stdout = _decode_output(exc.stdout)
             stderr = _decode_output(exc.stderr)
@@ -262,6 +288,7 @@ def run_pytest(
                 timeout=timeout_s,
                 capture_output=True,
                 text=True,
+                creationflags=_CREATIONFLAGS,
             )
             returncode = proc.returncode
             stdout = proc.stdout or ""
@@ -272,18 +299,26 @@ def run_pytest(
             stderr = _decode_output(exc.stderr)
         duration_s = time.perf_counter() - t0
 
-        # Parse passed/failed counts from pytest's summary line before truncation.
-        num_passed, num_failed = _parse_pytest_counts(stdout)
+        # Parse passed/failed/error counts from pytest's summary line before
+        # truncation.  Collection/import/fixture errors (e.g. a solution.py with
+        # a SyntaxError or a missing symbol) are reported by pytest as "N error",
+        # NOT "N failed" — they are folded into num_failed here so that a
+        # non-passing run always has num_failed >= 1 for downstream consumers.
+        num_passed, num_failed_only, num_errors = _parse_pytest_counts(stdout)
         passed = (not timed_out) and (returncode == 0)
+        num_failed = num_failed_only + num_errors
 
-        # Fallback: if parsing failed but everything passed, report at least 1.
-        if passed and num_passed == 0 and num_failed == 0:
-            num_passed = 1
+        # If pytest reported a non-zero exit but no parseable failure/error
+        # count (e.g. crash, or a summary format we don't recognise), surface at
+        # least one failure so callers never mistake it for success.
+        if (not passed) and num_failed == 0:
+            num_failed = 1
 
         return PytestResult(
             passed=passed,
             num_passed=num_passed,
             num_failed=num_failed,
+            num_errors=num_errors,
             timed_out=timed_out,
             returncode=returncode,
             stdout=_truncate(stdout, max_output_chars),
@@ -301,6 +336,10 @@ def run_pytest(
 
 _DANGEROUS_TOP_LEVEL = frozenset({"subprocess", "ctypes", "winreg"})
 _NETWORK_TOP_LEVEL = frozenset({"socket", "urllib", "requests", "http"})
+# os attributes that run external programs.  os.exec*/os.spawn* are matched by
+# prefix in the call-site check rather than being enumerated here.
+_DANGEROUS_OS_ATTRS = frozenset({"system", "popen"})
+_DANGEROUS_BUILTINS = frozenset({"exec", "eval", "__import__"})
 
 
 def check_code_safety(code: str) -> list[str]:
@@ -317,11 +356,20 @@ def check_code_safety(code: str) -> list[str]:
     -----------------
     * ``import subprocess`` / ``ctypes`` / ``winreg``.
     * ``import socket`` / ``urllib*`` / ``requests`` / ``http*``  (network).
-    * ``from os import system`` (os.system shorthand).
-    * Calls to ``os.system(...)``.
-    * ``from shutil import rmtree``.
+    * ``from os import system`` / ``popen``  and ``from shutil import rmtree``.
+    * Calls to ``os.system(...)`` / ``os.popen(...)`` / ``os.exec*`` /
+      ``os.spawn*``.
+    * Calls to ``exec(...)`` / ``eval(...)`` / ``__import__(...)`` — the
+      easiest ways to bypass static screening by building dangerous code or
+      module names dynamically.
     * ``open(...)`` with ``'w'`` or ``'a'`` mode on an absolute path or a
       path that contains ``..`` (path traversal).
+
+    NOT covered (non-exhaustive — do not treat absence of warnings as proof of
+    safety): dynamically-constructed import/open arguments, ``importlib``,
+    ``compile()``, ``getattr``-based attribute access, ``pickle``/``marshal``
+    deserialisation, C-extension side effects, and any obfuscation.  This is a
+    heuristic, not a sandbox.
 
     Parameters
     ----------
@@ -367,11 +415,11 @@ def check_code_safety(code: str) -> list[str]:
                 warn(f"Potentially dangerous import from: {module!r}")
             if top in _NETWORK_TOP_LEVEL:
                 warn(f"Network-related import from: {module!r}")
-            # Special-case: from os import system  /  from shutil import rmtree
+            # Special-case: from os import system/popen  /  from shutil import rmtree
             if module == "os":
                 for alias in node.names:
-                    if alias.name == "system":
-                        warn("Dangerous import: 'from os import system'")
+                    if alias.name in _DANGEROUS_OS_ATTRS:
+                        warn(f"Dangerous import: 'from os import {alias.name}'")
             if module == "shutil":
                 for alias in node.names:
                     if alias.name == "rmtree":
@@ -381,14 +429,23 @@ def check_code_safety(code: str) -> list[str]:
         # Call sites
         # ------------------------------------------------------------------
         elif isinstance(node, ast.Call):
-            # os.system(...)
+            func = node.func
+            # os.system(...) / os.popen(...) / os.exec*/spawn*(...)
             if (
-                isinstance(node.func, ast.Attribute)
-                and node.func.attr == "system"
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "os"
+                isinstance(func, ast.Attribute)
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "os"
+                and (
+                    func.attr in _DANGEROUS_OS_ATTRS
+                    or func.attr.startswith("exec")
+                    or func.attr.startswith("spawn")
+                )
             ):
-                warn("Call to os.system()")
+                warn(f"Call to os.{func.attr}()")
+
+            # exec(...) / eval(...) / __import__(...) — easy static-screen bypass.
+            if isinstance(func, ast.Name) and func.id in _DANGEROUS_BUILTINS:
+                warn(f"Call to {func.id}()")
 
             # open(..., 'w'|'a', ...) with dangerous path
             if _is_dangerous_open(node):
@@ -451,29 +508,42 @@ def _is_dangerous_open(node: ast.Call) -> bool:
     return is_absolute or has_traversal
 
 
-def _parse_pytest_counts(output: str) -> tuple[int, int]:
-    """Extract passed/failed counts from pytest's compact summary line.
+def _parse_pytest_counts(output: str) -> tuple[int, int, int]:
+    """Extract passed/failed/error counts from pytest's compact summary line.
 
     Handles lines such as::
 
         1 passed in 0.01s
         2 failed, 1 passed in 0.05s
         3 failed in 0.02s
+        1 error in 0.03s              # collection/import/fixture error
+        1 failed, 1 error in 0.04s
+
+    The "error" token is distinct from "failed": pytest reports a solution that
+    fails to import (e.g. a SyntaxError or missing symbol) as an *error*, not a
+    test failure.  Both are returned so the caller can fold errors into the
+    non-passing count.
 
     Searches from the bottom of the output so the final summary line wins.
 
     Returns
     -------
-    tuple[int, int]
-        ``(num_passed, num_failed)``, both 0 when nothing could be parsed.
+    tuple[int, int, int]
+        ``(num_passed, num_failed, num_errors)``; all 0 when nothing could be
+        parsed.
     """
     passed = 0
     failed = 0
+    errors = 0
     for line in reversed(output.splitlines()):
         m_passed = re.search(r"(\d+)\s+passed", line)
         m_failed = re.search(r"(\d+)\s+failed", line)
-        if m_passed or m_failed:
+        # Match "error" / "errors" but avoid the unrelated word "errors" inside
+        # tracebacks by requiring the count-prefixed summary form.
+        m_error = re.search(r"(\d+)\s+errors?\b", line)
+        if m_passed or m_failed or m_error:
             passed = int(m_passed.group(1)) if m_passed else 0
             failed = int(m_failed.group(1)) if m_failed else 0
+            errors = int(m_error.group(1)) if m_error else 0
             break
-    return passed, failed
+    return passed, failed, errors

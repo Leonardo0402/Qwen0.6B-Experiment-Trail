@@ -145,8 +145,10 @@ class TestRunPytest:
     def test_correct_solution_passes(self):
         result = run_pytest(_CORRECT_SOLUTION, _CORRECT_TESTS, timeout_s=15.0)
         assert result.passed is True
-        assert result.num_passed >= 1
+        # The fixture has exactly 2 tests — tighten so a parse regression is caught.
+        assert result.num_passed == 2
         assert result.num_failed == 0
+        assert result.num_errors == 0
         assert result.timed_out is False
         assert result.returncode == 0
 
@@ -155,6 +157,28 @@ class TestRunPytest:
         assert result.passed is False
         assert result.num_failed >= 1
         assert result.timed_out is False
+
+    def test_solution_with_syntax_error_reports_failure(self):
+        """A solution that fails to import is a pytest *error*, not 'failed'.
+
+        Downstream consumers rely on num_failed >= 1 to detect any non-success,
+        so collection/import errors must fold into num_failed (and surface in
+        num_errors). This is the dominant failure mode for model-generated code.
+        """
+        broken = "def add(a, b)\n    return a + b\n"  # missing colon -> SyntaxError
+        result = run_pytest(broken, _CORRECT_TESTS, timeout_s=15.0)
+        assert result.passed is False
+        assert result.num_failed >= 1
+        assert result.num_errors >= 1
+        assert result.timed_out is False
+
+    def test_solution_missing_symbol_reports_failure(self):
+        """Importing a missing symbol is a collection error -> num_failed >= 1."""
+        # solution.py exists but does not define `add`.
+        result = run_pytest("x = 1\n", _CORRECT_TESTS, timeout_s=15.0)
+        assert result.passed is False
+        assert result.num_failed >= 1
+        assert result.num_errors >= 1
 
     def test_timeout_on_infinite_loop_solution(self):
         """Pytest must be killed within a few seconds; must not hang the suite."""
@@ -233,6 +257,32 @@ class TestCheckCodeSafety:
     def test_network_import_http_flagged(self):
         warnings = check_code_safety("import http.client")
         assert any("http" in w for w in warnings)
+
+    def test_exec_call_flagged(self):
+        warnings = check_code_safety("exec('print(1)')")
+        assert any("exec" in w for w in warnings)
+
+    def test_eval_call_flagged(self):
+        warnings = check_code_safety("eval('1 + 1')")
+        assert any("eval" in w for w in warnings)
+
+    def test_dunder_import_call_flagged(self):
+        warnings = check_code_safety("__import__('os').system('echo hi')")
+        assert any("__import__" in w for w in warnings)
+
+    def test_os_popen_call_flagged(self):
+        code = "import os\nos.popen('echo hi')"
+        warnings = check_code_safety(code)
+        assert any("os.popen" in w for w in warnings)
+
+    def test_os_execve_call_flagged(self):
+        code = "import os\nos.execve('/bin/sh', [], {})"
+        warnings = check_code_safety(code)
+        assert any("os.execve" in w for w in warnings)
+
+    def test_from_os_import_popen_flagged(self):
+        warnings = check_code_safety("from os import popen")
+        assert any("popen" in w for w in warnings)
 
     def test_open_write_mode_with_traversal_path_flagged(self):
         warnings = check_code_safety("open('../outside.txt', 'w')")
