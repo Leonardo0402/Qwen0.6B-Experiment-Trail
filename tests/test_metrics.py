@@ -143,6 +143,19 @@ class TestPassAt1:
         outcomes = [_repair(), _repair()]
         assert pass_at_1(outcomes) == 0.0
 
+    def test_timed_out_does_not_count_as_pass(self):
+        """A timed-out generation outcome with public/hidden True must NOT pass."""
+        outcomes = [
+            _gen(),  # genuine pass
+            _gen(public_passed=True, hidden_passed=True, timed_out=True),  # timed out
+        ]
+        # Only 1 of 2 counts as a pass.
+        assert pass_at_1(outcomes) == pytest.approx(0.5)
+
+    def test_all_timed_out_generation_is_zero(self):
+        outcomes = [_gen(timed_out=True), _gen(timed_out=True)]
+        assert pass_at_1(outcomes) == pytest.approx(0.0)
+
 
 # ---------------------------------------------------------------------------
 # syntax_rate

@@ -16,6 +16,7 @@ ruff_ok and mypy_ok are recorded but do NOT gate acceptance:
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -100,12 +101,16 @@ def compile_check(code: str) -> tuple[bool, str]:
     (ok, error_message)
         *ok* is ``True`` when the code compiles without errors.
         *error_message* is the empty string on success and the
-        ``SyntaxError`` description on failure.
+        ``SyntaxError`` / ``ValueError`` (e.g. embedded null bytes) description
+        on failure.
     """
     try:
         compile(code, "<sample>", "exec")
         return True, ""
-    except SyntaxError as exc:
+    except (SyntaxError, ValueError) as exc:
+        # compile() raises SyntaxError for malformed source, but ValueError for
+        # source containing embedded null bytes — catch both so adversarial
+        # model output can never crash the verifier.
         return False, str(exc)
 
 
@@ -129,6 +134,9 @@ def ruff_check(code: str, *, timeout_s: float = 15.0) -> tuple[bool, str]:
         *ok* is ``True`` when ruff exits with code 0 (no lint issues).
         *output* contains any diagnostic text (stdout + stderr combined).
     """
+    if importlib.util.find_spec("ruff") is None:
+        return False, "ruff not installed"
+
     tmpdir = tempfile.mkdtemp()
     try:
         src_file = os.path.join(tmpdir, "sample.py")
@@ -146,8 +154,6 @@ def ruff_check(code: str, *, timeout_s: float = 15.0) -> tuple[bool, str]:
             return proc.returncode == 0, output
         except subprocess.TimeoutExpired:
             return False, "ruff timed out"
-        except FileNotFoundError:
-            return False, "ruff not found"
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -175,6 +181,9 @@ def mypy_check(code: str, *, timeout_s: float = 30.0) -> tuple[bool, str]:
     (ok, output)
         *ok* is ``True`` when mypy exits with code 0 (no type errors).
     """
+    if importlib.util.find_spec("mypy") is None:
+        return False, "mypy not installed"
+
     tmpdir = tempfile.mkdtemp()
     try:
         src_file = os.path.join(tmpdir, "sample.py")
@@ -184,6 +193,10 @@ def mypy_check(code: str, *, timeout_s: float = 30.0) -> tuple[bool, str]:
         try:
             proc = subprocess.run(
                 [sys.executable, "-m", "mypy", src_file],
+                # Run from the isolated temp dir so mypy resolves config from
+                # there and does NOT inherit the project's pyproject.toml
+                # [tool.mypy] section via the process CWD.
+                cwd=tmpdir,
                 capture_output=True,
                 text=True,
                 timeout=timeout_s,
@@ -192,8 +205,6 @@ def mypy_check(code: str, *, timeout_s: float = 30.0) -> tuple[bool, str]:
             return proc.returncode == 0, output
         except subprocess.TimeoutExpired:
             return False, "mypy timed out"
-        except FileNotFoundError:
-            return False, "mypy not found"
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -362,8 +373,19 @@ def verify_broken_is_broken(
         ``broken_code`` fails at least one test — valid broken sample.
     False
         ``broken_code`` unexpectedly passes all tests — invalid broken sample.
+
+    Raises
+    ------
+    ValueError
+        When ``broken_code`` is missing or blank.  An empty solution file would
+        produce a pytest collection error and yield a false-positive "broken"
+        verdict, so callers must only invoke this on genuine repair samples.
     """
     broken = sample.broken_code or ""
+    if not broken.strip():
+        raise ValueError(
+            "verify_broken_is_broken requires a non-empty broken_code"
+        )
 
     # Public tests
     pub_result = run_pytest(

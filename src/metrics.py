@@ -78,13 +78,17 @@ def pass_at_1(outcomes: list[EvalOutcome]) -> float:
     """Fraction of code_generation outcomes where ALL tests pass.
 
     Filters to ``task_type == "code_generation"`` outcomes, then counts those
-    where ``syntax_ok AND public_passed AND hidden_passed``.
+    where ``syntax_ok AND public_passed AND hidden_passed AND NOT timed_out``.
+    The ``not timed_out`` clause is asserted explicitly rather than relying on
+    any upstream invariant linking timeouts to test results.
 
     Returns 0.0 when there are no generation outcomes.
     """
     gen = [o for o in outcomes if o.task_type == "code_generation"]
     passed = sum(
-        1 for o in gen if o.syntax_ok and o.public_passed and o.hidden_passed
+        1
+        for o in gen
+        if o.syntax_ok and o.public_passed and o.hidden_passed and not o.timed_out
     )
     return _safe_rate(passed, len(gen))
 

@@ -97,6 +97,13 @@ class TestCompileCheck:
         assert ok is False
         assert len(msg) > 0
 
+    def test_embedded_null_byte_does_not_crash(self):
+        """compile() raises ValueError (not SyntaxError) on null bytes — must
+        be caught and reported, never propagated."""
+        ok, msg = compile_check("x = 1\x00\n")
+        assert ok is False
+        assert msg != ""
+
 
 # ---------------------------------------------------------------------------
 # ruff_check
@@ -114,8 +121,8 @@ class TestRuffCheck:
         code = "import os\n\ndef greet():\n    return 'hello'\n"
         ok, output = ruff_check(code)
         assert ok is False
-        # ruff should mention the unused import
-        assert "F401" in output or "os" in output or output != ""
+        # F401 (unused import) is a stable ruff default rule.
+        assert "F401" in output
 
     def test_returns_tuple_of_bool_and_str(self):
         ok, output = ruff_check("x = 1\n")
@@ -255,7 +262,7 @@ class TestVerifyBrokenIsBroken:
         sample = self._make_repair_sample(invalid)
         assert verify_broken_is_broken(sample, pytest_timeout_s=15.0) is True
 
-    def test_returns_only_against_hidden_test_failure(self):
+    def test_passes_public_fails_hidden_is_broken(self):
         """Broken code that passes public but fails hidden still returns True."""
         # A function correct for positive inputs, wrong for negative
         broken = (
@@ -268,3 +275,20 @@ class TestVerifyBrokenIsBroken:
         # Public test: add(1, 2) == 3 → passes
         # Hidden test: add(-1, -2) == -3 → fails
         assert verify_broken_is_broken(sample, pytest_timeout_s=15.0) is True
+
+    def test_blank_broken_code_raises(self):
+        """A generation sample (broken_code=None) must raise, not false-positive."""
+        gen_sample = _make_sample(task_type="code_generation", broken_code=None)
+        with pytest.raises(ValueError, match="non-empty broken_code"):
+            verify_broken_is_broken(gen_sample, pytest_timeout_s=15.0)
+
+    def test_whitespace_only_broken_code_raises(self):
+        """Whitespace-only broken_code is treated as blank and raises.
+
+        Uses a code_generation sample because the schema itself rejects blank
+        broken_code for repair task types at construction time — here we are
+        exercising verify_broken_is_broken's own guard.
+        """
+        sample = _make_sample(task_type="code_generation", broken_code="   \n  \n")
+        with pytest.raises(ValueError, match="non-empty broken_code"):
+            verify_broken_is_broken(sample, pytest_timeout_s=15.0)
