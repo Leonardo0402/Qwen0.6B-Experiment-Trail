@@ -1,5 +1,5 @@
 """
-scripts/check_environment.py — Preflight environment checker for qwen3-code-lab.
+scripts/check_environment.py -- Preflight environment checker for qwen3-code-lab.
 
 Checks Python version, PyTorch/CUDA setup, GPU VRAM, key library versions,
 disk space, HuggingFace cache location, model directory, and a CUDA smoke test.
@@ -8,8 +8,8 @@ Usage:
     python scripts/check_environment.py
 
 Exit codes:
-    0  READY     — all checks passed or only warnings
-    1  NOT READY — one or more checks failed
+    0  READY     -- all checks passed or only warnings
+    1  NOT READY -- one or more checks failed
 
 Windows DLL note
 ----------------
@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
-# Eager library imports — order matters on Windows.
+# Eager library imports -- order matters on Windows.
 # datasets MUST be imported before torch.cuda is initialised; we import all
 # required libs here so they are all available before any check function runs.
 # ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ for _lib_name in _REQUIRED_LIBS:
     except (ImportError, OSError) as _exc:
         _LIB_MISSING[_lib_name] = f"{type(_exc).__name__}: {_exc}"
 
-# torch import — done after datasets/transformers/peft/accelerate.
+# torch import -- done after datasets/transformers/peft/accelerate.
 # Broaden the except clause for the same Windows missing-DLL reason as above.
 try:
     import torch as _torch
@@ -101,7 +101,7 @@ def check_python_version(version_info: Optional[Sequence] = None) -> CheckResult
         "Python version",
         "FAIL",
         ver_str,
-        "Must be Python 3.10.x — activate the qwen3-code-lab conda env.",
+        "Must be Python 3.10.x -- activate the qwen3-code-lab conda env.",
     )
 
 
@@ -123,7 +123,7 @@ def check_cuda_available() -> CheckResult:
         "CUDA available",
         "FAIL",
         "False",
-        "CUDA not available — GPU training is not possible in this environment.",
+        "CUDA not available -- GPU training is not possible in this environment.",
     )
 
 
@@ -132,9 +132,9 @@ def check_gpu_name() -> CheckResult:
     if _torch is None:
         return CheckResult("GPU name", "FAIL", "N/A", "torch not installed")
     if not _torch.cuda.is_available():
-        # WARN (not FAIL) so a single root cause — CUDA unavailable — doesn't
+        # WARN (not FAIL) so a single root cause -- CUDA unavailable -- doesn't
         # inflate the NOT READY list. The CUDA-available check owns the FAIL.
-        return CheckResult("GPU name", "WARN", "skipped", "CUDA not available — see check above")
+        return CheckResult("GPU name", "WARN", "skipped", "CUDA not available -- see check above")
     try:
         name = _torch.cuda.get_device_name(0)
         return CheckResult("GPU name", "PASS", name)
@@ -148,7 +148,7 @@ def check_vram(warn_free_gb: float = 2.5) -> CheckResult:
         return CheckResult("VRAM", "FAIL", "N/A", "torch not installed")
     if not _torch.cuda.is_available():
         # WARN (not FAIL): CUDA-available check owns the single FAIL.
-        return CheckResult("VRAM", "WARN", "skipped", "CUDA not available — see check above")
+        return CheckResult("VRAM", "WARN", "skipped", "CUDA not available -- see check above")
     try:
         props = _torch.cuda.get_device_properties(0)
         total_bytes = props.total_memory
@@ -161,14 +161,14 @@ def check_vram(warn_free_gb: float = 2.5) -> CheckResult:
                 "VRAM",
                 "WARN",
                 value,
-                f"Free VRAM ({free_gb:.1f} GB) < {warn_free_gb} GB — OOM risk during training.",
+                f"Free VRAM ({free_gb:.1f} GB) < {warn_free_gb} GB -- OOM risk during training.",
             )
         return CheckResult("VRAM", "PASS", value)
     except Exception as exc:  # noqa: BLE001
         return CheckResult("VRAM", "FAIL", "error", str(exc))
 
 
-# Display order for the report. NOTE: this is a *display* list only — the
+# Display order for the report. NOTE: this is a *display* list only -- the
 # import-safety order (datasets before torch) is enforced by _REQUIRED_LIBS
 # above. Do NOT unify these two lists or reorder the imports, or the Windows
 # datasets-after-CUDA access-violation crash will reappear.
@@ -214,7 +214,7 @@ def check_disk_space(
                 "Disk space",
                 "WARN",
                 value,
-                f"Less than {warn_free_gb:.0f} GB free on project drive — may run short during training.",
+                f"Less than {warn_free_gb:.0f} GB free on project drive -- may run short during training.",
             )
         return CheckResult("Disk space", "PASS", value)
     except Exception as exc:  # noqa: BLE001
@@ -259,7 +259,7 @@ def check_hf_cache(
     except ValueError:
         pass
 
-    # Cache exists but is outside the project root — warn.
+    # Cache exists but is outside the project root -- warn.
     return CheckResult(
         "HF cache",
         "WARN",
@@ -280,7 +280,7 @@ def check_model_dir(project_root: Optional[Path] = None) -> CheckResult:
                 "Model directory",
                 "WARN",
                 "MISSING",
-                f"{model_dir} not found — download the model in a later task step.",
+                f"{model_dir} not found -- download the model in a later task step.",
             )
 
         config_json = model_dir / "config.json"
@@ -318,7 +318,7 @@ def check_cuda_smoke() -> CheckResult:
     if not _torch.cuda.is_available():
         # WARN (not FAIL): CUDA-available check owns the single FAIL.
         return CheckResult(
-            "CUDA smoke test", "WARN", "skipped", "CUDA not available — see check above"
+            "CUDA smoke test", "WARN", "skipped", "CUDA not available -- see check above"
         )
     try:
         a = _torch.ones(64, 64, device="cuda")
@@ -330,7 +330,7 @@ def check_cuda_smoke() -> CheckResult:
                 "CUDA smoke test",
                 "FAIL",
                 "non-finite result",
-                "matmul produced non-finite values — possible hardware issue.",
+                "matmul produced non-finite values -- possible hardware issue.",
             )
         return CheckResult("CUDA smoke test", "PASS", "OK (64x64 matmul, all finite)")
     except Exception as exc:  # noqa: BLE001
@@ -405,6 +405,14 @@ ALL_CHECKS = [
 
 def main() -> int:
     """Run all checks, render the report, return exit code (0=READY, 1=NOT READY)."""
+    # Defense-in-depth: make stdout robust so a stray non-ASCII char can't
+    # hard-crash with UnicodeEncodeError on a gbk/cp936 console (e.g. when run
+    # via `conda run`, which re-encodes the child's captured stdout).
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    except Exception:  # noqa: BLE001
+        pass
+
     results: List[CheckResult] = []
     for fn in ALL_CHECKS:
         results.append(fn())
