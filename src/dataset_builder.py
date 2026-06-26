@@ -19,6 +19,7 @@ import dataclasses
 import hashlib
 import json
 import random
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -76,15 +77,21 @@ class DatasetSplit:
 def _content_hash(sample: Sample) -> str:
     """Compute a stable SHA-256 hash of a sample's semantically-identifying fields.
 
-    Fields hashed: instruction, target_code, broken_code, task_type.
-    sample_id is intentionally excluded so that two samples with identical
-    content but different IDs are correctly identified as duplicates.
+    Fields hashed: instruction, target_code, broken_code, execution_feedback,
+    task_type.  sample_id is intentionally excluded so that two samples with
+    identical content but different IDs are correctly identified as duplicates.
+
+    Empty-string optional fields are normalised to None before hashing
+    (``"" or None`` -> None) so that a sample carrying broken_code="" and an
+    otherwise-identical sample carrying broken_code=None are treated as the
+    same content.
     """
     key = json.dumps(
         {
             "instruction": sample.instruction,
             "target_code": sample.target_code,
-            "broken_code": sample.broken_code,
+            "broken_code": (sample.broken_code or None),
+            "execution_feedback": (sample.execution_feedback or None),
             "task_type":   sample.task_type,
         },
         sort_keys=True,
@@ -158,6 +165,16 @@ def split_by_family(
 
     4. Assign each remaining sample to the split of its family.
 
+    Small-pool caveat
+    -----------------
+    Because split boundaries are derived from ``round(n * fraction)``, a small
+    active-family count can round a split's share down to zero.  With the
+    default val=0.10, at least 10 active families are required to guarantee a
+    non-empty val split (e.g. n=8 yields zero val families).  When a split ends
+    up empty while there are enough families to have populated it, a
+    ``warnings.warn`` is emitted naming that split.  The disjointness algorithm
+    (non-overlapping slices) is unaffected.
+
     Parameters
     ----------
     samples:
@@ -205,6 +222,27 @@ def split_by_family(
     train_families: set[str] = set(family_ids[:train_end])
     val_families:   set[str] = set(family_ids[train_end:val_end])
     test_families:  set[str] = set(family_ids[val_end:])
+
+    # Warn when a split that was *supposed* to receive families (positive
+    # fraction) ends up empty purely because of small-n rounding, while there
+    # are enough active families that it could have been populated. This does
+    # NOT alter the disjoint slicing above; it only surfaces a quality risk.
+    positive_splits = [
+        ("train", train, train_families),
+        ("val",   val,   val_families),
+        ("test",  test,  test_families),
+    ]
+    num_positive = sum(1 for _, frac, _ in positive_splits if frac > 0.0)
+    if n >= num_positive:
+        for split_name, frac, fam_set in positive_splits:
+            if frac > 0.0 and not fam_set:
+                warnings.warn(
+                    f"split_by_family: {split_name!r} split is EMPTY after "
+                    f"rounding (active families n={n}, {split_name} fraction="
+                    f"{frac}). Increase the pool or adjust fractions; "
+                    f"val=0.10 needs >=10 active families for a non-empty val.",
+                    stacklevel=2,
+                )
 
     train_samples = [s for s in active_samples if s.family_id in train_families]
     val_samples   = [s for s in active_samples if s.family_id in val_families]
@@ -259,7 +297,9 @@ def write_jsonl(records: list[dict], path: "str | Path") -> None:
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
+    # newline="\n" forces LF line endings on all platforms so JSONL files stay
+    # portable for Linux consumers (Windows would otherwise emit CRLF).
+    with path.open("w", encoding="utf-8", newline="\n") as f:
         for record in records:
             f.write(
                 json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n"

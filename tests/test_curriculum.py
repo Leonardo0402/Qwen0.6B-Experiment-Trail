@@ -151,11 +151,46 @@ class TestLevelDescription:
 # ---------------------------------------------------------------------------
 
 class TestBuildStageMix:
-    def test_total_respected_easy(self):
-        """With sufficient pool, total returned == total requested."""
+    def test_total_exact_when_fractions_round_cleanly(self):
+        """easy stage at total=100: 70+30 rounds exactly → len == total.
+
+        NOTE: total is an APPROXIMATE target; exactness here is incidental to
+        easy's fractions dividing 100 cleanly. See the rounding-drift tests
+        below for the general (approximate) contract.
+        """
         pool = _make_pool({0: 200, 1: 200})
         result = build_stage_mix(pool, "easy", 100, seed=42)
         assert len(result) == 100
+
+    def test_total_is_approximate_boundary_small(self):
+        """Per-level round() can overshoot: boundary/total=3 → 1+1+2 = 4."""
+        pool = _make_pool({0: 200, 1: 200, 2: 200})
+        result = build_stage_mix(pool, "boundary", 3, seed=42)
+        # Documented drift: result length need not equal total.
+        assert len(result) == 4
+        # ...but stays close (within 1 of total).
+        assert abs(len(result) - 3) <= 1
+
+    def test_total_is_approximate_repair_small(self):
+        """Per-level round() can undershoot: repair/total=10 → 1+2+2+4 = 9."""
+        pool = _make_pool({0: 200, 1: 200, 2: 200, 3: 200})
+        result = build_stage_mix(pool, "repair", 10, seed=42)
+        assert len(result) == 9
+        assert abs(len(result) - 10) <= 1
+
+    def test_total_within_tolerance_all_stages(self):
+        """Across stages, |len - total| is bounded by the number of levels."""
+        pools = {
+            "easy":     _make_pool({0: 500, 1: 500}),
+            "boundary": _make_pool({0: 500, 1: 500, 2: 500}),
+            "repair":   _make_pool({0: 500, 1: 500, 2: 500, 3: 500}),
+        }
+        for stage, pool in pools.items():
+            for total in (3, 7, 10, 33, 100):
+                result = build_stage_mix(pool, stage, total, seed=1)
+                n_levels = len(STAGE_MIX[stage])
+                # Rounding error is at most 0.5 per level.
+                assert abs(len(result) - total) <= n_levels
 
     def test_mix_matches_target_easy(self):
         """Rich pool + round fractions → exact target counts."""

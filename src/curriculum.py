@@ -95,6 +95,10 @@ def get_last_shortfalls() -> dict[int, int]:
     Keys are difficulty levels; values are the number of missing samples
     (target_count - available_count) for each under-filled difficulty.
     Returns an empty dict when no shortfall occurred.
+
+    Thread-safety: ``_last_shortfalls`` is module-global mutable state.
+    Concurrent build_stage_mix calls race on it; call from a single thread
+    (or guard externally) if you rely on the shortfall report.
     """
     return dict(_last_shortfalls)
 
@@ -118,6 +122,15 @@ def build_stage_mix(
 
     Sampling is WITHOUT replacement within each difficulty bucket.
 
+    Approximate total
+    -----------------
+    *total* is a TARGET, not a guarantee.  Because each per-difficulty count
+    is independently rounded (``round(total * fraction)``), the assembled
+    length can differ from *total* by a small amount (e.g. boundary stage with
+    total=3 yields 4; repair stage with total=10 yields 9).  When the pool is
+    sufficient, the length equals the sum of the rounded per-difficulty
+    targets.
+
     Under-fill behaviour
     --------------------
     If the pool has fewer samples of some difficulty than target_count, all
@@ -136,7 +149,8 @@ def build_stage_mix(
     stage:
         One of "easy", "boundary", "repair" (keys of STAGE_MIX).
     total:
-        Desired total number of samples in the assembled list.
+        Approximate target size of the assembled list (see "Approximate
+        total" above; per-level rounding may shift the exact count).
     seed:
         RNG seed for determinism.
 
@@ -172,9 +186,9 @@ def build_stage_mix(
             chosen = rng.sample(available, target_count)
         else:
             # Under-fill: take all available, record shortfall.
-            actual_shortfall = target_count - len(available)
-            if actual_shortfall > 0:
-                shortfalls[diff] = actual_shortfall
+            # In this branch len(available) < target_count, so the shortfall
+            # is always positive — no guard needed.
+            shortfalls[diff] = target_count - len(available)
             chosen = list(available)   # copy; do not mutate pool
             rng.shuffle(chosen)         # still advance rng for determinism
 

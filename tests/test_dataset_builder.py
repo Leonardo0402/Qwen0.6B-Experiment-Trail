@@ -12,6 +12,7 @@ Covers:
 - write_jsonl, dataset_hash, write_split behave as specified.
 """
 import json
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -153,6 +154,30 @@ class TestDedup:
         assert len(result) == 1
         assert result[0].sample_id == "only"
 
+    def test_none_and_empty_broken_code_are_duplicates(self):
+        """broken_code=None vs broken_code="" (all else identical) → ONE kept.
+
+        Both samples are code_generation, so empty broken_code is permitted by
+        the schema; the content hash must normalise "" → None.
+        """
+        s1 = _make_sample("id_1", "fam", instruction="同一指令", target_code="def f(): pass")
+        s1.broken_code = None
+        s2 = _make_sample("id_2", "fam", instruction="同一指令", target_code="def f(): pass")
+        s2.broken_code = ""
+        result = dedup([s1, s2])
+        assert len(result) == 1
+        assert result[0].sample_id == "id_1"
+
+    def test_none_and_empty_feedback_are_duplicates(self):
+        """execution_feedback=None vs "" (all else identical) → ONE kept."""
+        s1 = _make_sample("id_1", "fam", instruction="指令", target_code="def f(): pass")
+        s1.execution_feedback = None
+        s2 = _make_sample("id_2", "fam", instruction="指令", target_code="def f(): pass")
+        s2.execution_feedback = ""
+        result = dedup([s1, s2])
+        assert len(result) == 1
+        assert result[0].sample_id == "id_1"
+
 
 # ---------------------------------------------------------------------------
 # split_by_family — LEAK-PROOF guarantee
@@ -268,6 +293,27 @@ class TestSplitByFamily:
         assert abs(val_fam   / n - 0.10) < 0.05
         assert abs(test_fam  / n - 0.20) < 0.05
 
+    # ---- SMALL-N EMPTY-SPLIT WARNING ----
+
+    def test_small_n_empty_val_warns(self):
+        """n=8 active families with val=0.10 rounds val down to 0 → warn."""
+        pool = _large_pool(8, 2)  # 8 families, none heldout
+        with pytest.warns(UserWarning, match="val.*EMPTY"):
+            split = split_by_family(pool, seed=42)
+        # The empty val is still produced (algorithm unchanged); only a warning.
+        assert len({s.family_id for s in split.val}) == 0
+        # Disjointness must still hold.
+        train_fids = {s.family_id for s in split.train}
+        test_fids  = {s.family_id for s in split.test}
+        assert train_fids.isdisjoint(test_fids)
+
+    def test_sufficient_n_does_not_warn(self):
+        """With 100 families, all splits populated → no warning."""
+        pool = _large_pool(100, 1)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning becomes an error
+            split_by_family(pool, seed=42)
+
     # ---- DETERMINISM ----
 
     def test_deterministic_given_seed(self):
@@ -303,7 +349,7 @@ class TestSplitByFamily:
             assert isinstance(result, set), f"family_ids({name!r}) should return a set"
 
     def test_family_ids_helper_invalid_raises(self):
-        pool = _large_pool(5, 2)
+        pool = _large_pool(12, 2)  # >=10 families so no small-n warning leaks
         split = split_by_family(pool)
         with pytest.raises(ValueError):
             split.family_ids("unknown")
