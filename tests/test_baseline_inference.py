@@ -17,11 +17,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import json
+
 from scripts.baseline_inference import (
     build_prompt,
     bytes_to_gb,
     check_model_exists,
+    write_results,
 )
+
+
+class TestWriteResults:
+    def test_json_is_parseable_and_roundtrips(self, tmp_path: Path) -> None:
+        out = tmp_path / "nested" / "baseline_smoke.json"
+        data = {"prompt": "请用 Python", "peak_vram_gb": 1.23, "output": "def f(): ..."}
+        write_results(data, out)
+        assert out.exists()
+        loaded = json.loads(out.read_text(encoding="utf-8"))
+        assert loaded == data
 
 
 # ---------------------------------------------------------------------------

@@ -50,11 +50,12 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 DEFAULT_MODEL_PATH = str(_PROJECT_ROOT / "models" / "Qwen3-0.6B")
 
-# Default instruction in unicode escapes so the source file stays ASCII-clean.
-# Runtime value: "请用 Python 实现一个函数，返回列表中的最大值，只输出代码。"
+# Default Chinese instruction (raw UTF-8). stdout is reconfigured to UTF-8 in
+# main(), so printing this is safe on gbk/cp936 consoles.
+# "请用 Python 实现一个函数，返回列表中的最大值，只输出代码。"
 DEFAULT_INSTRUCTION = (
     "请用 Python 实现一个函数，"
-    "返回列表中的最大値，只输出代码。"
+    "返回列表中的最大值，只输出代码。"
 )
 
 
@@ -190,6 +191,7 @@ def run_inference(
             **inputs,
             max_new_tokens=max_new_tokens,
             do_sample=False,
+            pad_token_id=tokenizer.eos_token_id,
         )
 
     t1 = time.perf_counter()

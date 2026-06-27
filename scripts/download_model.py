@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -240,6 +239,7 @@ def main() -> int:
 
     if not all_ok:
         print("\nWARNING: some artifacts are MISSING -- the download may be incomplete.")
+        print("  (Re-run with --force to re-download and repair a partial download.)")
 
     # ------------------------------------------------------------------
     # Build and write manifest
