@@ -47,6 +47,7 @@ import argparse
 import ast
 import copy
 import sys
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
@@ -55,9 +56,21 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._io import load_samples_file  # noqa: E402
 from src.sandbox import run_pytest  # noqa: E402
 from src.schemas import Sample, Verification  # noqa: E402
 from src.validators import compile_check  # noqa: E402
+
+
+def per_sample_seed(base_seed: int, sample_id: str) -> int:
+    """Derive a stable, per-sample RNG seed from a base seed and sample_id.
+
+    Uses zlib.crc32 (a STABLE hash) rather than builtin hash() -- which is
+    salted per-process via PYTHONHASHSEED and would make runs non-reproducible.
+    Mixing the id into the seed means each source sample gets a different
+    operator shuffle, so the same first-N operators do not dominate the dataset.
+    """
+    return base_seed ^ (zlib.crc32(sample_id.encode("utf-8")) & 0xFFFF)
 
 # ---------------------------------------------------------------------------
 # Placeholder verification (for newly created repair samples)
@@ -362,14 +375,16 @@ def _remove_first_extend(code: str) -> Optional[str]:
 
 
 def _drop_first_guard(code: str) -> Optional[str]:
-    """Delete the first leading guard statement from a function body.
+    """Delete the first guard statement found in a function body.
 
     A guard is a top-level ``if`` statement (no ``else``) whose body is a single
     ``raise`` or ``return`` -- e.g. ``if n < 0: raise ValueError(...)``,
-    ``if len(unique) < 2: raise ...``, ``if x < lo: return lo``.  Removing it
-    means empty / boundary / negative inputs are no longer rejected or handled,
-    so the boundary test cases fail.  Only the first such guard in the first
-    function is removed.
+    ``if len(unique) < 2: raise ...``, ``if x < lo: return lo``.  The guard need
+    not be the very first statement (e.g. second_largest's guard is the 2nd
+    statement); the first one encountered while scanning the body in order is
+    removed.  Removing it means empty / boundary / negative inputs are no longer
+    rejected or handled, so the boundary test cases fail.  Only the first such
+    guard in the first function is removed.
     """
     try:
         tree = ast.parse(code)
@@ -526,8 +541,16 @@ def apply_all_mutators(code: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
+# Upper bound on the assembled execution_feedback string.  This is enforced
+# here at the assembly site (rather than relying on the sandbox's per-stream
+# cap) so the bound on what lands in a sample is self-documenting and stable
+# even if stdout + stderr are concatenated.
+MAX_FEEDBACK_CHARS = 4000
+_FEEDBACK_TRUNCATION_MARKER = "...[truncated]"
+
+
 def _format_feedback(stdout: str, stderr: str, returncode: Optional[int]) -> str:
-    """Format pytest output as execution_feedback text."""
+    """Format pytest output as execution_feedback text (capped at MAX_FEEDBACK_CHARS)."""
     parts: list[str] = []
     if stdout.strip():
         parts.append(stdout.strip())
@@ -535,7 +558,10 @@ def _format_feedback(stdout: str, stderr: str, returncode: Optional[int]) -> str
         parts.append(stderr.strip())
     if not parts:
         parts.append(f"[pytest exited with code {returncode}]")
-    return "\n".join(parts)
+    feedback = "\n".join(parts)
+    if len(feedback) > MAX_FEEDBACK_CHARS:
+        feedback = feedback[:MAX_FEEDBACK_CHARS] + _FEEDBACK_TRUNCATION_MARKER
+    return feedback
 
 
 def mutate_and_get_feedback(
@@ -738,12 +764,7 @@ def main() -> int:
         print(f"ERROR: input not found: {in_path}", file=sys.stderr)
         return 1
 
-    samples: list[Sample] = []
-    with in_path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                samples.append(Sample.from_json_line(line))
+    samples = load_samples_file(in_path)
 
     print(f"mutate_code: {len(samples)} input samples from {in_path}")
 
@@ -755,11 +776,13 @@ def main() -> int:
 
     with out_path.open("w", encoding="utf-8", newline="\n") as fh:
         for sample in samples:
+            # Per-sample seed so each source's operator shuffle differs and the
+            # same first-N operators do not dominate the output dataset.
             pairs = generate_repair_samples(
                 sample,
                 max_per_sample=args.max_per_sample,
                 pytest_timeout_s=args.timeout,
-                seed=args.seed,
+                seed=per_sample_seed(args.seed, sample.sample_id),
             )
             if not pairs:
                 n_skipped += 1

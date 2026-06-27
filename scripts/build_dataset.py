@@ -18,10 +18,15 @@ Usage
 Smoke-run pipeline order (run from project root):
 
     1. generate_tasks.py     -- create raw task bank
-    2. generate_reference.py -- validate references
-    3. verify_samples.py     -- verify reference samples
+    2. generate_reference.py -- validate references (the output is already
+                                verified, so it can feed step 4 directly)
+    3. verify_samples.py     -- OPTIONAL re-verify of reference samples; step 2
+                                already accepts only self-verifying references,
+                                so this is a redundant safety re-check, not a
+                                required stage
     4. mutate_code.py        -- produce repair variants
-    5. verify_samples.py     -- verify repair variants
+    5. verify_samples.py     -- verify repair variants (REQUIRED: confirms each
+                                broken/fixed variant accepts after mutation)
     6. build_dataset.py      -- dedup + split + write ChatML
 
 Exit codes
@@ -42,6 +47,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._io import load_samples  # noqa: E402,F401  (re-exported for callers/tests)
 from src.curriculum import Stage, STAGE_MIX, build_stage_mix  # noqa: E402
 from src.dataset_builder import (  # noqa: E402
     DatasetSplit,
@@ -55,20 +61,8 @@ from src.schemas import Sample  # noqa: E402
 # ---------------------------------------------------------------------------
 # Core helpers (importable for tests)
 # ---------------------------------------------------------------------------
-
-
-def load_samples(paths: list[Path]) -> list[Sample]:
-    """Load and concatenate samples from one or more JSONL files."""
-    samples: list[Sample] = []
-    for path in paths:
-        if not path.exists():
-            raise FileNotFoundError(f"Input not found: {path}")
-        with path.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    samples.append(Sample.from_json_line(line))
-    return samples
+# load_samples is provided by scripts._io and re-exported above so the four
+# data-factory scripts share ONE JSONL loader implementation.
 
 
 def build_and_write_dataset(

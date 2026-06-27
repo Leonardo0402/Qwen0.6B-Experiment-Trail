@@ -32,6 +32,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._io import load_samples_file  # noqa: E402
 from src.schemas import Sample  # noqa: E402
 from src.validators import verify_sample  # noqa: E402
 
@@ -117,16 +118,6 @@ def verify_jsonl_samples(
 # ---------------------------------------------------------------------------
 
 
-def _load_jsonl(path: Path) -> list[Sample]:
-    samples: list[Sample] = []
-    with path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                samples.append(Sample.from_json_line(line))
-    return samples
-
-
 def _write_jsonl_samples(samples: list[Sample], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as fh:
@@ -185,7 +176,7 @@ def main() -> int:
         print(f"ERROR: input not found: {in_path}", file=sys.stderr)
         return 1
 
-    samples = _load_jsonl(in_path)
+    samples = load_samples_file(in_path)
     if not samples:
         print(f"ERROR: no samples in {in_path}", file=sys.stderr)
         return 1

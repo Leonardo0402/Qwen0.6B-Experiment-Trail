@@ -327,11 +327,13 @@ def test_apply_all_mutators_returns_dict():
 
 
 def test_apply_all_mutators_none_for_empty():
-    """apply_all_mutators on a stub with no targets returns empty or few."""
+    """No operator fires on `def noop(): pass` (no mutable targets at all)."""
     code = "def noop(): pass\n"
     candidates = apply_all_mutators(code)
-    # none of our operators should fire on an empty function
-    assert all(v is not None for v in candidates.values())
+    # An empty-body function has no Load names, comparisons, arithmetic, ranges,
+    # sorts, subscripts, bool returns, guards, extends or slices to mutate, so
+    # the returned dict must be empty.
+    assert candidates == {}
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +357,50 @@ def test_mutate_and_get_feedback_passing_code():
     is_broken, feedback = mutate_and_get_feedback(sample.target_code, sample)
     assert not is_broken
     assert feedback == ""
+
+
+# ---------------------------------------------------------------------------
+# _format_feedback truncation (M2) and per_sample_seed (M3)
+# ---------------------------------------------------------------------------
+
+
+def test_format_feedback_truncates_long_output():
+    """_format_feedback caps assembled text at MAX_FEEDBACK_CHARS with a marker."""
+    from scripts.mutate_code import _format_feedback, MAX_FEEDBACK_CHARS
+
+    huge = "x" * (MAX_FEEDBACK_CHARS * 3)
+    out = _format_feedback(huge, "", 1)
+    assert len(out) <= MAX_FEEDBACK_CHARS + len("...[truncated]")
+    assert out.endswith("...[truncated]")
+
+
+def test_format_feedback_short_output_not_truncated():
+    """Short feedback is returned verbatim, no marker."""
+    from scripts.mutate_code import _format_feedback
+
+    out = _format_feedback("boom", "", 1)
+    assert out == "boom"
+
+
+def test_per_sample_seed_is_stable_and_varies():
+    """per_sample_seed is deterministic per id and differs across ids."""
+    from scripts.mutate_code import per_sample_seed
+
+    s1 = per_sample_seed(42, "gen_fam_a_v1")
+    s1_again = per_sample_seed(42, "gen_fam_a_v1")
+    s2 = per_sample_seed(42, "gen_fam_b_v1")
+    assert s1 == s1_again          # stable for the same id
+    assert s1 != s2                # differs across ids (diversifies shuffles)
+
+
+def test_per_sample_seed_not_builtin_hash():
+    """per_sample_seed uses a stable hash (reproducible across processes)."""
+    import zlib
+    from scripts.mutate_code import per_sample_seed
+
+    sid = "gen_fam_l1_sum_list_v1"
+    expected = 42 ^ (zlib.crc32(sid.encode("utf-8")) & 0xFFFF)
+    assert per_sample_seed(42, sid) == expected
 
 
 # ---------------------------------------------------------------------------

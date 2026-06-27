@@ -27,6 +27,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from scripts._io import load_samples_file  # noqa: E402
 from src.schemas import Sample  # noqa: E402
 from src.validators import verify_sample  # noqa: E402
 
@@ -118,12 +119,7 @@ def main() -> int:
         return 1
 
     # Load
-    samples: list[Sample] = []
-    with in_path.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                samples.append(Sample.from_json_line(line))
+    samples = load_samples_file(in_path)
 
     print(f"generate_reference: loaded {len(samples)} samples from {in_path}")
 
