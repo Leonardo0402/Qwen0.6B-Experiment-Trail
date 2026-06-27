@@ -5,8 +5,10 @@ Reads verified code_generation samples, applies mutation operators to their
 reference implementations, and produces ``static_repair`` and
 ``execution_repair`` samples for every variant that genuinely fails >=1 test.
 
-Mutation operators (9 total)
------------------------------
+Mutation operators (11 total) -- covering all spec §11.2 categories
+-------------------------------------------------------------------
+  typo_identifier    -- rename first Load-context identifier to a misspelling
+                        (compiles, then NameError at runtime -> test failure)
   flip_comparison    -- < ↔ >, > ↔ <, == ↔ !=, in ↔ not in  (first occurrence)
   wrong_arithmetic   -- first + → -, - → +, * → + in BinOp / AugAssign
   off_by_one_minus1  -- first range(...) stop arg -1
@@ -14,8 +16,16 @@ Mutation operators (9 total)
   wrong_sort_dir     -- add/flip reverse=True in first sorted()/list.sort()
   wrong_index_plus1  -- first integer literal subscript index +1
   flip_bool_return   -- first True/False literal return → opposite
+  drop_guard         -- delete first leading guard `if ...: raise/return` in a
+                        function body (empty-input / boundary guard removal)
   remove_first_extend -- delete first .extend() call in any function
   flip_slice_step    -- change first [::-1] step to [::1]
+
+Spec §11.2 category coverage: typo (typo_identifier), off-by-one
+(off_by_one_*), wrong comparison (flip_comparison), drop empty-input/boundary
+guard (drop_guard), wrong sort direction (wrong_sort_dir), wrong return
+structure (flip_bool_return / remove_first_extend / flip_slice_step), wrong
+index (wrong_index_plus1).
 
 Each operator uses ast.NodeTransformer + ast.unparse (Python >= 3.9).
 Only mutations that (a) compile and (b) fail >= 1 test are kept.
@@ -79,6 +89,34 @@ def _try_transform(code: str, transformer: ast.NodeTransformer) -> Optional[str]
     except Exception:
         return None
     return result if result.strip() != code.strip() else None
+
+
+# --- Operator: typo_identifier (spec §11.2 "typo / rename a var") -------------
+
+
+class _TypoRenameIdentifier(ast.NodeTransformer):
+    """Rename the FIRST Load-context identifier to a misspelling.
+
+    The renamed name gets a ``_typo`` suffix that is never defined anywhere, so
+    the code still COMPILES but raises ``NameError`` the moment that expression
+    executes.  pytest reports the NameError as a collection/runtime failure
+    (num_failed >= 1), which the keep-only-failing filter retains.
+
+    Only Load contexts are renamed (uses, not bindings) and function parameters
+    in the signature are ``ast.arg`` nodes -- not ``ast.Name`` -- so they are
+    left untouched, guaranteeing the def itself still imports cleanly.
+    """
+
+    def __init__(self) -> None:
+        self.changed = False
+
+    def visit_Name(self, node: ast.Name) -> ast.AST:
+        if self.changed:
+            return node
+        if isinstance(node.ctx, ast.Load):
+            self.changed = True
+            return ast.Name(id=node.id + "_typo", ctx=ast.Load())
+        return node
 
 
 # --- Operator: flip_comparison -----------------------------------------------
@@ -320,6 +358,58 @@ def _remove_first_extend(code: str) -> Optional[str]:
     return result if result.strip() != code.strip() else None
 
 
+# --- Operator: drop_guard (spec §11.2 "drop empty-input guard") --------------
+
+
+def _drop_first_guard(code: str) -> Optional[str]:
+    """Delete the first leading guard statement from a function body.
+
+    A guard is a top-level ``if`` statement (no ``else``) whose body is a single
+    ``raise`` or ``return`` -- e.g. ``if n < 0: raise ValueError(...)``,
+    ``if len(unique) < 2: raise ...``, ``if x < lo: return lo``.  Removing it
+    means empty / boundary / negative inputs are no longer rejected or handled,
+    so the boundary test cases fail.  Only the first such guard in the first
+    function is removed.
+    """
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return None
+
+    removed: list[bool] = [False]
+
+    class _Dropper(ast.NodeTransformer):
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
+            if removed[0]:
+                return node
+            new_body: list[ast.stmt] = []
+            for stmt in node.body:
+                if (
+                    not removed[0]
+                    and isinstance(stmt, ast.If)
+                    and not stmt.orelse
+                    and len(stmt.body) == 1
+                    and isinstance(stmt.body[0], (ast.Raise, ast.Return))
+                ):
+                    removed[0] = True
+                    continue  # drop the guard
+                new_body.append(stmt)
+            if removed[0]:
+                # A function body must not be empty; pad with `pass` if needed.
+                node.body = new_body or [ast.Pass()]
+            return node
+
+    new_tree = _Dropper().visit(copy.deepcopy(tree))
+    if not removed[0]:
+        return None
+    ast.fix_missing_locations(new_tree)
+    try:
+        result = ast.unparse(new_tree)
+    except Exception:
+        return None
+    return result if result.strip() != code.strip() else None
+
+
 # --- Operator: flip_slice_step -----------------------------------------------
 
 
@@ -358,6 +448,14 @@ class _FlipSliceStep(ast.NodeTransformer):
 # Operator registry
 # ---------------------------------------------------------------------------
 
+def _op_typo_identifier(code: str) -> Optional[str]:
+    return _try_transform(code, _TypoRenameIdentifier())
+
+
+def _op_drop_guard(code: str) -> Optional[str]:
+    return _drop_first_guard(code)
+
+
 def _op_flip_comparison(code: str) -> Optional[str]:
     return _try_transform(code, _FlipFirstComparison())
 
@@ -395,6 +493,7 @@ def _op_flip_slice_step(code: str) -> Optional[str]:
 
 
 MUTATORS: dict[str, Callable[[str], Optional[str]]] = {
+    "typo_identifier": _op_typo_identifier,
     "flip_comparison": _op_flip_comparison,
     "wrong_arithmetic": _op_wrong_arithmetic,
     "off_by_one_minus1": _op_off_by_one_minus1,
@@ -402,6 +501,7 @@ MUTATORS: dict[str, Callable[[str], Optional[str]]] = {
     "wrong_sort_dir": _op_wrong_sort_dir,
     "wrong_index_plus1": _op_wrong_index_plus1,
     "flip_bool_return": _op_flip_bool_return,
+    "drop_guard": _op_drop_guard,
     "remove_first_extend": _op_remove_first_extend,
     "flip_slice_step": _op_flip_slice_step,
 }
@@ -452,6 +552,10 @@ def mutate_and_get_feedback(
         is_broken is True when >= 1 test fails.
         execution_feedback is the captured pytest output (empty string if not broken).
     """
+    # We call run_pytest directly rather than validators.verify_broken_is_broken
+    # because we need the captured pytest stdout/stderr to populate
+    # execution_feedback for the execution_repair sample; the bool-returning
+    # helper only reports pass/fail and does not expose that output.
     # Public tests first
     pub = run_pytest(broken_code, sample.public_tests, timeout_s=pytest_timeout_s)
     if pub.timed_out or pub.num_failed >= 1:

@@ -7,6 +7,17 @@ families spanning difficulty levels 0-2:
   - L1 (5 families): single-function implementations with loops / strings.
   - L2 (4 families): boundary conditions and basic data structures.
 
+LEVEL DESIGN (why only 0-2 here, not 0-3)
+-----------------------------------------
+This procedural task bank intentionally contains ONLY Level 0-2
+code_generation families.  Level 3 in the curriculum is "execution-feedback
+repair" -- a task that, by definition, has no standalone code_generation
+reference (it is a broken-code-plus-real-feedback fix task).  Level-3 samples
+are therefore NOT authored here; they are produced downstream by
+``scripts/mutate_code.py`` as ``execution_repair`` samples (difficulty=3),
+which carry broken_code + captured pytest output.  Together the two scripts
+cover the full Level 0-3 curriculum: 0-2 from this bank, 3 from the mutator.
+
 No LLM/network calls.  Pure procedural generation.
 
 Usage
@@ -429,6 +440,7 @@ def test_negative():
 """,
     hidden_tests="""\
 from solution import factorial
+import pytest
 
 
 def test_ten():
@@ -437,6 +449,12 @@ def test_ten():
 
 def test_two():
     assert factorial(2) == 2
+
+
+def test_negative_guard():
+    # Exercises the negative-input guard so the drop_guard mutation fails here.
+    with pytest.raises(ValueError):
+        factorial(-5)
 """,
 )
 
@@ -481,6 +499,7 @@ def test_raises():
 """,
     hidden_tests="""\
 from solution import second_largest
+import pytest
 
 
 def test_sorted_input():
@@ -489,6 +508,12 @@ def test_sorted_input():
 
 def test_duplicates_of_max():
     assert second_largest([5, 5, 3, 1]) == 3
+
+
+def test_too_few_distinct_guard():
+    # Exercises the <2-distinct guard so the drop_guard mutation fails here.
+    with pytest.raises(ValueError):
+        second_largest([7])
 """,
 )
 
