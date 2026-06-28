@@ -1,0 +1,75 @@
+{
+  "stage": "easy",
+  "dataset_version": "p1-v1",
+  "created_at": "2026-06-27T14:50:59.036370+00:00",
+  "seed": 42,
+  "source_files": [
+    "data/verified/code_gen.jsonl",
+    "data/verified/repairs.jsonl"
+  ],
+  "excluded_family_sources": [
+    "data/splits/test_raw.jsonl",
+    "data/frozen-eval/v1/test_raw.jsonl"
+  ],
+  "train_sha256": "4bb404f9f2eec9266695715c1292aabb0e8ec3565bc7e0e6299fae1abe5efa4f",
+  "validation_sha256": "3c653249fff460b5f3cecd0a33f9bbb9efb61fef729391aa896bdf725f4a860c",
+  "test_raw_sha256": "bb5d505dc85e110a9496a7baf95f8d07df0c364de6c6ef16cc68b02b85c1068e",
+  "sample_counts": {
+    "train": 18,
+    "validation": 3,
+    "test_raw": 36
+  },
+  "family_counts": {
+    "train": 9,
+    "validation": 3,
+    "test_raw": 6
+  },
+  "task_type_mix": {
+    "code_generation": 5,
+    "static_repair": 13,
+    "execution_repair": 0
+  },
+  "difficulty_mix": {
+    "0": 13,
+    "1": 5
+  },
+  "max_seq_length": 512,
+  "assistant_target_retention_rate": 1.0,
+  "replay_ratios": {
+    "easy": 1.0,
+    "boundary": 0.0,
+    "repair": 0.0
+  },
+  "target_replay_ratios": {
+    "easy": 1.0,
+    "boundary": 0.0,
+    "repair": 0.0
+  },
+  "calibrated_total": 21,
+  "sampling_report": {
+    "calibrated_total": 21,
+    "buckets": [
+      {
+        "source": "easy",
+        "levels": [
+          0
+        ],
+        "fraction": 0.7,
+        "pool_size": 15,
+        "target_count": 15,
+        "actual_count": 15
+      },
+      {
+        "source": "easy",
+        "levels": [
+          1
+        ],
+        "fraction": 0.3,
+        "pool_size": 42,
+        "target_count": 6,
+        "actual_count": 6
+      }
+    ],
+    "shortfalls": {}
+  }
+}

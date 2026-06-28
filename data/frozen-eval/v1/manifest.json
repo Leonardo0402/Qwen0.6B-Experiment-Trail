@@ -1,0 +1,59 @@
+{
+  "version": "v1",
+  "created_at": "2026-06-27T14:50:25.768847+00:00",
+  "seed": 42,
+  "source_files": [
+    "data/splits/test_raw.jsonl",
+    "data/verified/code_gen.jsonl",
+    "data/verified/repairs.jsonl"
+  ],
+  "test_raw_sha256": "91c801da58c1c886c1b863fe1c832ee65444f316b7294941be25dafd27421697",
+  "sample_count": 51,
+  "family_count": 9,
+  "task_type_distribution": {
+    "code_generation": 9,
+    "static_repair": 21,
+    "execution_repair": 21
+  },
+  "difficulty_distribution": {
+    "0": 13,
+    "1": 7,
+    "2": 10,
+    "3": 21
+  },
+  "families": [
+    "fam_l0_abs_value",
+    "fam_l0_is_even",
+    "fam_l0_is_positive",
+    "fam_l0_multiply",
+    "fam_l1_count_char",
+    "fam_l1_zip_sum",
+    "fam_l2_find_duplicates",
+    "fam_l2_merge_sorted",
+    "fam_l2_rotate_list"
+  ],
+  "excluded_train_families": [
+    "fam_l0_add_two",
+    "fam_l0_clamp",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_count_vowels",
+    "fam_l1_factorial",
+    "fam_l1_first_non_repeating",
+    "fam_l1_flatten_once",
+    "fam_l1_is_palindrome",
+    "fam_l1_max_list",
+    "fam_l1_min_list",
+    "fam_l1_remove_negatives",
+    "fam_l1_reverse_string",
+    "fam_l1_running_sum",
+    "fam_l1_sum_list",
+    "fam_l2_balanced_parens",
+    "fam_l2_binary_search",
+    "fam_l2_group_by_parity",
+    "fam_l2_remove_duplicates_ordered",
+    "fam_l2_second_largest"
+  ],
+  "frozen_at": "2026-06-27T14:50:25.768847+00:00",
+  "notes": "P1 expanded frozen eval set; only uses existing untrained families from data pool. Train families detected via curriculum files (none) and train.jsonl target_code reverse-matching."
+}

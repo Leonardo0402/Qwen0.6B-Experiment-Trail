@@ -1,0 +1,88 @@
+{
+  "stage": "repair",
+  "dataset_version": "p1-v1",
+  "created_at": "2026-06-27T14:50:59.188231+00:00",
+  "seed": 42,
+  "source_files": [
+    "data/verified/code_gen.jsonl",
+    "data/verified/repairs.jsonl"
+  ],
+  "excluded_family_sources": [
+    "data/splits/test_raw.jsonl",
+    "data/frozen-eval/v1/test_raw.jsonl"
+  ],
+  "train_sha256": "f85bc9692d194286b0de54a80005c1ac9e998c9515d48b0482c785e017621261",
+  "validation_sha256": "2705129214675a742232b472a6dd670735a90118a50b2365df0e4c61c8444eb7",
+  "test_raw_sha256": "bb5d505dc85e110a9496a7baf95f8d07df0c364de6c6ef16cc68b02b85c1068e",
+  "sample_counts": {
+    "train": 68,
+    "validation": 12,
+    "test_raw": 36
+  },
+  "family_counts": {
+    "train": 20,
+    "validation": 10,
+    "test_raw": 6
+  },
+  "task_type_mix": {
+    "code_generation": 6,
+    "static_repair": 20,
+    "execution_repair": 42
+  },
+  "difficulty_mix": {
+    "2": 15,
+    "3": 42,
+    "0": 5,
+    "1": 6
+  },
+  "max_seq_length": 512,
+  "assistant_target_retention_rate": 1.0,
+  "replay_ratios": {
+    "easy": 0.161765,
+    "boundary": 0.220588,
+    "repair": 0.617647
+  },
+  "target_replay_ratios": {
+    "easy": 0.15,
+    "boundary": 0.25,
+    "repair": 0.6
+  },
+  "calibrated_total": 80,
+  "sampling_report": {
+    "calibrated_total": 80,
+    "buckets": [
+      {
+        "source": "easy",
+        "levels": [
+          0,
+          1
+        ],
+        "fraction": 0.15,
+        "pool_size": 57,
+        "target_count": 12,
+        "actual_count": 12
+      },
+      {
+        "source": "boundary",
+        "levels": [
+          2
+        ],
+        "fraction": 0.25,
+        "pool_size": 20,
+        "target_count": 20,
+        "actual_count": 20
+      },
+      {
+        "source": "repair",
+        "levels": [
+          3
+        ],
+        "fraction": 0.6,
+        "pool_size": 57,
+        "target_count": 48,
+        "actual_count": 48
+      }
+    ],
+    "shortfalls": {}
+  }
+}

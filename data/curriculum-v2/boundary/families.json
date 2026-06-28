@@ -1,0 +1,16 @@
+{
+  "stage": "boundary",
+  "dataset_version": "v2",
+  "family_count": 9,
+  "family_ids": [
+    "fam_l0_add_two",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_first_non_repeating",
+    "fam_l1_reverse_string",
+    "fam_l2_balanced_parens",
+    "fam_l2_binary_search",
+    "fam_l2_group_by_parity",
+    "fam_l2_remove_duplicates_ordered"
+  ]
+}

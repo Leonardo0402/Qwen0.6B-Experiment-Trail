@@ -1,0 +1,125 @@
+{
+  "stage": "easy",
+  "dataset_version": "v2",
+  "family_partition_version": "v2",
+  "created_at": "2026-06-28T01:34:29.178145+00:00",
+  "seed": 42,
+  "source_files": [
+    "data/verified/code_gen.jsonl",
+    "data/verified/repairs.jsonl"
+  ],
+  "train_sha256": "f0582116a0b57eaf9dff1995611a56e5e83ecf07b5b7eaffc3b09ed6051aa8d7",
+  "validation_sha256": "",
+  "train_families": [
+    "fam_l0_add_two",
+    "fam_l0_clamp",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_first_non_repeating",
+    "fam_l1_flatten_once",
+    "fam_l1_is_palindrome",
+    "fam_l1_max_list",
+    "fam_l1_min_list",
+    "fam_l1_remove_negatives",
+    "fam_l1_reverse_string",
+    "fam_l1_running_sum",
+    "fam_l2_balanced_parens",
+    "fam_l2_binary_search",
+    "fam_l2_group_by_parity",
+    "fam_l2_remove_duplicates_ordered"
+  ],
+  "validation_families": [
+    "fam_l1_count_vowels",
+    "fam_l1_factorial",
+    "fam_l1_sum_list",
+    "fam_l2_second_largest"
+  ],
+  "frozen_families": [
+    "fam_l0_abs_value",
+    "fam_l0_is_even",
+    "fam_l0_is_positive",
+    "fam_l0_multiply",
+    "fam_l1_count_char",
+    "fam_l1_zip_sum",
+    "fam_l2_find_duplicates",
+    "fam_l2_merge_sorted",
+    "fam_l2_rotate_list"
+  ],
+  "train_validation_overlap": [],
+  "train_frozen_overlap": [],
+  "validation_frozen_overlap": [],
+  "sample_counts": {
+    "train": 21,
+    "validation": 0
+  },
+  "family_counts": {
+    "train": 7,
+    "validation": 0
+  },
+  "task_type_mix": {
+    "code_generation": 6,
+    "static_repair": 15,
+    "execution_repair": 0
+  },
+  "difficulty_mix": {
+    "0": 15,
+    "1": 6
+  },
+  "max_seq_length": 512,
+  "assistant_target_retention_rate": 1.0,
+  "replay_ratios": {
+    "easy": 0.3
+  },
+  "train_sampling_report": {
+    "calibrated_total": 21,
+    "buckets": [
+      {
+        "source": "easy",
+        "levels": [
+          0
+        ],
+        "fraction": 0.7,
+        "pool_size": 15,
+        "target_count": 15,
+        "actual_count": 15
+      },
+      {
+        "source": "easy",
+        "levels": [
+          1
+        ],
+        "fraction": 0.3,
+        "pool_size": 29,
+        "target_count": 6,
+        "actual_count": 6
+      }
+    ],
+    "shortfalls": {}
+  },
+  "validation_sampling_report": {
+    "calibrated_total": 0,
+    "buckets": [
+      {
+        "source": "easy",
+        "levels": [
+          0
+        ],
+        "fraction": 0.7,
+        "pool_size": 0,
+        "target_count": 0,
+        "actual_count": 0
+      },
+      {
+        "source": "easy",
+        "levels": [
+          1
+        ],
+        "fraction": 0.3,
+        "pool_size": 13,
+        "target_count": 0,
+        "actual_count": 0
+      }
+    ],
+    "shortfalls": {}
+  }
+}

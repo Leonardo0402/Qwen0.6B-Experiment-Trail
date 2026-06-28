@@ -1,0 +1,30 @@
+{
+  "repo_id": "Qwen/Qwen3-0.6B",
+  "local_dir": "E:\\agent\\Qwen\\qwen3-code-lab\\models\\Qwen3-0.6B",
+  "commit_hash": "c1899de289a04d12100db370d81485cdf75e47ca",
+  "download_date": "2026-06-27T01:41:10.225738+00:00",
+  "files": [
+    ".cache/huggingface/.gitignore",
+    ".cache/huggingface/CACHEDIR.TAG",
+    ".cache/huggingface/download/.gitattributes.metadata",
+    ".cache/huggingface/download/LICENSE.metadata",
+    ".cache/huggingface/download/README.md.metadata",
+    ".cache/huggingface/download/config.json.metadata",
+    ".cache/huggingface/download/generation_config.json.metadata",
+    ".cache/huggingface/download/merges.txt.metadata",
+    ".cache/huggingface/download/model.safetensors.metadata",
+    ".cache/huggingface/download/tokenizer.json.metadata",
+    ".cache/huggingface/download/tokenizer_config.json.metadata",
+    ".cache/huggingface/download/vocab.json.metadata",
+    ".gitattributes",
+    "LICENSE",
+    "README.md",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json"
+  ]
+}

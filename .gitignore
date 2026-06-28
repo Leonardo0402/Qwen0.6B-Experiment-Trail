@@ -7,6 +7,8 @@ models/Qwen3-0.6B/
 # Trained adapters' weight blobs (keep config/metadata, ignore large blobs)
 adapters/**/adapter_model.safetensors
 adapters/**/*.bin
+adapters/**/*.zip
+adapters/**/checkpoint-*/
 
 # Generated / verified / rejected data blobs
 data/generated/*

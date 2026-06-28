@@ -605,7 +605,7 @@ def mutate_and_get_feedback(
 def generate_repair_samples(
     sample: Sample,
     *,
-    max_per_sample: int = 3,
+    max_per_sample: int = 5,
     pytest_timeout_s: float = 10.0,
     seed: int = 42,
 ) -> list[tuple[Optional[Sample], Optional[Sample]]]:
@@ -742,7 +742,7 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Output JSONL of repair samples.")
     p.add_argument("--seed", type=int, default=42,
                    help="RNG seed.")
-    p.add_argument("--max-per-sample", type=int, default=3,
+    p.add_argument("--max-per-sample", type=int, default=5,
                    help="Max (static, exec) pairs per source sample.")
     p.add_argument("--timeout", type=float, default=10.0,
                    help="Per-pytest timeout in seconds.")

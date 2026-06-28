@@ -116,7 +116,10 @@ class PytestResult:
     ----------
     passed:
         ``True`` iff pytest exited with code 0 (all tests collected and
-        passed).
+        passed) **and** at least one test was collected.
+    num_collected:
+        Total number of test items collected by pytest.  When 0, no tests
+        were found — the result is always a failure regardless of exit code.
     num_passed:
         Number of tests reported as passing (parsed from pytest output).
     num_failed:
@@ -139,6 +142,7 @@ class PytestResult:
     """
 
     passed: bool
+    num_collected: int
     num_passed: int
     num_failed: int
     num_errors: int
@@ -299,13 +303,10 @@ def run_pytest(
             stderr = _decode_output(exc.stderr)
         duration_s = time.perf_counter() - t0
 
-        # Parse passed/failed/error counts from pytest's summary line before
-        # truncation.  Collection/import/fixture errors (e.g. a solution.py with
-        # a SyntaxError or a missing symbol) are reported by pytest as "N error",
-        # NOT "N failed" — they are folded into num_failed here so that a
-        # non-passing run always has num_failed >= 1 for downstream consumers.
-        num_passed, num_failed_only, num_errors = _parse_pytest_counts(stdout)
-        passed = (not timed_out) and (returncode == 0)
+        # Parse passed/failed/error/collected counts from pytest's output.
+        num_passed, num_failed_only, num_errors, num_collected = _parse_pytest_counts(stdout)
+        # passed requires: no timeout, exit code 0, AND at least 1 test collected
+        passed = (not timed_out) and (returncode == 0) and (num_collected > 0)
         num_failed = num_failed_only + num_errors
 
         # If pytest reported a non-zero exit but no parseable failure/error
@@ -316,6 +317,7 @@ def run_pytest(
 
         return PytestResult(
             passed=passed,
+            num_collected=num_collected,
             num_passed=num_passed,
             num_failed=num_failed,
             num_errors=num_errors,
@@ -508,8 +510,8 @@ def _is_dangerous_open(node: ast.Call) -> bool:
     return is_absolute or has_traversal
 
 
-def _parse_pytest_counts(output: str) -> tuple[int, int, int]:
-    """Extract passed/failed/error counts from pytest's compact summary line.
+def _parse_pytest_counts(output: str) -> tuple[int, int, int, int]:
+    """Extract passed/failed/error/collected counts from pytest's output.
 
     Handles lines such as::
 
@@ -518,6 +520,10 @@ def _parse_pytest_counts(output: str) -> tuple[int, int, int]:
         3 failed in 0.02s
         1 error in 0.03s              # collection/import/fixture error
         1 failed, 1 error in 0.04s
+
+    Also parses the "collected N items" line::
+
+        collected 4 items
 
     The "error" token is distinct from "failed": pytest reports a solution that
     fails to import (e.g. a SyntaxError or missing symbol) as an *error*, not a
@@ -528,9 +534,11 @@ def _parse_pytest_counts(output: str) -> tuple[int, int, int]:
 
     Returns
     -------
-    tuple[int, int, int]
-        ``(num_passed, num_failed, num_errors)``; all 0 when nothing could be
-        parsed.
+    tuple[int, int, int, int]
+        ``(num_passed, num_failed, num_errors, num_collected)``; first three
+        are 0 when nothing could be parsed.  ``num_collected`` is parsed from
+        the "collected N items" line, or falls back to
+        ``num_passed + num_failed + num_errors`` when that line is absent.
     """
     passed = 0
     failed = 0
@@ -546,4 +554,16 @@ def _parse_pytest_counts(output: str) -> tuple[int, int, int]:
             failed = int(m_failed.group(1)) if m_failed else 0
             errors = int(m_error.group(1)) if m_error else 0
             break
-    return passed, failed, errors
+
+    # Parse "collected N items" line
+    num_collected = 0
+    for line in output.splitlines():
+        m_collected = re.search(r"collected\s+(\d+)\s+items?", line)
+        if m_collected:
+            num_collected = int(m_collected.group(1))
+            break
+    # Fallback: infer from summary counts
+    if num_collected == 0:
+        num_collected = passed + failed + errors
+
+    return passed, failed, errors, num_collected

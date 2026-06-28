@@ -28,10 +28,19 @@ class EvalOutcome:
     syntax_ok : bool
         True when the model's output compiles without ``SyntaxError``.
     public_passed : bool
-        True when the public test suite passes.
+        True when the public test suite passes **and** at least one test was
+        collected.
+    public_tests_collected : int
+        Number of public test items collected by pytest.  0 means no tests
+        were found — the result is always a failure.
     hidden_passed : bool
-        True when the hidden test suite passes (or when there is no hidden
-        suite — treat as vacuously True).
+        True when the hidden test suite passes.  When ``hidden_tests_present``
+        is False, this is False (not vacuously True).
+    hidden_tests_present : bool
+        Whether the sample has non-empty hidden tests.
+    hidden_tests_collected : int
+        Number of hidden test items collected by pytest.  0 when no hidden
+        tests or none collected.
     format_ok : bool
         True when the model output obeys the required format, e.g. a
         parseable triple-backtick python code block.
@@ -51,7 +60,10 @@ class EvalOutcome:
     task_type: str
     syntax_ok: bool
     public_passed: bool
+    public_tests_collected: int
     hidden_passed: bool
+    hidden_tests_present: bool
+    hidden_tests_collected: int
     format_ok: bool
     timed_out: bool
     is_repair: bool
@@ -102,10 +114,15 @@ def syntax_rate(outcomes: list[EvalOutcome]) -> float:
 
 
 def hidden_pass_rate(outcomes: list[EvalOutcome]) -> float:
-    """Fraction of *all* outcomes where ``hidden_passed`` is True."""
+    """Fraction of outcomes with hidden tests where ``hidden_passed`` is True.
+
+    Only counts outcomes where ``hidden_tests_present`` is True in the
+    denominator.  Returns 0.0 when no sample has hidden tests.
+    """
+    with_hidden = [o for o in outcomes if o.hidden_tests_present]
     return _safe_rate(
-        sum(1 for o in outcomes if o.hidden_passed),
-        len(outcomes),
+        sum(1 for o in with_hidden if o.hidden_passed),
+        len(with_hidden),
     )
 
 

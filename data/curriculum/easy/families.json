@@ -1,0 +1,16 @@
+{
+  "stage": "easy",
+  "dataset_version": "p1-v1",
+  "family_count": 9,
+  "family_ids": [
+    "fam_l0_add_two",
+    "fam_l0_clamp",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_factorial",
+    "fam_l1_first_non_repeating",
+    "fam_l1_flatten_once",
+    "fam_l1_remove_negatives",
+    "fam_l1_sum_list"
+  ]
+}

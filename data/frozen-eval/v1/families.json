@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "family_count": 9,
+  "families": [
+    {
+      "family_id": "fam_l0_abs_value",
+      "sample_count": 7
+    },
+    {
+      "family_id": "fam_l0_is_even",
+      "sample_count": 5
+    },
+    {
+      "family_id": "fam_l0_is_positive",
+      "sample_count": 5
+    },
+    {
+      "family_id": "fam_l0_multiply",
+      "sample_count": 5
+    },
+    {
+      "family_id": "fam_l1_count_char",
+      "sample_count": 7
+    },
+    {
+      "family_id": "fam_l1_zip_sum",
+      "sample_count": 5
+    },
+    {
+      "family_id": "fam_l2_find_duplicates",
+      "sample_count": 7
+    },
+    {
+      "family_id": "fam_l2_merge_sorted",
+      "sample_count": 5
+    },
+    {
+      "family_id": "fam_l2_rotate_list",
+      "sample_count": 5
+    }
+  ]
+}

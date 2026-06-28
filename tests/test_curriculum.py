@@ -8,6 +8,8 @@ Covers:
   without crashing or duplicating; total respected when pool sufficient.
 - mix_report counts correctly.
 """
+from __future__ import annotations
+
 import pytest
 
 from src.curriculum import (

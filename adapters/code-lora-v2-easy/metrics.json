@@ -1,0 +1,27 @@
+{
+  "model_name_or_path": "E:\\agent\\Qwen\\qwen3-code-lab\\models\\Qwen3-0.6B",
+  "train_file": "E:\\agent\\Qwen\\qwen3-code-lab\\data\\splits\\train.jsonl",
+  "train_hash": "495d54d6f6f07418414fbccd11b4f07ac07f990c0b124ceb65d7996436fd0d27",
+  "eval_hash": "79bd39a9a379964650efef68cfd3b2fb71181dce9701b5a665c5dcd5f1d2fc3c",
+  "seed": 42,
+  "lora_config": {
+    "rank": 32,
+    "alpha": 64,
+    "dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "max_seq_length": 512,
+  "trainable_params": 20185088,
+  "total_params": 616235008,
+  "started_at": "2026-06-27T07:09:11.057871+00:00",
+  "finished_at": "2026-06-27T07:20:11.501628+00:00",
+  "train_duration_s": 653.0304863452911
+}

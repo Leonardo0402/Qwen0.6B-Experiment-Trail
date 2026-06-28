@@ -683,6 +683,882 @@ def test_strings():
 """,
 )
 
+# ---- Additional L0 families ------------------------------------------------
+
+FAMILY_L0_ABS_VALUE = TaskFamily(
+    family_id="fam_l0_abs_value",
+    difficulty=0,
+    description="Absolute value of a number",
+    skill_tags=["arithmetic", "basics", "comparison"],
+    instruction="实现函数 `abs_value(n)`，返回 n 的绝对值。",
+    target_code="""\
+def abs_value(n):
+    if n < 0:
+        return -n
+    return n
+""",
+    public_tests="""\
+from solution import abs_value
+
+
+def test_positive():
+    assert abs_value(5) == 5
+
+
+def test_negative():
+    assert abs_value(-3) == 3
+
+
+def test_zero():
+    assert abs_value(0) == 0
+
+
+def test_float():
+    assert abs_value(-2.5) == 2.5
+""",
+    hidden_tests="""\
+from solution import abs_value
+
+
+def test_large_negative():
+    assert abs_value(-1000000) == 1000000
+
+
+def test_small_positive():
+    assert abs_value(0.001) == 0.001
+""",
+)
+
+FAMILY_L0_MAX_OF_TWO = TaskFamily(
+    family_id="fam_l0_max_of_two",
+    difficulty=0,
+    description="Max of two numbers",
+    skill_tags=["comparison", "basics"],
+    instruction="实现函数 `max_of_two(a, b)`，返回两个数中较大的那个。",
+    target_code="""\
+def max_of_two(a, b):
+    if a >= b:
+        return a
+    return b
+""",
+    public_tests="""\
+from solution import max_of_two
+
+
+def test_first_larger():
+    assert max_of_two(5, 3) == 5
+
+
+def test_second_larger():
+    assert max_of_two(2, 7) == 7
+
+
+def test_equal():
+    assert max_of_two(4, 4) == 4
+
+
+def test_negative():
+    assert max_of_two(-1, -5) == -1
+""",
+    hidden_tests="""\
+from solution import max_of_two
+
+
+def test_zero_and_negative():
+    assert max_of_two(0, -1) == 0
+
+
+def test_floats():
+    assert max_of_two(3.14, 2.72) == 3.14
+""",
+)
+
+FAMILY_L0_MIN_OF_TWO = TaskFamily(
+    family_id="fam_l0_min_of_two",
+    difficulty=0,
+    description="Min of two numbers",
+    skill_tags=["comparison", "basics"],
+    instruction="实现函数 `min_of_two(a, b)`，返回两个数中较小的那个。",
+    target_code="""\
+def min_of_two(a, b):
+    if a <= b:
+        return a
+    return b
+""",
+    public_tests="""\
+from solution import min_of_two
+
+
+def test_first_smaller():
+    assert min_of_two(3, 5) == 3
+
+
+def test_second_smaller():
+    assert min_of_two(7, 2) == 2
+
+
+def test_equal():
+    assert min_of_two(4, 4) == 4
+
+
+def test_negative():
+    assert min_of_two(-1, -5) == -5
+""",
+    hidden_tests="""\
+from solution import min_of_two
+
+
+def test_zero_and_positive():
+    assert min_of_two(0, 1) == 0
+
+
+def test_floats():
+    assert min_of_two(3.14, 2.72) == 2.72
+""",
+)
+
+FAMILY_L0_IS_EVEN = TaskFamily(
+    family_id="fam_l0_is_even",
+    difficulty=0,
+    description="Check if a number is even",
+    skill_tags=["arithmetic", "basics", "comparison"],
+    instruction="实现函数 `is_even(n)`，若 n 是偶数则返回 True，否则返回 False。",
+    target_code="""\
+def is_even(n):
+    return n % 2 == 0
+""",
+    public_tests="""\
+from solution import is_even
+
+
+def test_even():
+    assert is_even(4) is True
+
+
+def test_odd():
+    assert is_even(3) is False
+
+
+def test_zero():
+    assert is_even(0) is True
+
+
+def test_negative_even():
+    assert is_even(-6) is True
+""",
+    hidden_tests="""\
+from solution import is_even
+
+
+def test_negative_odd():
+    assert is_even(-3) is False
+
+
+def test_large_even():
+    assert is_even(1000000) is True
+""",
+)
+
+FAMILY_L0_MULTIPLY = TaskFamily(
+    family_id="fam_l0_multiply",
+    difficulty=0,
+    description="Multiply two numbers",
+    skill_tags=["arithmetic", "basics"],
+    instruction="实现函数 `multiply(a, b)`，返回两个数的乘积。",
+    target_code="""\
+def multiply(a, b):
+    return a * b
+""",
+    public_tests="""\
+from solution import multiply
+
+
+def test_positive():
+    assert multiply(3, 4) == 12
+
+
+def test_zero():
+    assert multiply(5, 0) == 0
+
+
+def test_negative():
+    assert multiply(-2, 3) == -6
+
+
+def test_both_negative():
+    assert multiply(-2, -3) == 6
+""",
+    hidden_tests="""\
+from solution import multiply
+
+
+def test_one():
+    assert multiply(7, 1) == 7
+
+
+def test_large():
+    assert multiply(1000, 1000) == 1000000
+""",
+)
+
+# ---- Additional L1 families ------------------------------------------------
+
+FAMILY_L1_MAX_LIST = TaskFamily(
+    family_id="fam_l1_max_list",
+    difficulty=1,
+    description="Find max element in a list",
+    skill_tags=["loops", "list", "comparison"],
+    instruction="实现函数 `max_list(lst)`，返回列表中的最大元素；列表为空时抛出 ValueError。",
+    target_code="""\
+def max_list(lst):
+    if not lst:
+        raise ValueError("Empty list")
+    result = lst[0]
+    for x in lst[1:]:
+        if x > result:
+            result = x
+    return result
+""",
+    public_tests="""\
+from solution import max_list
+import pytest
+
+
+def test_basic():
+    assert max_list([3, 1, 4, 1, 5]) == 5
+
+
+def test_single():
+    assert max_list([42]) == 42
+
+
+def test_negative():
+    assert max_list([-5, -2, -9]) == -2
+
+
+def test_empty():
+    with pytest.raises(ValueError):
+        max_list([])
+""",
+    hidden_tests="""\
+from solution import max_list
+
+
+def test_all_same():
+    assert max_list([7, 7, 7]) == 7
+
+
+def test_sorted():
+    assert max_list([1, 2, 3, 4, 5]) == 5
+
+
+def test_reverse_sorted():
+    assert max_list([5, 4, 3, 2, 1]) == 5
+""",
+)
+
+FAMILY_L1_MIN_LIST = TaskFamily(
+    family_id="fam_l1_min_list",
+    difficulty=1,
+    description="Find min element in a list",
+    skill_tags=["loops", "list", "comparison"],
+    instruction="实现函数 `min_list(lst)`，返回列表中的最小元素；列表为空时抛出 ValueError。",
+    target_code="""\
+def min_list(lst):
+    if not lst:
+        raise ValueError("Empty list")
+    result = lst[0]
+    for x in lst[1:]:
+        if x < result:
+            result = x
+    return result
+""",
+    public_tests="""\
+from solution import min_list
+import pytest
+
+
+def test_basic():
+    assert min_list([3, 1, 4, 1, 5]) == 1
+
+
+def test_single():
+    assert min_list([42]) == 42
+
+
+def test_negative():
+    assert min_list([-5, -2, -9]) == -9
+
+
+def test_empty():
+    with pytest.raises(ValueError):
+        min_list([])
+""",
+    hidden_tests="""\
+from solution import min_list
+
+
+def test_all_same():
+    assert min_list([7, 7, 7]) == 7
+
+
+def test_sorted():
+    assert min_list([1, 2, 3, 4, 5]) == 1
+
+
+def test_reverse_sorted():
+    assert min_list([5, 4, 3, 2, 1]) == 1
+""",
+)
+
+FAMILY_L1_COUNT_CHAR = TaskFamily(
+    family_id="fam_l1_count_char",
+    difficulty=1,
+    description="Count occurrences of a character in a string",
+    skill_tags=["string", "loops", "counting"],
+    instruction="实现函数 `count_char(s, c)`，统计字符 c 在字符串 s 中出现的次数。",
+    target_code="""\
+def count_char(s, c):
+    count = 0
+    for ch in s:
+        if ch == c:
+            count += 1
+    return count
+""",
+    public_tests="""\
+from solution import count_char
+
+
+def test_basic():
+    assert count_char("hello", "l") == 2
+
+
+def test_not_found():
+    assert count_char("hello", "z") == 0
+
+
+def test_empty():
+    assert count_char("", "a") == 0
+
+
+def test_all_match():
+    assert count_char("aaa", "a") == 3
+""",
+    hidden_tests="""\
+from solution import count_char
+
+
+def test_case_sensitive():
+    assert count_char("Hello", "h") == 0
+
+
+def test_space():
+    assert count_char("a b c", " ") == 2
+""",
+)
+
+FAMILY_L1_REMOVE_NEGATIVES = TaskFamily(
+    family_id="fam_l1_remove_negatives",
+    difficulty=1,
+    description="Remove negative numbers from a list",
+    skill_tags=["loops", "list", "filtering"],
+    instruction="实现函数 `remove_negatives(lst)`，返回一个新列表，移除原列表中所有负数元素。",
+    target_code="""\
+def remove_negatives(lst):
+    return [x for x in lst if x >= 0]
+""",
+    public_tests="""\
+from solution import remove_negatives
+
+
+def test_basic():
+    assert remove_negatives([1, -2, 3, -4, 5]) == [1, 3, 5]
+
+
+def test_no_negatives():
+    assert remove_negatives([1, 2, 3]) == [1, 2, 3]
+
+
+def test_all_negatives():
+    assert remove_negatives([-1, -2, -3]) == []
+
+
+def test_empty():
+    assert remove_negatives([]) == []
+""",
+    hidden_tests="""\
+from solution import remove_negatives
+
+
+def test_with_zero():
+    assert remove_negatives([-1, 0, 1]) == [0, 1]
+
+
+def test_duplicates():
+    assert remove_negatives([3, -1, 3, -1]) == [3, 3]
+""",
+)
+
+FAMILY_L1_FLATTEN_ONCE = TaskFamily(
+    family_id="fam_l1_flatten_once",
+    difficulty=1,
+    description="Flatten a list of lists one level",
+    skill_tags=["loops", "list", "nested"],
+    instruction="实现函数 `flatten_once(lst)`，将二维列表（列表的列表）展平为一维列表。",
+    target_code="""\
+def flatten_once(lst):
+    result = []
+    for sub in lst:
+        for item in sub:
+            result.append(item)
+    return result
+""",
+    public_tests="""\
+from solution import flatten_once
+
+
+def test_basic():
+    assert flatten_once([[1, 2], [3, 4], [5]]) == [1, 2, 3, 4, 5]
+
+
+def test_empty_outer():
+    assert flatten_once([]) == []
+
+
+def test_empty_inner():
+    assert flatten_once([[], [1], []]) == [1]
+
+
+def test_single():
+    assert flatten_once([[1, 2, 3]]) == [1, 2, 3]
+""",
+    hidden_tests="""\
+from solution import flatten_once
+
+
+def test_strings():
+    assert flatten_once([["a", "b"], ["c"]]) == ["a", "b", "c"]
+
+
+def test_mixed_lengths():
+    assert flatten_once([[1], [2, 3, 4], [5, 6]]) == [1, 2, 3, 4, 5, 6]
+""",
+)
+
+FAMILY_L1_ZIP_SUM = TaskFamily(
+    family_id="fam_l1_zip_sum",
+    difficulty=1,
+    description="Sum corresponding elements of two lists",
+    skill_tags=["loops", "list", "accumulation"],
+    instruction="实现函数 `zip_sum(a, b)`，返回一个新列表，其中每个元素是两个列表对应位置元素之和。两个列表长度保证相同。",
+    target_code="""\
+def zip_sum(a, b):
+    return [x + y for x, y in zip(a, b)]
+""",
+    public_tests="""\
+from solution import zip_sum
+
+
+def test_basic():
+    assert zip_sum([1, 2, 3], [4, 5, 6]) == [5, 7, 9]
+
+
+def test_empty():
+    assert zip_sum([], []) == []
+
+
+def test_negatives():
+    assert zip_sum([-1, 0, 1], [1, 0, -1]) == [0, 0, 0]
+
+
+def test_single():
+    assert zip_sum([10], [20]) == [30]
+""",
+    hidden_tests="""\
+from solution import zip_sum
+
+
+def test_large_values():
+    assert zip_sum([100, 200], [300, 400]) == [400, 600]
+
+
+def test_zeros():
+    assert zip_sum([0, 0, 0], [0, 0, 0]) == [0, 0, 0]
+""",
+)
+
+FAMILY_L1_RUNNING_SUM = TaskFamily(
+    family_id="fam_l1_running_sum",
+    difficulty=1,
+    description="Compute running/prefix sum",
+    skill_tags=["loops", "list", "accumulation"],
+    instruction="实现函数 `running_sum(lst)`，返回列表的前缀和（累加和）列表。例如输入 [1, 2, 3] 返回 [1, 3, 6]。",
+    target_code="""\
+def running_sum(lst):
+    result = []
+    total = 0
+    for x in lst:
+        total += x
+        result.append(total)
+    return result
+""",
+    public_tests="""\
+from solution import running_sum
+
+
+def test_basic():
+    assert running_sum([1, 2, 3]) == [1, 3, 6]
+
+
+def test_empty():
+    assert running_sum([]) == []
+
+
+def test_single():
+    assert running_sum([5]) == [5]
+
+
+def test_negatives():
+    assert running_sum([-1, 2, -3]) == [-1, 1, -2]
+""",
+    hidden_tests="""\
+from solution import running_sum
+
+
+def test_all_zeros():
+    assert running_sum([0, 0, 0]) == [0, 0, 0]
+
+
+def test_ascending():
+    assert running_sum([1, 1, 1, 1]) == [1, 2, 3, 4]
+""",
+)
+
+FAMILY_L1_FIRST_NON_REPEATING = TaskFamily(
+    family_id="fam_l1_first_non_repeating",
+    difficulty=1,
+    description="First non-repeating character in a string",
+    skill_tags=["string", "loops", "counting", "dict"],
+    instruction=(
+        "实现函数 `first_non_repeating(s)`，返回字符串 s 中第一个只出现一次的字符。"
+        "若所有字符都重复则返回 None。"
+    ),
+    target_code="""\
+def first_non_repeating(s):
+    counts = {}
+    for ch in s:
+        counts[ch] = counts.get(ch, 0) + 1
+    for ch in s:
+        if counts[ch] == 1:
+            return ch
+    return None
+""",
+    public_tests="""\
+from solution import first_non_repeating
+
+
+def test_basic():
+    assert first_non_repeating("aabbc") == "c"
+
+
+def test_first_char():
+    assert first_non_repeating("abcabc") is None
+
+
+def test_empty():
+    assert first_non_repeating("") is None
+
+
+def test_single():
+    assert first_non_repeating("x") == "x"
+
+
+def test_all_same():
+    assert first_non_repeating("aaaa") is None
+""",
+    hidden_tests="""\
+from solution import first_non_repeating
+
+
+def test_middle():
+    assert first_non_repeating("aabbcd") == "c"
+
+
+def test_space():
+    assert first_non_repeating("a a b") == "b"
+""",
+)
+
+# ---- Additional L2 families ------------------------------------------------
+
+FAMILY_L2_BINARY_SEARCH = TaskFamily(
+    family_id="fam_l2_binary_search",
+    difficulty=2,
+    description="Binary search in sorted array, return index or -1",
+    skill_tags=["binary_search", "loops", "list"],
+    instruction=(
+        "实现函数 `binary_search(lst, target)`，在已排序列表 lst 中查找 target。"
+        "找到则返回其索引，否则返回 -1。"
+    ),
+    target_code="""\
+def binary_search(lst, target):
+    lo, hi = 0, len(lst) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if lst[mid] == target:
+            return mid
+        elif lst[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+""",
+    public_tests="""\
+from solution import binary_search
+
+
+def test_found():
+    assert binary_search([1, 3, 5, 7, 9], 5) == 2
+
+
+def test_not_found():
+    assert binary_search([1, 3, 5, 7, 9], 4) == -1
+
+
+def test_first():
+    assert binary_search([1, 3, 5, 7, 9], 1) == 0
+
+
+def test_last():
+    assert binary_search([1, 3, 5, 7, 9], 9) == 4
+
+
+def test_empty():
+    assert binary_search([], 1) == -1
+""",
+    hidden_tests="""\
+from solution import binary_search
+
+
+def test_single_found():
+    assert binary_search([5], 5) == 0
+
+
+def test_single_not_found():
+    assert binary_search([5], 3) == -1
+
+
+def test_two_elements():
+    assert binary_search([1, 3], 3) == 1
+""",
+)
+
+FAMILY_L2_TWO_SUM = TaskFamily(
+    family_id="fam_l2_two_sum",
+    difficulty=2,
+    description="Find two indices that sum to target",
+    skill_tags=["dict", "list", "two_sum"],
+    instruction=(
+        "实现函数 `two_sum(lst, target)`，返回列表中两个元素的下标，"
+        "使得它们的和等于 target。保证有且仅有一组解，返回 [i, j]（i < j）。"
+    ),
+    target_code="""\
+def two_sum(lst, target):
+    seen = {}
+    for i, x in enumerate(lst):
+        complement = target - x
+        if complement in seen:
+            return [seen[complement], i]
+        seen[x] = i
+    return []
+""",
+    public_tests="""\
+from solution import two_sum
+
+
+def test_basic():
+    assert two_sum([2, 7, 11, 15], 9) == [0, 1]
+
+
+def test_middle():
+    assert two_sum([3, 2, 4], 6) == [1, 2]
+
+
+def test_same_values():
+    assert two_sum([3, 3], 6) == [0, 1]
+
+
+def test_negative():
+    assert two_sum([-1, 2, 3], 2) == [0, 1]
+""",
+    hidden_tests="""\
+from solution import two_sum
+
+
+def test_later_pair():
+    assert two_sum([1, 5, 3, 8, 2], 11) == [2, 3]
+
+
+def test_large_target():
+    assert two_sum([100, 200, 300], 500) == [1, 2]
+""",
+)
+
+FAMILY_L2_GROUP_BY_PARITY = TaskFamily(
+    family_id="fam_l2_group_by_parity",
+    difficulty=2,
+    description="Group numbers into even/odd lists",
+    skill_tags=["loops", "list", "filtering"],
+    instruction=(
+        "实现函数 `group_by_parity(lst)`，将列表中的数字按奇偶分组。"
+        "返回 [even_list, odd_list]，各自保持原始顺序。"
+    ),
+    target_code="""\
+def group_by_parity(lst):
+    evens = []
+    odds = []
+    for x in lst:
+        if x % 2 == 0:
+            evens.append(x)
+        else:
+            odds.append(x)
+    return [evens, odds]
+""",
+    public_tests="""\
+from solution import group_by_parity
+
+
+def test_basic():
+    assert group_by_parity([1, 2, 3, 4, 5]) == [[2, 4], [1, 3, 5]]
+
+
+def test_empty():
+    assert group_by_parity([]) == [[], []]
+
+
+def test_all_even():
+    assert group_by_parity([2, 4, 6]) == [[2, 4, 6], []]
+
+
+def test_all_odd():
+    assert group_by_parity([1, 3, 5]) == [[], [1, 3, 5]]
+""",
+    hidden_tests="""\
+from solution import group_by_parity
+
+
+def test_with_zero():
+    assert group_by_parity([0, 1, 2]) == [[0, 2], [1]]
+
+
+def test_negatives():
+    assert group_by_parity([-3, -2, -1, 0]) == [[-2, 0], [-3, -1]]
+""",
+)
+
+FAMILY_L2_REMOVE_DUPLICATES_ORDERED = TaskFamily(
+    family_id="fam_l2_remove_duplicates_ordered",
+    difficulty=2,
+    description="Remove duplicates preserving first-occurrence order",
+    skill_tags=["list", "set", "deduplication"],
+    instruction=(
+        "实现函数 `remove_duplicates_ordered(lst)`，移除列表中的重复元素，"
+        "保留每个元素第一次出现的顺序。"
+    ),
+    target_code="""\
+def remove_duplicates_ordered(lst):
+    seen = set()
+    result = []
+    for x in lst:
+        if x not in seen:
+            seen.add(x)
+            result.append(x)
+    return result
+""",
+    public_tests="""\
+from solution import remove_duplicates_ordered
+
+
+def test_basic():
+    assert remove_duplicates_ordered([1, 2, 3, 2, 1]) == [1, 2, 3]
+
+
+def test_no_dups():
+    assert remove_duplicates_ordered([1, 2, 3]) == [1, 2, 3]
+
+
+def test_empty():
+    assert remove_duplicates_ordered([]) == []
+
+
+def test_all_same():
+    assert remove_duplicates_ordered([5, 5, 5]) == [5]
+""",
+    hidden_tests="""\
+from solution import remove_duplicates_ordered
+
+
+def test_strings():
+    assert remove_duplicates_ordered(["a", "b", "a", "c", "b"]) == ["a", "b", "c"]
+
+
+def test_preserves_order():
+    assert remove_duplicates_ordered([3, 1, 2, 1, 3]) == [3, 1, 2]
+""",
+)
+
+FAMILY_L2_ROTATE_LIST = TaskFamily(
+    family_id="fam_l2_rotate_list",
+    difficulty=2,
+    description="Rotate list by k positions",
+    skill_tags=["list", "slicing", "math"],
+    instruction=(
+        "实现函数 `rotate_list(lst, k)`，将列表向右旋转 k 个位置。"
+        "例如 [1, 2, 3, 4, 5] 旋转 2 位得到 [4, 5, 1, 2, 3]。k 可能大于列表长度。"
+    ),
+    target_code="""\
+def rotate_list(lst, k):
+    if not lst:
+        return []
+    k = k % len(lst)
+    return lst[-k:] + lst[:-k] if k else list(lst)
+""",
+    public_tests="""\
+from solution import rotate_list
+
+
+def test_basic():
+    assert rotate_list([1, 2, 3, 4, 5], 2) == [4, 5, 1, 2, 3]
+
+
+def test_zero():
+    assert rotate_list([1, 2, 3], 0) == [1, 2, 3]
+
+
+def test_full():
+    assert rotate_list([1, 2, 3], 3) == [1, 2, 3]
+
+
+def test_empty():
+    assert rotate_list([], 5) == []
+
+
+def test_one():
+    assert rotate_list([1, 2, 3], 1) == [3, 1, 2]
+""",
+    hidden_tests="""\
+from solution import rotate_list
+
+
+def test_large_k():
+    assert rotate_list([1, 2, 3], 7) == [3, 1, 2]
+
+
+def test_single_element():
+    assert rotate_list([1], 100) == [1]
+""",
+)
+
 # ---------------------------------------------------------------------------
 # Master registry
 # ---------------------------------------------------------------------------
@@ -691,15 +1567,33 @@ TASK_FAMILIES: list[TaskFamily] = [
     FAMILY_L0_ADD_TWO,
     FAMILY_L0_IS_POSITIVE,
     FAMILY_L0_CLAMP,
+    FAMILY_L0_ABS_VALUE,
+    FAMILY_L0_MAX_OF_TWO,
+    FAMILY_L0_MIN_OF_TWO,
+    FAMILY_L0_IS_EVEN,
+    FAMILY_L0_MULTIPLY,
     FAMILY_L1_SUM_LIST,
     FAMILY_L1_REVERSE_STRING,
     FAMILY_L1_COUNT_VOWELS,
     FAMILY_L1_IS_PALINDROME,
     FAMILY_L1_FACTORIAL,
+    FAMILY_L1_MAX_LIST,
+    FAMILY_L1_MIN_LIST,
+    FAMILY_L1_COUNT_CHAR,
+    FAMILY_L1_REMOVE_NEGATIVES,
+    FAMILY_L1_FLATTEN_ONCE,
+    FAMILY_L1_ZIP_SUM,
+    FAMILY_L1_RUNNING_SUM,
+    FAMILY_L1_FIRST_NON_REPEATING,
     FAMILY_L2_SECOND_LARGEST,
     FAMILY_L2_BALANCED_PARENS,
     FAMILY_L2_MERGE_SORTED,
     FAMILY_L2_FIND_DUPLICATES,
+    FAMILY_L2_BINARY_SEARCH,
+    FAMILY_L2_TWO_SUM,
+    FAMILY_L2_GROUP_BY_PARITY,
+    FAMILY_L2_REMOVE_DUPLICATES_ORDERED,
+    FAMILY_L2_ROTATE_LIST,
 ]
 
 

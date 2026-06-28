@@ -402,6 +402,12 @@ def write_split(
             "family_count":   len({s.family_id for s in samp_list}),
         }
 
+    # Write raw Sample JSONL for test split (needed for evaluation)
+    # ChatML format strips away test code, so we need raw samples for evaluate_model.py
+    if split.test:
+        raw_test_records = [s.model_dump() for s in split.test]
+        write_jsonl(raw_test_records, out_dir / "test_raw.jsonl")
+
     # Heldout: always in manifest; file written only if non-empty.
     manifest["heldout"] = {
         "sample_count":   len(split.heldout),

@@ -1,0 +1,11 @@
+# Evaluation config
+model_name_or_path: models/Qwen3-0.6B
+adapter: null  # set to adapter path for LoRA evaluation
+
+max_new_tokens: 512
+do_sample: false
+temperature: 0.0
+top_p: 1.0
+
+batch_size: 1
+pytest_timeout_s: 10.0

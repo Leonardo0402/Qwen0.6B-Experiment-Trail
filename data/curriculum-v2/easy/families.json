@@ -1,0 +1,14 @@
+{
+  "stage": "easy",
+  "dataset_version": "v2",
+  "family_count": 7,
+  "family_ids": [
+    "fam_l0_add_two",
+    "fam_l0_clamp",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_first_non_repeating",
+    "fam_l1_is_palindrome",
+    "fam_l1_min_list"
+  ]
+}

@@ -1,0 +1,1 @@
+﻿Smoke manifest saved: E:\agent\Qwen\qwen3-code-lab\adapters\p1-smoke\smoke_manifest.json

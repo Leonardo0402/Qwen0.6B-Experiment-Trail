@@ -11,6 +11,8 @@ Covers:
 - to_chatml_records produces well-formed 3-message records.
 - write_jsonl, dataset_hash, write_split behave as specified.
 """
+from __future__ import annotations
+
 import json
 import warnings
 from datetime import datetime

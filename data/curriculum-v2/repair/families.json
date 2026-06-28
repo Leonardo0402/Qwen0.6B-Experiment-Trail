@@ -1,0 +1,23 @@
+{
+  "stage": "repair",
+  "dataset_version": "v2",
+  "family_count": 16,
+  "family_ids": [
+    "fam_l0_add_two",
+    "fam_l0_clamp",
+    "fam_l0_max_of_two",
+    "fam_l0_min_of_two",
+    "fam_l1_first_non_repeating",
+    "fam_l1_flatten_once",
+    "fam_l1_is_palindrome",
+    "fam_l1_max_list",
+    "fam_l1_min_list",
+    "fam_l1_remove_negatives",
+    "fam_l1_reverse_string",
+    "fam_l1_running_sum",
+    "fam_l2_balanced_parens",
+    "fam_l2_binary_search",
+    "fam_l2_group_by_parity",
+    "fam_l2_remove_duplicates_ordered"
+  ]
+}

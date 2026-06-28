@@ -1,0 +1,46 @@
+{
+  "source": "baseline.json (canary results identical across all 4 runs)",
+  "passed": true,
+  "cases": [
+    {
+      "canary_name": "hello_world",
+      "canary_code": "print(\"Hello, World!\")",
+      "test_sample_id": "gen_fam_l0_abs_value_v1",
+      "family_id": "fam_l0_abs_value",
+      "public_passed": false,
+      "num_collected": 1,
+      "num_passed": 0,
+      "num_failed": 1,
+      "timed_out": false,
+      "expected": "fail",
+      "actual": "fail"
+    },
+    {
+      "canary_name": "pass_stmt",
+      "canary_code": "pass",
+      "test_sample_id": "gen_fam_l0_is_even_v1",
+      "family_id": "fam_l0_is_even",
+      "public_passed": false,
+      "num_collected": 1,
+      "num_passed": 0,
+      "num_failed": 1,
+      "timed_out": false,
+      "expected": "fail",
+      "actual": "fail"
+    },
+    {
+      "canary_name": "return_none",
+      "canary_code": "def solution(*args, **kwargs):\n    return None",
+      "test_sample_id": "gen_fam_l0_multiply_v1",
+      "family_id": "fam_l0_multiply",
+      "public_passed": false,
+      "num_collected": 1,
+      "num_passed": 0,
+      "num_failed": 1,
+      "timed_out": false,
+      "expected": "fail",
+      "actual": "fail"
+    }
+  ],
+  "description": "Three canary codes were tested against real samples. All must FAIL (be judged as not passing) for the harness to be trustworthy."
+}
