@@ -110,39 +110,93 @@ def main() -> None:
     all_diff = len(set(hashes)) == len(hashes)
     print(f"All weight SHA256 different: {all_diff}")
 
-    # Verify parent chain on BOTH weight and config SHAs.
+    # Verify parent chain via DAG (Issue #1 fix: was linear adjacent, now uses
+    # actual parent_adapter_path to support branch DAG).
+    # DAG structure:
+    #   stage1-code (root)
+    #     └─ stage2-boundary (continual)
+    #          ├─ stage3-repair (continual main chain)
+    #          └─ stage3-v3-antiforget (continual branch)
+    #   independent-stage3 (root, no parent)
+    path_to_name: dict[str, str] = {}
+    for name, dpath in stages:
+        path_to_name[dpath] = name
+        # Also index normalized absolute path for cross-platform robustness
+        norm = str((_ROOT / dpath)).replace("\\", "/")
+        path_to_name[norm] = name
+
     chain_ok = True
-    for i in range(1, len(stages)):
-        parent_name = stages[i - 1][0]
-        child_name = stages[i][0]
-        child = evidence[child_name]
+    edge_details: list[dict] = []
+    for name, dpath in stages:
+        child = evidence[name]
+        parent_path = child.get("parent_adapter_path")
+
+        if parent_path is None:
+            # Root node: both parent SHAs must be None
+            pw = child.get("parent_adapter_weight_sha256")
+            pc = child.get("parent_adapter_config_sha256")
+            ok = (pw is None and pc is None)
+            if not ok:
+                print(f"  {name}: parent_path=None but weight_sha={pw} "
+                      f"config_sha={pc} (expected None) - FAIL")
+                chain_ok = False
+            else:
+                print(f"  {name}: root node (no parent) - OK")
+            edge_details.append({
+                "child": name, "parent": None,
+                "weight_match": ok, "config_match": ok,
+            })
+            continue
+
+        # Find parent stage by path
+        parent_name = (path_to_name.get(parent_path)
+                       or path_to_name.get(parent_path.replace("\\", "/")))
+        if parent_name is None:
+            print(f"  {name}: parent_path={parent_path} not in stages list - FAIL")
+            chain_ok = False
+            edge_details.append({
+                "child": name, "parent": f"UNKNOWN({parent_path})",
+                "weight_match": False, "config_match": False,
+            })
+            continue
+
         parent = evidence[parent_name]
 
-        # Config chain (was the only check before P0-6)
-        child_parent_cfg = child.get("parent_adapter_config_sha256")
-        parent_cfg = parent.get("config_sha256")
-        cfg_match = (child_parent_cfg == parent_cfg) if (child_parent_cfg and parent_cfg) else None
-
-        # Weight chain (NEW in P0-6)
+        # Verify weight SHA matches parent's weight SHA
         child_parent_w = child.get("parent_adapter_weight_sha256")
         parent_w = parent.get("weight_sha256")
-        weight_match = (child_parent_w == parent_w) if (child_parent_w and parent_w) else None
+        weight_match = bool(child_parent_w and parent_w
+                            and child_parent_w == parent_w)
 
-        print(f"  {child_name} -> {parent_name}: "
+        # Verify config SHA matches parent's config SHA
+        child_parent_cfg = child.get("parent_adapter_config_sha256")
+        parent_cfg = parent.get("config_sha256")
+        cfg_match = bool(child_parent_cfg and parent_cfg
+                         and child_parent_cfg == parent_cfg)
+
+        print(f"  {name} -> {parent_name}: "
               f"config_match={cfg_match} weight_match={weight_match}")
-        if cfg_match is False or weight_match is False:
+        if not weight_match or not cfg_match:
             chain_ok = False
+        edge_details.append({
+            "child": name, "parent": parent_name,
+            "weight_match": weight_match, "config_match": cfg_match,
+        })
 
     evidence["_verification"] = {
         "all_adapter_weight_hashes_different": all_diff,
         "parent_chain_verified": chain_ok,
         "verification_time": datetime.now(timezone.utc).isoformat(),
+        "verification_mode": "DAG (branch parent graph)",
+        "dag_edges": edge_details,
         "field_note": (
             "Issue #1 P0-6: parent_adapter_sha256 was actually the parent's "
             "config SHA. Split into parent_adapter_weight_sha256 "
             "(adapter_model.safetensors) and parent_adapter_config_sha256 "
             "(adapter_config.json). Legacy parent_adapter_sha256 kept as "
-            "alias of parent_adapter_config_sha256 for backward compat."
+            "alias of parent_adapter_config_sha256 for backward compat. "
+            "Issue #1 fix: verification now uses parent_adapter_path for "
+            "DAG lookup instead of linear adjacent assumption."
         ),
     }
 
