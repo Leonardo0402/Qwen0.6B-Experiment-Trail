@@ -38,7 +38,8 @@ TASK_TYPES = ["code_generation", "static_repair", "execution_repair"]
 
 
 def load_json(p: Path) -> dict:
-    return json.load(open(p))
+    with p.open(encoding="utf-8") as f:
+        return json.load(f)
 
 
 def fmt_pct(v: float) -> str:
