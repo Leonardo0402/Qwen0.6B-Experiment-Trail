@@ -19,7 +19,7 @@
   },
   "stage3-repair": {
     "total": 560,
-    "truncated": 125,
+    "truncated": 131,
     "assistant_intact": 560,
     "assistant_partial": 0,
     "assistant_lost": 0,

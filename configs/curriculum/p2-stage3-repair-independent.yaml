@@ -4,7 +4,7 @@ model_name_or_path: models/Qwen3-0.6B
 initial_adapter: null  # Independent mode, no parent adapter
 train_file: data/p2-curriculum/stage3-repair/train.jsonl
 eval_file: data/p2-curriculum/stage3-repair/validation.jsonl
-output_dir: adapters/p2/independent/stage3-repair-v1
+output_dir: adapters/p2/independent/stage3-repair-v2
 dataset_manifest: data/p2-curriculum/stage3-repair/manifest.json
 frozen_eval_file: data/p2-curriculum/frozen-eval-v2/test_raw.jsonl
 

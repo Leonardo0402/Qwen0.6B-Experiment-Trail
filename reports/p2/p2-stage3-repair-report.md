@@ -1,12 +1,12 @@
 # P2 Stage 3 Execution Repair Training Report
 
-Generated: 2026-07-03T02:47:58.100008+00:00
+Generated: 2026-07-03T06:57:35.041189+00:00
 
 ## Training Configuration
 
 - Model: Qwen3-0.6B
 - Training mode: continual
-- Initial adapter: adapters/p2/continual/stage2-boundary-v1
+- Initial adapter: adapters/p2/continual/stage2-boundary-v2
 - Max sequence length: 384
 - LoRA rank: 16
 - LoRA alpha: 32
@@ -17,19 +17,19 @@ Generated: 2026-07-03T02:47:58.100008+00:00
 
 ## Training Results
 
-- Started: 2026-07-02T15:55:11.649121+00:00
-- Finished: 2026-07-02T16:14:40.067786+00:00
-- Duration: 19m 22.8s
-- Peak GPU memory: 1370.8 MiB
-- Train data SHA256: 51d20ed10e7b00b2de4f1de2fb191254...
-- Eval data SHA256: 6285d9b329e2ac65077fd1684ddbd2b2...
+- Started: 2026-07-03T03:44:10.656482+00:00
+- Finished: 2026-07-03T04:05:01.943958+00:00
+- Duration: 20m 45.5s
+- Peak GPU memory: 1376.6 MiB
+- Train data SHA256: d5413247371c4da7f80e0e1a25a354f9...
+- Eval data SHA256: a17e4198196b72123c24d2e54aca8ddc...
 
 ## Token Audit
 
 | Metric | Value |
 |---|---:|
 | Total samples | 560 |
-| Truncated | 125 |
+| Truncated | 131 |
 | Assistant intact | 560 |
 | Assistant partial | 0 |
 | Assistant lost | 0 |
@@ -38,5 +38,5 @@ Generated: 2026-07-03T02:47:58.100008+00:00
 
 ## Continual Chain
 
-- Parent adapter SHA256: c90058a5fa1fa78abf18555c2c91c4fbf196feb7a6878b47dc0572a3988a173e
-- Parent adapter: adapters/p2/continual/stage2-boundary-v1
+- Parent adapter SHA256: 010670482beb86eec8f77950e91fcb21672cc0463d98c8e598332f056977fcb3
+- Parent adapter: adapters/p2/continual/stage2-boundary-v2

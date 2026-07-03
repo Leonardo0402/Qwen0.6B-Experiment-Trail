@@ -205,6 +205,47 @@ class TestRunPytest:
         # pytest -q always reports "passed" somewhere in stdout.
         assert "passed" in result.stdout
 
+    # --- bare-assert MBPP-style normalization (P2 fix) ---
+
+    def test_bare_assert_correct_solution_passes(self):
+        """MBPP-style top-level asserts (no `from solution`, no `def test_*`)
+        must be auto-normalized so a correct solution passes."""
+        bare = "assert add(1, 2) == 3\nassert add(-1, 1) == 0\n"
+        result = run_pytest(_CORRECT_SOLUTION, bare, timeout_s=15.0)
+        assert result.passed is True
+        assert result.num_collected == 1
+        assert result.num_passed == 1
+        assert result.num_failed == 0
+
+    def test_bare_assert_wrong_solution_fails(self):
+        """MBPP-style bare asserts against a wrong solution must fail."""
+        bare = "assert add(1, 2) == 3\n"
+        result = run_pytest(_WRONG_SOLUTION, bare, timeout_s=15.0)
+        assert result.passed is False
+        assert result.num_failed >= 1
+
+    def test_bare_assert_different_param_name_passes(self):
+        """Bare asserts against a solution with different parameter names
+        (but equivalent logic) must pass — this is the regression case from
+        P2 Stage 2 evaluation where count_char used `str1` instead of `string`."""
+        code = "def count_char(s, ch):\n    return s.count(ch)\n"
+        bare = (
+            "assert count_char('Python','o')==1\n"
+            "assert count_char('little','t')==2\n"
+        )
+        result = run_pytest(code, bare, timeout_s=15.0)
+        assert result.passed is True
+        assert result.num_passed == 1
+
+    def test_bare_assert_with_syntax_error_solution_fails(self):
+        """A solution with a syntax error must fail bare-assert tests."""
+        broken = "def add(a, b)\n    return a + b\n"  # missing colon
+        bare = "assert add(1, 2) == 3\n"
+        result = run_pytest(broken, bare, timeout_s=15.0)
+        assert result.passed is False
+        assert result.num_failed >= 1
+
+
 
 # ===========================================================================
 # check_code_safety

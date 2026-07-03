@@ -17,9 +17,9 @@ def sha256_file(p: Path) -> str:
 
 def main() -> None:
     stages = [
-        ("stage1-code", "adapters/p2/continual/stage1-code-v1"),
-        ("stage2-boundary", "adapters/p2/continual/stage2-boundary-v1"),
-        ("stage3-repair", "adapters/p2/continual/stage3-repair-v1"),
+        ("stage1-code", "adapters/p2/continual/stage1-code-v2"),
+        ("stage2-boundary", "adapters/p2/continual/stage2-boundary-v2"),
+        ("stage3-repair", "adapters/p2/continual/stage3-repair-v2"),
     ]
 
     evidence = {}

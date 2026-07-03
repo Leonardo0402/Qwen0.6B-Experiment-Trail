@@ -1,6 +1,6 @@
 # P2 Stage 1 Code Foundation Training Report
 
-Generated: 2026-07-03T02:47:58.074400+00:00
+Generated: 2026-07-03T06:57:35.038775+00:00
 
 ## Training Configuration
 
@@ -17,12 +17,12 @@ Generated: 2026-07-03T02:47:58.074400+00:00
 
 ## Training Results
 
-- Started: 2026-07-02T15:41:32.453676+00:00
-- Finished: 2026-07-02T15:44:50.608497+00:00
-- Duration: 3m 12.7s
-- Peak GPU memory: 1342.6 MiB
-- Train data SHA256: e26407bee34cfbaffbd5858df48389eb...
-- Eval data SHA256: 813a6a221aadb21534f4b2dc6759e365...
+- Started: 2026-07-03T03:31:42.727092+00:00
+- Finished: 2026-07-03T03:34:55.740020+00:00
+- Duration: 3m 7.4s
+- Peak GPU memory: 1348.5 MiB
+- Train data SHA256: 78c2cce6b5d8cc7baf5579600e478bb7...
+- Eval data SHA256: 462c1f700b21123cf19e61cf96f3e8d6...
 
 ## Token Audit
 

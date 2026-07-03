@@ -2,13 +2,13 @@
   "base": {
     "label": "Base",
     "metrics": {
-      "pass_at_1": 0.0,
+      "pass_at_1": 0.3,
       "syntax_rate": 1.0,
-      "hidden_pass_rate": 0.0,
+      "hidden_pass_rate": 0.525,
       "format_compliance_rate": 1.0,
       "timeout_rate": 0.0,
-      "repair_success_rate": 0.0,
-      "regression_rate": 0.0,
+      "repair_success_rate": 0.5125,
+      "regression_rate": 0.4875,
       "n_total": 120.0,
       "n_generation": 40.0,
       "n_repair": 80.0
@@ -16,36 +16,36 @@
     "per_task_type": {
       "code_generation": {
         "total": 40,
-        "passed": 0,
+        "passed": 12,
         "syntax_ok": 40,
         "format_ok": 40
       },
       "static_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 26,
         "syntax_ok": 40,
         "format_ok": 40
       },
       "execution_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 15,
         "syntax_ok": 40,
         "format_ok": 40
       }
     },
-    "family_pass_count": 0,
+    "family_pass_count": 7,
     "family_total": 40
   },
   "stage1-code": {
     "label": "Stage1-Code",
     "metrics": {
-      "pass_at_1": 0.0,
-      "syntax_rate": 0.9916666666666667,
-      "hidden_pass_rate": 0.0,
-      "format_compliance_rate": 0.9916666666666667,
-      "timeout_rate": 0.0,
-      "repair_success_rate": 0.0,
-      "regression_rate": 0.0,
+      "pass_at_1": 0.3,
+      "syntax_rate": 0.9666666666666667,
+      "hidden_pass_rate": 0.5333333333333333,
+      "format_compliance_rate": 0.9666666666666667,
+      "timeout_rate": 0.008333333333333333,
+      "repair_success_rate": 0.5,
+      "regression_rate": 0.5,
       "n_total": 120.0,
       "n_generation": 40.0,
       "n_repair": 80.0
@@ -53,36 +53,36 @@
     "per_task_type": {
       "code_generation": {
         "total": 40,
-        "passed": 0,
+        "passed": 12,
         "syntax_ok": 39,
         "format_ok": 39
       },
       "static_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 20,
         "syntax_ok": 40,
         "format_ok": 40
       },
       "execution_repair": {
         "total": 40,
-        "passed": 0,
-        "syntax_ok": 40,
-        "format_ok": 40
+        "passed": 20,
+        "syntax_ok": 37,
+        "format_ok": 37
       }
     },
-    "family_pass_count": 0,
+    "family_pass_count": 7,
     "family_total": 40
   },
   "stage2-boundary": {
     "label": "Stage2-Boundary",
     "metrics": {
-      "pass_at_1": 0.0,
-      "syntax_rate": 1.0,
-      "hidden_pass_rate": 0.0,
+      "pass_at_1": 0.325,
+      "syntax_rate": 0.9916666666666667,
+      "hidden_pass_rate": 0.6333333333333333,
       "format_compliance_rate": 1.0,
       "timeout_rate": 0.0,
-      "repair_success_rate": 0.0,
-      "regression_rate": 0.0,
+      "repair_success_rate": 0.65,
+      "regression_rate": 0.35,
       "n_total": 120.0,
       "n_generation": 40.0,
       "n_repair": 80.0
@@ -90,36 +90,36 @@
     "per_task_type": {
       "code_generation": {
         "total": 40,
-        "passed": 0,
-        "syntax_ok": 40,
+        "passed": 13,
+        "syntax_ok": 39,
         "format_ok": 40
       },
       "static_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 28,
         "syntax_ok": 40,
         "format_ok": 40
       },
       "execution_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 24,
         "syntax_ok": 40,
         "format_ok": 40
       }
     },
-    "family_pass_count": 0,
+    "family_pass_count": 10,
     "family_total": 40
   },
   "stage3-repair": {
     "label": "Stage3-Repair",
     "metrics": {
-      "pass_at_1": 0.0,
+      "pass_at_1": 0.25,
       "syntax_rate": 0.9916666666666667,
-      "hidden_pass_rate": 0.0,
-      "format_compliance_rate": 0.9916666666666667,
+      "hidden_pass_rate": 0.5916666666666667,
+      "format_compliance_rate": 1.0,
       "timeout_rate": 0.0,
-      "repair_success_rate": 0.0,
-      "regression_rate": 0.0,
+      "repair_success_rate": 0.675,
+      "regression_rate": 0.325,
       "n_total": 120.0,
       "n_generation": 40.0,
       "n_repair": 80.0
@@ -127,24 +127,24 @@
     "per_task_type": {
       "code_generation": {
         "total": 40,
-        "passed": 0,
-        "syntax_ok": 39,
-        "format_ok": 39
+        "passed": 10,
+        "syntax_ok": 40,
+        "format_ok": 40
       },
       "static_repair": {
         "total": 40,
-        "passed": 0,
-        "syntax_ok": 40,
+        "passed": 27,
+        "syntax_ok": 39,
         "format_ok": 40
       },
       "execution_repair": {
         "total": 40,
-        "passed": 0,
+        "passed": 27,
         "syntax_ok": 40,
         "format_ok": 40
       }
     },
-    "family_pass_count": 0,
+    "family_pass_count": 7,
     "family_total": 40
   }
 }
