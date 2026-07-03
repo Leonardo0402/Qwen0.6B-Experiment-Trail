@@ -134,7 +134,7 @@ All 5 adapter weight SHA256 are different (verified in `reports/p2/adapter-evide
 
 - Continual Stage3-v2 vs Independent Stage3: Pass@1 完全相同 (15% vs 15%)，McNemar p=0.1671。
 - Continual 唯一优势: family pass 13 vs 12 (net +1)，但不足以证明稳定。
-- **结论**: Stage3 的 Repair 提升主要来自 Repair 数据本身，Continual 累积并未带来显著额外收益。
+- **结论**: 当前没有证据证明 Continual 相比 Independent 有显著额外收益。所有配对差异均在统计噪声内（McNemar p > 0.05，95% CI 跨越 0）。
 
 ### 2. 抗遗忘策略有效但未达标
 
@@ -165,7 +165,7 @@ All 5 adapter weight SHA256 are different (verified in `reports/p2/adapter-evide
 
 **Issue #1 整体: Evidence Gate PASS, Capability Gate PARTIAL FAIL.**
 
-- **Evidence Gate**: 全部 PASS（训练/评测/Frozen 隔离，固定子集有 manifest+SHA256，Adapter SHA 链可验证，pytest 通过，canary 失败）。
+- **Evidence Gate**: 全部 PASS（训练/评测/Frozen 隔离，固定子集有 manifest+SHA256，Adapter SHA 链经 DAG 分支父图验证为 `parent_chain_verified: true`，36 个 pytest 全部通过，canary 失败）。DAG 验证覆盖 5 个 adapter 的分支结构：stage1-code (root) → stage2-boundary → {stage3-repair, stage3-v3-antiforget}，independent-stage3 (root)。
 - **Capability Gate**: 2/6 PASS（family drop, syntax），4/6 FAIL（exec_repair, code_gen, static_repair, timeout）。
 - **统计严谨性**: 所有配对差异均未达统计显著，已按 Issue #1 P3 要求明确标注，未过度解读。
 

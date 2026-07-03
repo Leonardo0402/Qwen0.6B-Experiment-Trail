@@ -251,3 +251,143 @@ class TestTrainingConfigsDontReadFrozenEval:
             assert train_file.name != "test_raw.jsonl", (
                 f"{cfg_path.name}: train_file must not be test_raw.jsonl"
             )
+
+
+# ---------------------------------------------------------------------------
+# Issue #1 fix: DAG parent-chain verification (branch graph, not linear)
+# ---------------------------------------------------------------------------
+
+class TestAdapterDAGVerification:
+    """Verify adapter parent chain as a DAG (branch graph), not linear.
+
+    DAG structure:
+        stage1-code (root)
+          └─ stage2-boundary (continual)
+               ├─ stage3-repair (continual main chain)
+               └─ stage3-v3-antiforget (continual branch from Stage2)
+        independent-stage3 (root, no parent, independent from Base)
+
+    The old linear verification assumed stages[i].parent == stages[i-1],
+    which is wrong for branches (independent-stage3 and stage3-v3-antiforget).
+    """
+
+    @pytest.fixture
+    def evidence(self):
+        return json.load(ADAPTER_EVIDENCE.open(encoding="utf-8"))
+
+    def test_verification_block_exists(self, evidence):
+        """_verification block must exist with DAG fields."""
+        assert "_verification" in evidence, "Missing _verification block"
+        v = evidence["_verification"]
+        assert "parent_chain_verified" in v
+        assert "verification_mode" in v
+        assert "dag_edges" in v
+
+    def test_parent_chain_verified_is_true(self, evidence):
+        """All DAG edges must pass verification."""
+        assert evidence["_verification"]["parent_chain_verified"] is True
+
+    def test_verification_mode_is_dag(self, evidence):
+        """Verification mode must indicate DAG (not linear)."""
+        mode = evidence["_verification"]["verification_mode"]
+        assert "DAG" in mode, f"Expected DAG mode, got {mode}"
+
+    def test_dag_edges_cover_all_5_adapters(self, evidence):
+        """dag_edges must have one entry per adapter (5 total)."""
+        edges = evidence["_verification"]["dag_edges"]
+        assert len(edges) == 5, f"Expected 5 DAG edges, got {len(edges)}"
+
+    def test_all_dag_edges_match(self, evidence):
+        """Every DAG edge must have weight_match=True and config_match=True."""
+        edges = evidence["_verification"]["dag_edges"]
+        for e in edges:
+            assert e["weight_match"] is True, (
+                f"{e['child']} -> {e['parent']}: weight_match=False"
+            )
+            assert e["config_match"] is True, (
+                f"{e['child']} -> {e['parent']}: config_match=False"
+            )
+
+    def test_independent_stage3_is_root(self, evidence):
+        """Independent Stage3 has no parent (root node, independent from Base)."""
+        ev = evidence["independent-stage3"]
+        assert ev["parent_adapter_path"] is None
+        assert ev["parent_adapter_weight_sha256"] is None
+        assert ev["parent_adapter_config_sha256"] is None
+
+    def test_stage1_is_root(self, evidence):
+        """Stage1 is root (trains from base model, no parent adapter)."""
+        ev = evidence["stage1-code"]
+        assert ev["parent_adapter_path"] is None
+        assert ev["parent_adapter_weight_sha256"] is None
+        assert ev["parent_adapter_config_sha256"] is None
+
+    def test_antiforget_parent_is_stage2(self, evidence):
+        """stage3-v3-antiforget branches from stage2-boundary (NOT stage3-repair).
+
+        This is the key DAG test: the old linear verification wrongly checked
+        antiforget -> independent-stage3, but the real parent is stage2-boundary.
+        """
+        ev = evidence["stage3-v3-antiforget"]
+        parent_path = ev["parent_adapter_path"]
+        assert parent_path is not None
+        assert "stage2-boundary" in parent_path.replace("\\", "/"), (
+            f"antiforget parent should be stage2-boundary, got {parent_path}"
+        )
+
+    def test_antiforget_parent_weight_matches_stage2(self, evidence):
+        """antiforget.parent_adapter_weight_sha256 == stage2.weight_sha256."""
+        s2_w = evidence["stage2-boundary"]["weight_sha256"]
+        af_pw = evidence["stage3-v3-antiforget"]["parent_adapter_weight_sha256"]
+        assert af_pw == s2_w, (
+            f"antiforget parent weight {af_pw} != Stage2 weight {s2_w}"
+        )
+
+    def test_antiforget_parent_config_matches_stage2(self, evidence):
+        """antiforget.parent_adapter_config_sha256 == stage2.config_sha256."""
+        s2_c = evidence["stage2-boundary"]["config_sha256"]
+        af_pc = evidence["stage3-v3-antiforget"]["parent_adapter_config_sha256"]
+        assert af_pc == s2_c, (
+            f"antiforget parent config {af_pc} != Stage2 config {s2_c}"
+        )
+
+    def test_all_5_adapter_weights_different(self, evidence):
+        """All 5 adapter weight SHA256 must differ (no overwrite)."""
+        hashes = [
+            evidence["stage1-code"]["weight_sha256"],
+            evidence["stage2-boundary"]["weight_sha256"],
+            evidence["stage3-repair"]["weight_sha256"],
+            evidence["independent-stage3"]["weight_sha256"],
+            evidence["stage3-v3-antiforget"]["weight_sha256"],
+        ]
+        assert len(set(hashes)) == 5, f"Adapter weights not unique: {hashes}"
+
+    def test_dag_has_no_cycle(self, evidence):
+        """DAG must be acyclic (topological sort succeeds).
+
+        Walk parent edges; must reach a root (parent=None) without revisiting.
+        """
+        edges = evidence["_verification"]["dag_edges"]
+        parent_of = {e["child"]: e["parent"] for e in edges}
+
+        for child in parent_of:
+            visited = set()
+            node = child
+            while node is not None:
+                assert node not in visited, f"Cycle detected at {node}"
+                visited.add(node)
+                node = parent_of.get(node)
+            # Must have reached a root (parent=None terminates the loop)
+
+    def test_independent_stage3_weight_differs_from_stage3_repair(self, evidence):
+        """Independent Stage3 and Continual Stage3 must have different weights.
+
+        They use the same data but different training paths (independent vs
+        continual), so their adapter weights must differ.
+        """
+        indep_w = evidence["independent-stage3"]["weight_sha256"]
+        cont_w = evidence["stage3-repair"]["weight_sha256"]
+        assert indep_w != cont_w, (
+            "Independent Stage3 weight == Continual Stage3 weight "
+            "(they should differ due to different parent paths)"
+        )

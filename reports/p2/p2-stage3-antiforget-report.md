@@ -100,7 +100,7 @@ hard_constraint:
 | parent_adapter_weight_sha256 | `62a41f2a8a5c6206...` (Stage2-v2 weight) |
 | parent_adapter_config_sha256 | `010670482beb86ee...` (Stage2-v2 config) |
 | training_mode | `continual` |
-| Parent chain verified | **OK** (weight_match=True, config_match=True) |
+| Parent chain verified | **OK** (DAG branch: stage3-v3-antiforget → stage2-boundary, weight_match=True, config_match=True) |
 
 ## Evaluation on Stratified-120 (Fixed Subset)
 

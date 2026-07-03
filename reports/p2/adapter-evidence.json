@@ -241,8 +241,41 @@
   },
   "_verification": {
     "all_adapter_weight_hashes_different": true,
-    "parent_chain_verified": false,
-    "verification_time": "2026-07-03T12:40:27.080872+00:00",
-    "field_note": "Issue #1 P0-6: parent_adapter_sha256 was actually the parent's config SHA. Split into parent_adapter_weight_sha256 (adapter_model.safetensors) and parent_adapter_config_sha256 (adapter_config.json). Legacy parent_adapter_sha256 kept as alias of parent_adapter_config_sha256 for backward compat."
+    "parent_chain_verified": true,
+    "verification_time": "2026-07-03T13:09:27.943190+00:00",
+    "verification_mode": "DAG (branch parent graph)",
+    "dag_edges": [
+      {
+        "child": "stage1-code",
+        "parent": null,
+        "weight_match": true,
+        "config_match": true
+      },
+      {
+        "child": "stage2-boundary",
+        "parent": "stage1-code",
+        "weight_match": true,
+        "config_match": true
+      },
+      {
+        "child": "stage3-repair",
+        "parent": "stage2-boundary",
+        "weight_match": true,
+        "config_match": true
+      },
+      {
+        "child": "independent-stage3",
+        "parent": null,
+        "weight_match": true,
+        "config_match": true
+      },
+      {
+        "child": "stage3-v3-antiforget",
+        "parent": "stage2-boundary",
+        "weight_match": true,
+        "config_match": true
+      }
+    ],
+    "field_note": "Issue #1 P0-6: parent_adapter_sha256 was actually the parent's config SHA. Split into parent_adapter_weight_sha256 (adapter_model.safetensors) and parent_adapter_config_sha256 (adapter_config.json). Legacy parent_adapter_sha256 kept as alias of parent_adapter_config_sha256 for backward compat. Issue #1 fix: verification now uses parent_adapter_path for DAG lookup instead of linear adjacent assumption."
   }
 }
