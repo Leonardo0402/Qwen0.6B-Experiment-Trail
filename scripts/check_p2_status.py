@@ -21,7 +21,12 @@ for stage in ['stage1-code', 'stage2-boundary', 'stage3-repair']:
     print(f"  {stage}: train={t} val={v} families={f}")
 print(f"  训练样本总计: {total_train}")
 fm = json.load(open(_ROOT / 'data/p2-curriculum/frozen-eval-v2/manifest.json'))
-print(f"  frozen-eval: samples={fm['sample_counts']['train']} families={len(fm['train_families'])}")
+# frozen-eval-v2 manifest uses test_sha256 / test_families (P0-2 fix);
+# never reads train fields.
+fe_samples = fm.get('sample_counts', {}).get('test', 0)
+fe_fams = len(fm.get('test_families', []))
+print(f"  frozen-eval: samples={fe_samples} families={fe_fams}")
+print(f"  frozen-eval test_sha256: {fm.get('test_sha256', '?')[:32]}...")
 
 # 2. 任务类型分布
 print("\n[2] 任务类型分布")

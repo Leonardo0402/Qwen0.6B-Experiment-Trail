@@ -1,0 +1,61 @@
+# P2 Stage 3 v3: Anti-forgetting (Continual, Stage2-v2 -> Stage3-v3)
+# Issue #1 P2: Train from Stage2-v2 with reduced LR, 1 epoch, mixed replay data.
+training_mode: continual
+model_name_or_path: models/Qwen3-0.6B
+initial_adapter: adapters/p2/continual/stage2-boundary-v2  # Continue from Stage2-v2
+
+# Use the new anti-forget mixed dataset (84 stage1 + 140 stage2 + 84 static + 252 exec = 560)
+train_file: data/p2-curriculum/stage3-repair-v3/train.jsonl
+eval_file: data/p2-curriculum/stage3-repair-v3/validation.jsonl
+output_dir: adapters/p2/continual/stage3-repair-v3
+dataset_manifest: data/p2-curriculum/stage3-repair-v3/manifest.json
+frozen_eval_file: data/p2-curriculum/frozen-eval-v2/test_raw.jsonl
+
+# Anti-forget: 1 epoch, lr=1e-5 (10x smaller than v2's 3e-5)
+max_seq_length: 384
+num_train_epochs: 1
+learning_rate: 0.00001
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 0.3
+
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+
+fp16: false
+bf16: true
+gradient_checkpointing: true
+use_cache: false
+
+logging_steps: 5
+save_steps: 50
+eval_steps: 10
+save_total_limit: null
+
+assistant_only_loss: true
+truncation_policy: preserve_assistant
+
+# Same LoRA config as v2 (rank=16, alpha=32, 7 modules)
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+seed: 42
+dataloader_num_workers: 0
+report_to: none
+
+# Composite checkpoint selection metric (Issue #1 P2)
+# 0.35*code_gen + 0.20*static_repair + 0.30*exec_repair + 0.15*hidden_pass
+# Hard constraint: code_generation drop vs Stage2 must be <= 2.5 percentage points
+checkpoint_selection:
+  composite_metric:
+    code_generation: 0.35
+    static_repair: 0.20
+    execution_repair: 0.30
+    hidden_pass: 0.15
+  hard_constraint:
+    code_generation_drop_vs_stage2_max_pct: 2.5

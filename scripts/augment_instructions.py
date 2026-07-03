@@ -57,7 +57,8 @@ def main() -> None:
         base / "stage2-boundary" / "validation.jsonl",
         base / "stage3-repair" / "train.jsonl",
         base / "stage3-repair" / "validation.jsonl",
-        base / "frozen-eval-v2" / "train.jsonl",
+        # frozen-eval-v2/test_raw.jsonl is augmented in place; never use a
+        # "train.jsonl" inside frozen-eval-v2 (deleted in P0-2 fix).
         base / "frozen-eval-v2" / "test_raw.jsonl",
     ]
 

@@ -1,11 +1,12 @@
 {
-  "generated_at": "2026-07-03T05:25:46.280307+00:00",
+  "generated_at": "2026-07-03T07:50:14.550603+00:00",
   "data_dir": "data\\p2-curriculum",
   "data_dir_exists": true,
   "totals": {
-    "train": 1500,
+    "train": 924,
     "validation": 373,
-    "all": 1873
+    "test": 576,
+    "all": 1297
   },
   "stages": {
     "stage1-code": {
@@ -773,16 +774,20 @@
       "stage_dir": "data\\p2-curriculum\\frozen-eval-v2",
       "exists": true,
       "sample_counts": {
-        "train": 576,
+        "train": 0,
         "validation": 0,
+        "test": 576,
         "total": 576
       },
       "family_counts": {
-        "train": 75,
-        "validation": 0
+        "train": 0,
+        "validation": 0,
+        "test": 75
       },
       "family_ids": {
-        "train": [
+        "train": [],
+        "validation": [],
+        "test": [
           "mbpp_fam_611",
           "mbpp_fam_627",
           "mbpp_fam_635",
@@ -858,29 +863,31 @@
           "mbpp_fam_964",
           "mbpp_fam_969",
           "mbpp_fam_974"
-        ],
-        "validation": []
+        ]
       },
       "task_type_distribution": {
-        "train": {
+        "test": {
           "code_generation": 140,
           "static_repair": 218,
           "execution_repair": 218
         },
+        "train": {},
         "validation": {}
       },
       "difficulty_distribution": {
-        "train": {
+        "test": {
           "0": 184,
           "1": 145,
           "2": 28,
           "3": 219
         },
+        "train": {},
         "validation": {}
       },
       "parse_errors": {
         "train": 0,
-        "validation": 0
+        "validation": 0,
+        "test": 0
       },
       "manifest_present": true
     }

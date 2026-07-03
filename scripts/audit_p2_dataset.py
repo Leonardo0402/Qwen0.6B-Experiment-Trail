@@ -109,10 +109,21 @@ def family_set(samples: list[Sample]) -> set[str]:
 # ---------------------------------------------------------------------------
 
 def audit_stage(data_dir: Path, stage: str) -> dict:
-    """Audit one stage directory and return its stats dict."""
+    """Audit one stage directory and return its stats dict.
+
+    For training stages, reads ``train.jsonl`` / ``validation.jsonl``.
+    For ``frozen-eval-v2``, reads ``test_raw.jsonl`` ONLY — the frozen-eval
+    directory must NOT contain ``train.jsonl`` (deleted in P0-2 fix) so it
+    cannot be mistakenly counted as training data.
+    """
     stage_dir = data_dir / stage
-    train_path = stage_dir / "train.jsonl"
-    val_path = stage_dir / "validation.jsonl"
+    is_frozen_eval = stage == "frozen-eval-v2"
+    if is_frozen_eval:
+        train_path = stage_dir / "test_raw.jsonl"
+        val_path = stage_dir / "validation.jsonl"  # may not exist; harmless
+    else:
+        train_path = stage_dir / "train.jsonl"
+        val_path = stage_dir / "validation.jsonl"
     manifest_path = stage_dir / "manifest.json"
 
     train_samples, train_errors = load_samples(train_path)
@@ -135,35 +146,77 @@ def audit_stage(data_dir: Path, stage: str) -> dict:
         except ValueError:
             return str(p)
 
+    if is_frozen_eval:
+        # frozen-eval is an EVALUATION set, not a training set.
+        # Samples are recorded under "test" so totals.train stays clean.
+        sample_counts = {
+            "train": 0,
+            "validation": 0,
+            "test": len(train_samples),
+            "total": len(train_samples),
+        }
+        family_counts = {
+            "train": 0,
+            "validation": 0,
+            "test": len(train_fams),
+        }
+        family_ids = {
+            "train": [],
+            "validation": [],
+            "test": sorted(train_fams),
+        }
+        task_type_dist = {
+            "test": task_type_distribution(train_samples),
+            "train": {},
+            "validation": {},
+        }
+        difficulty_dist = {
+            "test": difficulty_distribution(train_samples),
+            "train": {},
+            "validation": {},
+        }
+        parse_errors = {
+            "train": 0,
+            "validation": 0,
+            "test": train_errors,
+        }
+    else:
+        sample_counts = {
+            "train": len(train_samples),
+            "validation": len(val_samples),
+            "total": len(train_samples) + len(val_samples),
+        }
+        family_counts = {
+            "train": len(train_fams),
+            "validation": len(val_fams),
+        }
+        family_ids = {
+            "train": sorted(train_fams),
+            "validation": sorted(val_fams),
+        }
+        task_type_dist = {
+            "train": task_type_distribution(train_samples),
+            "validation": task_type_distribution(val_samples),
+        }
+        difficulty_dist = {
+            "train": difficulty_distribution(train_samples),
+            "validation": difficulty_distribution(val_samples),
+        }
+        parse_errors = {
+            "train": train_errors,
+            "validation": val_errors,
+        }
+
     return {
         "stage": stage,
         "stage_dir": _rel(stage_dir),
         "exists": stage_dir.exists(),
-        "sample_counts": {
-            "train": len(train_samples),
-            "validation": len(val_samples),
-            "total": len(train_samples) + len(val_samples),
-        },
-        "family_counts": {
-            "train": len(train_fams),
-            "validation": len(val_fams),
-        },
-        "family_ids": {
-            "train": sorted(train_fams),
-            "validation": sorted(val_fams),
-        },
-        "task_type_distribution": {
-            "train": task_type_distribution(train_samples),
-            "validation": task_type_distribution(val_samples),
-        },
-        "difficulty_distribution": {
-            "train": difficulty_distribution(train_samples),
-            "validation": difficulty_distribution(val_samples),
-        },
-        "parse_errors": {
-            "train": train_errors,
-            "validation": val_errors,
-        },
+        "sample_counts": sample_counts,
+        "family_counts": family_counts,
+        "family_ids": family_ids,
+        "task_type_distribution": task_type_dist,
+        "difficulty_distribution": difficulty_dist,
+        "parse_errors": parse_errors,
         "manifest_present": bool(manifest),
     }
 
@@ -233,8 +286,9 @@ def audit_dataset(data_dir: Path) -> dict:
 
     partition_report = audit_family_partition(data_dir)
 
-    total_train = sum(s["sample_counts"]["train"] for s in stages_report.values())
-    total_val = sum(s["sample_counts"]["validation"] for s in stages_report.values())
+    total_train = sum(s["sample_counts"].get("train", 0) for s in stages_report.values())
+    total_val = sum(s["sample_counts"].get("validation", 0) for s in stages_report.values())
+    total_test = sum(s["sample_counts"].get("test", 0) for s in stages_report.values())
 
     def _rel(p: Path) -> str:
         try:
@@ -249,6 +303,7 @@ def audit_dataset(data_dir: Path) -> dict:
         "totals": {
             "train": total_train,
             "validation": total_val,
+            "test": total_test,
             "all": total_train + total_val,
         },
         "stages": stages_report,
@@ -297,6 +352,7 @@ def main() -> int:
     print(f"data_dir_exists: {report['data_dir_exists']}")
     print(f"totals: train={report['totals']['train']}, "
           f"validation={report['totals']['validation']}, "
+          f"test={report['totals']['test']}, "
           f"all={report['totals']['all']}")
     for stage, info in report["stages"].items():
         sc = info["sample_counts"]

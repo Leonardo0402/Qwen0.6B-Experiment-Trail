@@ -151,6 +151,26 @@ def run_training(config_path: str) -> int:
     eval_file = Path(cfg["eval_file"])
     seed = cfg.get("seed", 42)
 
+    # ------------------------------------------------------------------
+    # Hard guard: never read from frozen-eval during training.
+    # frozen-eval-v2 is the canonical evaluation set; using it as training
+    # data would invalidate every evaluation. Issue #1 P0-2.
+    # ------------------------------------------------------------------
+    _fe_markers = ("frozen-eval", "frozen_eval")
+    for label, p in (("train_file", train_file), ("eval_file", eval_file)):
+        if any(m in str(p).replace("\\", "/") for m in _fe_markers):
+            raise SystemExit(
+                f"BLOCKED: {label} points into a frozen-eval directory: {p}\n"
+                f"Training is not allowed to read frozen-eval. "
+                f"Use data/p2-curriculum/<stage>/train.jsonl instead."
+            )
+    # Also refuse if train_file is the test_raw.jsonl of any directory.
+    if train_file.name == "test_raw.jsonl":
+        raise SystemExit(
+            f"BLOCKED: train_file is a test_raw.jsonl ({train_file}). "
+            f"Training must read train.jsonl, never test_raw.jsonl."
+        )
+
     # P1 config: training mode, assistant-only loss, truncation policy
     training_mode = cfg.get("training_mode", "independent")  # independent | continual
     initial_adapter = cfg.get("initial_adapter", None)
