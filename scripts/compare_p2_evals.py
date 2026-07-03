@@ -6,10 +6,11 @@ from collections import defaultdict
 _ROOT = Path(__file__).resolve().parent.parent
 
 MODELS = [
-    ("base", "Base"),
-    ("stage1-code", "Stage1-Code"),
-    ("stage2-boundary", "Stage2-Boundary"),
-    ("stage3-repair", "Stage3-Repair"),
+    ("full576-base", "Base"),
+    ("full576-stage2-boundary", "Stage2-v2"),
+    ("full576-stage3-repair", "Stage3-v2-Continual"),
+    ("full576-independent-stage3", "Stage3-Independent"),
+    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
 ]
 
 
@@ -98,9 +99,9 @@ def main() -> None:
         print(f"{results[name]['label']:<20} {passed}/{total} families passed ({passed/total*100 if total else 0:.1f}%)")
 
     # Per-family delta (Stage3 vs Base)
-    if "base" in results and "stage3-repair" in results:
-        base_fp = results["base"]["family_pass"]
-        s3_fp = results["stage3-repair"]["family_pass"]
+    if "full576-base" in results and "full576-stage3-repair" in results:
+        base_fp = results["full576-base"]["family_pass"]
+        s3_fp = results["full576-stage3-repair"]["family_pass"]
         improved = []
         regressed = []
         for f in base_fp:
@@ -109,7 +110,7 @@ def main() -> None:
                     improved.append(f)
                 elif not s3_fp[f] and base_fp[f]:
                     regressed.append(f)
-        print(f"\nStage3 vs Base:")
+        print(f"\nStage3-v2-Continual vs Base:")
         print(f"  New passing families: {len(improved)}")
         print(f"  Regressed families:   {len(regressed)}")
         print(f"  Net improvement:      {len(improved) - len(regressed)}")
@@ -158,7 +159,7 @@ def main() -> None:
             "family_pass_count": sum(1 for v in results[name]["family_pass"].values() if v),
             "family_total": len(results[name]["family_pass"]),
         }
-    out = _ROOT / "evaluations" / "p2" / "comparison.json"
+    out = _ROOT / "evaluations" / "p2" / "full576-comparison.json"
     with open(out, "w") as f:
         json.dump(comparison, f, indent=2)
     print(f"\nSaved comparison to {out}")
