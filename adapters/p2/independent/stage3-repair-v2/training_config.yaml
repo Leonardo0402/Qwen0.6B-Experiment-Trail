@@ -1,0 +1,44 @@
+# P2 Stage 3: Repair (Independent, Base → Stage3, no parent)
+training_mode: independent
+model_name_or_path: models/Qwen3-0.6B
+initial_adapter: null  # Independent mode, no parent adapter
+train_file: data/p2-curriculum/stage3-repair/train.jsonl
+eval_file: data/p2-curriculum/stage3-repair/validation.jsonl
+output_dir: adapters/p2/independent/stage3-repair-v2
+dataset_manifest: data/p2-curriculum/stage3-repair/manifest.json
+frozen_eval_file: data/p2-curriculum/frozen-eval-v2/test_raw.jsonl
+
+max_seq_length: 384
+num_train_epochs: 2
+learning_rate: 0.00003
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 0.3
+
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+
+fp16: false
+bf16: true
+gradient_checkpointing: true
+use_cache: false
+
+logging_steps: 5
+save_steps: 50
+eval_steps: 10
+save_total_limit: null
+
+assistant_only_loss: true
+truncation_policy: preserve_assistant
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+seed: 42
+dataloader_num_workers: 0
+report_to: none

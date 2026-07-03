@@ -1,0 +1,724 @@
+{
+  "models": [
+    "base",
+    "stage2-boundary",
+    "stage3-repair",
+    "independent-stage3",
+    "stage3-v3-antiforget"
+  ],
+  "common_sample_count": 120,
+  "pair_comparisons": [
+    {
+      "pair": [
+        "base",
+        "stage2-boundary"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 15,
+        "loss": 15,
+        "unchanged": 90,
+        "rate_a": 0.4083333333333333,
+        "rate_b": 0.4083333333333333,
+        "delta": 0.0,
+        "mcnemar_b": 15,
+        "mcnemar_c": 15,
+        "mcnemar_p_two_sided": 1.0,
+        "bootstrap_95ci": [
+          -0.09166666666666666,
+          0.09166666666666666
+        ],
+        "flips_to_pass": [
+          "mbpp_656_er_initialization_error",
+          "mbpp_666_er_condition_error",
+          "mbpp_673",
+          "mbpp_675_sr_branch_deletion",
+          "mbpp_701_er_type_error",
+          "mbpp_701_sr_return_value_error",
+          "mbpp_707",
+          "mbpp_721_sr_off_by_one",
+          "mbpp_770_sr_off_by_one",
+          "mbpp_834_er_branch_deletion",
+          "mbpp_838_sr_initialization_error",
+          "mbpp_870_er_return_value_error",
+          "mbpp_876_er_return_value_error",
+          "mbpp_881_er_condition_error",
+          "mbpp_924_er_return_value_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_707_er_return_value_error",
+          "mbpp_723_er_return_value_error",
+          "mbpp_763_er_off_by_one",
+          "mbpp_768_sr_branch_deletion",
+          "mbpp_804_sr_branch_deletion",
+          "mbpp_804_sr_off_by_one",
+          "mbpp_844_sr_initialization_error",
+          "mbpp_847",
+          "mbpp_847_sr_return_value_error",
+          "mbpp_852_er_condition_error",
+          "mbpp_908",
+          "mbpp_924",
+          "mbpp_952",
+          "mbpp_964_sr_branch_deletion",
+          "mbpp_964_sr_condition_error"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_656",
+          "mbpp_fam_666",
+          "mbpp_fam_838",
+          "mbpp_fam_876",
+          "mbpp_fam_881"
+        ],
+        "families_lost": [
+          "mbpp_fam_763",
+          "mbpp_fam_844",
+          "mbpp_fam_847",
+          "mbpp_fam_964"
+        ],
+        "net_gain": 1,
+        "pass_a": 11,
+        "pass_b": 12
+      }
+    },
+    {
+      "pair": [
+        "stage2-boundary",
+        "stage3-repair"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 7,
+        "loss": 8,
+        "unchanged": 105,
+        "rate_a": 0.4083333333333333,
+        "rate_b": 0.4,
+        "delta": -0.008333333333333304,
+        "mcnemar_b": 8,
+        "mcnemar_c": 7,
+        "mcnemar_p_two_sided": 1.0,
+        "bootstrap_95ci": [
+          -0.075,
+          0.058333333333333334
+        ],
+        "flips_to_pass": [
+          "mbpp_639",
+          "mbpp_692_sr_branch_deletion",
+          "mbpp_698_er_index_error",
+          "mbpp_723_er_return_value_error",
+          "mbpp_870",
+          "mbpp_908_er_branch_deletion",
+          "mbpp_924_sr_return_value_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_673",
+          "mbpp_710",
+          "mbpp_783_er_return_value_error",
+          "mbpp_832_er_return_value_error",
+          "mbpp_834_er_branch_deletion",
+          "mbpp_847_er_return_value_error",
+          "mbpp_876_er_branch_deletion",
+          "mbpp_876_er_return_value_error"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_639",
+          "mbpp_fam_698",
+          "mbpp_fam_870"
+        ],
+        "families_lost": [
+          "mbpp_fam_710",
+          "mbpp_fam_876"
+        ],
+        "net_gain": 1,
+        "pass_a": 12,
+        "pass_b": 13
+      }
+    },
+    {
+      "pair": [
+        "stage3-repair",
+        "independent-stage3"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 13,
+        "loss": 6,
+        "unchanged": 101,
+        "rate_a": 0.4,
+        "rate_b": 0.4583333333333333,
+        "delta": 0.05833333333333329,
+        "mcnemar_b": 6,
+        "mcnemar_c": 13,
+        "mcnemar_p_two_sided": 0.1670684814453125,
+        "bootstrap_95ci": [
+          -0.008333333333333333,
+          0.13333333333333333
+        ],
+        "flips_to_pass": [
+          "mbpp_710",
+          "mbpp_745_er_condition_error",
+          "mbpp_768_er_condition_error",
+          "mbpp_768_sr_initialization_error",
+          "mbpp_783_er_condition_error",
+          "mbpp_783_er_return_value_error",
+          "mbpp_804_sr_branch_deletion",
+          "mbpp_804_sr_off_by_one",
+          "mbpp_832_er_return_value_error",
+          "mbpp_834_er_branch_deletion",
+          "mbpp_847_er_return_value_error",
+          "mbpp_924",
+          "mbpp_964_sr_condition_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_639",
+          "mbpp_675_sr_branch_deletion",
+          "mbpp_728_sr_return_value_error",
+          "mbpp_766_sr_off_by_one",
+          "mbpp_870",
+          "mbpp_908_er_branch_deletion"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_710",
+          "mbpp_fam_783",
+          "mbpp_fam_924"
+        ],
+        "families_lost": [
+          "mbpp_fam_639",
+          "mbpp_fam_728",
+          "mbpp_fam_766",
+          "mbpp_fam_870"
+        ],
+        "net_gain": -1,
+        "pass_a": 13,
+        "pass_b": 12
+      }
+    },
+    {
+      "pair": [
+        "independent-stage3",
+        "stage3-v3-antiforget"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 7,
+        "loss": 10,
+        "unchanged": 103,
+        "rate_a": 0.4583333333333333,
+        "rate_b": 0.43333333333333335,
+        "delta": -0.024999999999999967,
+        "mcnemar_b": 10,
+        "mcnemar_c": 7,
+        "mcnemar_p_two_sided": 0.629058837890625,
+        "bootstrap_95ci": [
+          -0.09166666666666666,
+          0.041666666666666664
+        ],
+        "flips_to_pass": [
+          "mbpp_673",
+          "mbpp_675_sr_branch_deletion",
+          "mbpp_748",
+          "mbpp_766_sr_off_by_one",
+          "mbpp_908",
+          "mbpp_908_er_branch_deletion",
+          "mbpp_964_sr_branch_deletion"
+        ],
+        "flips_to_fail": [
+          "mbpp_701_er_type_error",
+          "mbpp_768_er_condition_error",
+          "mbpp_768_sr_initialization_error",
+          "mbpp_783_er_return_value_error",
+          "mbpp_804_sr_branch_deletion",
+          "mbpp_804_sr_off_by_one",
+          "mbpp_924",
+          "mbpp_924_sr_return_value_error",
+          "mbpp_952_sr_branch_deletion",
+          "mbpp_964_sr_condition_error"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_748",
+          "mbpp_fam_766",
+          "mbpp_fam_908"
+        ],
+        "families_lost": [
+          "mbpp_fam_783",
+          "mbpp_fam_924"
+        ],
+        "net_gain": 1,
+        "pass_a": 12,
+        "pass_b": 13
+      }
+    },
+    {
+      "pair": [
+        "base",
+        "stage3-repair"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 18,
+        "loss": 19,
+        "unchanged": 83,
+        "rate_a": 0.4083333333333333,
+        "rate_b": 0.4,
+        "delta": -0.008333333333333304,
+        "mcnemar_b": 19,
+        "mcnemar_c": 18,
+        "mcnemar_p_two_sided": 1.0,
+        "bootstrap_95ci": [
+          -0.10833333333333334,
+          0.09166666666666666
+        ],
+        "flips_to_pass": [
+          "mbpp_639",
+          "mbpp_656_er_initialization_error",
+          "mbpp_666_er_condition_error",
+          "mbpp_675_sr_branch_deletion",
+          "mbpp_692_sr_branch_deletion",
+          "mbpp_698_er_index_error",
+          "mbpp_701_er_type_error",
+          "mbpp_701_sr_return_value_error",
+          "mbpp_707",
+          "mbpp_721_sr_off_by_one",
+          "mbpp_770_sr_off_by_one",
+          "mbpp_838_sr_initialization_error",
+          "mbpp_870",
+          "mbpp_870_er_return_value_error",
+          "mbpp_881_er_condition_error",
+          "mbpp_908_er_branch_deletion",
+          "mbpp_924_er_return_value_error",
+          "mbpp_924_sr_return_value_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_707_er_return_value_error",
+          "mbpp_710",
+          "mbpp_763_er_off_by_one",
+          "mbpp_768_sr_branch_deletion",
+          "mbpp_783_er_return_value_error",
+          "mbpp_804_sr_branch_deletion",
+          "mbpp_804_sr_off_by_one",
+          "mbpp_832_er_return_value_error",
+          "mbpp_844_sr_initialization_error",
+          "mbpp_847",
+          "mbpp_847_er_return_value_error",
+          "mbpp_847_sr_return_value_error",
+          "mbpp_852_er_condition_error",
+          "mbpp_876_er_branch_deletion",
+          "mbpp_908",
+          "mbpp_924",
+          "mbpp_952",
+          "mbpp_964_sr_branch_deletion",
+          "mbpp_964_sr_condition_error"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_639",
+          "mbpp_fam_656",
+          "mbpp_fam_666",
+          "mbpp_fam_698",
+          "mbpp_fam_838",
+          "mbpp_fam_870",
+          "mbpp_fam_881"
+        ],
+        "families_lost": [
+          "mbpp_fam_710",
+          "mbpp_fam_763",
+          "mbpp_fam_844",
+          "mbpp_fam_847",
+          "mbpp_fam_964"
+        ],
+        "net_gain": 2,
+        "pass_a": 11,
+        "pass_b": 13
+      }
+    },
+    {
+      "pair": [
+        "base",
+        "independent-stage3"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 19,
+        "loss": 13,
+        "unchanged": 88,
+        "rate_a": 0.4083333333333333,
+        "rate_b": 0.4583333333333333,
+        "delta": 0.04999999999999999,
+        "mcnemar_b": 13,
+        "mcnemar_c": 19,
+        "mcnemar_p_two_sided": 0.37708558747544885,
+        "bootstrap_95ci": [
+          -0.041666666666666664,
+          0.14166666666666666
+        ],
+        "flips_to_pass": [
+          "mbpp_656_er_initialization_error",
+          "mbpp_666_er_condition_error",
+          "mbpp_692_sr_branch_deletion",
+          "mbpp_698_er_index_error",
+          "mbpp_701_er_type_error",
+          "mbpp_701_sr_return_value_error",
+          "mbpp_707",
+          "mbpp_721_sr_off_by_one",
+          "mbpp_745_er_condition_error",
+          "mbpp_768_er_condition_error",
+          "mbpp_768_sr_initialization_error",
+          "mbpp_770_sr_off_by_one",
+          "mbpp_783_er_condition_error",
+          "mbpp_834_er_branch_deletion",
+          "mbpp_838_sr_initialization_error",
+          "mbpp_870_er_return_value_error",
+          "mbpp_881_er_condition_error",
+          "mbpp_924_er_return_value_error",
+          "mbpp_924_sr_return_value_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_707_er_return_value_error",
+          "mbpp_728_sr_return_value_error",
+          "mbpp_763_er_off_by_one",
+          "mbpp_766_sr_off_by_one",
+          "mbpp_768_sr_branch_deletion",
+          "mbpp_844_sr_initialization_error",
+          "mbpp_847",
+          "mbpp_847_sr_return_value_error",
+          "mbpp_852_er_condition_error",
+          "mbpp_876_er_branch_deletion",
+          "mbpp_908",
+          "mbpp_952",
+          "mbpp_964_sr_branch_deletion"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_656",
+          "mbpp_fam_666",
+          "mbpp_fam_698",
+          "mbpp_fam_783",
+          "mbpp_fam_838",
+          "mbpp_fam_881",
+          "mbpp_fam_924"
+        ],
+        "families_lost": [
+          "mbpp_fam_728",
+          "mbpp_fam_763",
+          "mbpp_fam_766",
+          "mbpp_fam_844",
+          "mbpp_fam_847",
+          "mbpp_fam_964"
+        ],
+        "net_gain": 1,
+        "pass_a": 11,
+        "pass_b": 12
+      }
+    },
+    {
+      "pair": [
+        "base",
+        "stage3-v3-antiforget"
+      ],
+      "sample_compare": {
+        "n_compared": 120,
+        "win": 19,
+        "loss": 16,
+        "unchanged": 85,
+        "rate_a": 0.4083333333333333,
+        "rate_b": 0.43333333333333335,
+        "delta": 0.025000000000000022,
+        "mcnemar_b": 16,
+        "mcnemar_c": 19,
+        "mcnemar_p_two_sided": 0.7358788008568808,
+        "bootstrap_95ci": [
+          -0.075,
+          0.125
+        ],
+        "flips_to_pass": [
+          "mbpp_656_er_initialization_error",
+          "mbpp_666_er_condition_error",
+          "mbpp_673",
+          "mbpp_675_sr_branch_deletion",
+          "mbpp_692_sr_branch_deletion",
+          "mbpp_698_er_index_error",
+          "mbpp_701_sr_return_value_error",
+          "mbpp_707",
+          "mbpp_721_sr_off_by_one",
+          "mbpp_745_er_condition_error",
+          "mbpp_748",
+          "mbpp_770_sr_off_by_one",
+          "mbpp_783_er_condition_error",
+          "mbpp_834_er_branch_deletion",
+          "mbpp_838_sr_initialization_error",
+          "mbpp_870_er_return_value_error",
+          "mbpp_881_er_condition_error",
+          "mbpp_908_er_branch_deletion",
+          "mbpp_924_er_return_value_error"
+        ],
+        "flips_to_fail": [
+          "mbpp_707_er_return_value_error",
+          "mbpp_728_sr_return_value_error",
+          "mbpp_763_er_off_by_one",
+          "mbpp_768_sr_branch_deletion",
+          "mbpp_783_er_return_value_error",
+          "mbpp_804_sr_branch_deletion",
+          "mbpp_804_sr_off_by_one",
+          "mbpp_844_sr_initialization_error",
+          "mbpp_847",
+          "mbpp_847_sr_return_value_error",
+          "mbpp_852_er_condition_error",
+          "mbpp_876_er_branch_deletion",
+          "mbpp_924",
+          "mbpp_952",
+          "mbpp_952_sr_branch_deletion",
+          "mbpp_964_sr_condition_error"
+        ]
+      },
+      "family_compare": {
+        "n_families": 58,
+        "families_gained": [
+          "mbpp_fam_656",
+          "mbpp_fam_666",
+          "mbpp_fam_698",
+          "mbpp_fam_748",
+          "mbpp_fam_838",
+          "mbpp_fam_881",
+          "mbpp_fam_908"
+        ],
+        "families_lost": [
+          "mbpp_fam_728",
+          "mbpp_fam_763",
+          "mbpp_fam_844",
+          "mbpp_fam_847",
+          "mbpp_fam_964"
+        ],
+        "net_gain": 2,
+        "pass_a": 11,
+        "pass_b": 13
+      }
+    }
+  ],
+  "per_model_bug_type_repair": {
+    "base": {
+      "return_value_error": {
+        "total": 27,
+        "passed": 15,
+        "pass_rate": 0.5555555555555556
+      },
+      "branch_deletion": {
+        "total": 18,
+        "passed": 9,
+        "pass_rate": 0.5
+      },
+      "off_by_one": {
+        "total": 13,
+        "passed": 8,
+        "pass_rate": 0.6153846153846154
+      },
+      "initialization_error": {
+        "total": 7,
+        "passed": 3,
+        "pass_rate": 0.42857142857142855
+      },
+      "type_error": {
+        "total": 6,
+        "passed": 4,
+        "pass_rate": 0.6666666666666666
+      },
+      "aggregation_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "condition_error": {
+        "total": 7,
+        "passed": 2,
+        "pass_rate": 0.2857142857142857
+      },
+      "index_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      }
+    },
+    "stage2-boundary": {
+      "return_value_error": {
+        "total": 27,
+        "passed": 16,
+        "pass_rate": 0.5925925925925926
+      },
+      "branch_deletion": {
+        "total": 18,
+        "passed": 8,
+        "pass_rate": 0.4444444444444444
+      },
+      "off_by_one": {
+        "total": 13,
+        "passed": 8,
+        "pass_rate": 0.6153846153846154
+      },
+      "initialization_error": {
+        "total": 7,
+        "passed": 4,
+        "pass_rate": 0.5714285714285714
+      },
+      "type_error": {
+        "total": 6,
+        "passed": 5,
+        "pass_rate": 0.8333333333333334
+      },
+      "aggregation_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "condition_error": {
+        "total": 7,
+        "passed": 2,
+        "pass_rate": 0.2857142857142857
+      },
+      "index_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      }
+    },
+    "stage3-repair": {
+      "return_value_error": {
+        "total": 27,
+        "passed": 14,
+        "pass_rate": 0.5185185185185185
+      },
+      "branch_deletion": {
+        "total": 18,
+        "passed": 8,
+        "pass_rate": 0.4444444444444444
+      },
+      "off_by_one": {
+        "total": 13,
+        "passed": 8,
+        "pass_rate": 0.6153846153846154
+      },
+      "initialization_error": {
+        "total": 7,
+        "passed": 4,
+        "pass_rate": 0.5714285714285714
+      },
+      "type_error": {
+        "total": 6,
+        "passed": 5,
+        "pass_rate": 0.8333333333333334
+      },
+      "aggregation_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "condition_error": {
+        "total": 7,
+        "passed": 2,
+        "pass_rate": 0.2857142857142857
+      },
+      "index_error": {
+        "total": 1,
+        "passed": 1,
+        "pass_rate": 1.0
+      }
+    },
+    "independent-stage3": {
+      "return_value_error": {
+        "total": 27,
+        "passed": 16,
+        "pass_rate": 0.5925925925925926
+      },
+      "branch_deletion": {
+        "total": 18,
+        "passed": 8,
+        "pass_rate": 0.4444444444444444
+      },
+      "off_by_one": {
+        "total": 13,
+        "passed": 8,
+        "pass_rate": 0.6153846153846154
+      },
+      "initialization_error": {
+        "total": 7,
+        "passed": 5,
+        "pass_rate": 0.7142857142857143
+      },
+      "type_error": {
+        "total": 6,
+        "passed": 5,
+        "pass_rate": 0.8333333333333334
+      },
+      "aggregation_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "condition_error": {
+        "total": 7,
+        "passed": 6,
+        "pass_rate": 0.8571428571428571
+      },
+      "index_error": {
+        "total": 1,
+        "passed": 1,
+        "pass_rate": 1.0
+      }
+    },
+    "stage3-v3-antiforget": {
+      "return_value_error": {
+        "total": 27,
+        "passed": 14,
+        "pass_rate": 0.5185185185185185
+      },
+      "branch_deletion": {
+        "total": 18,
+        "passed": 9,
+        "pass_rate": 0.5
+      },
+      "off_by_one": {
+        "total": 13,
+        "passed": 8,
+        "pass_rate": 0.6153846153846154
+      },
+      "initialization_error": {
+        "total": 7,
+        "passed": 4,
+        "pass_rate": 0.5714285714285714
+      },
+      "type_error": {
+        "total": 6,
+        "passed": 4,
+        "pass_rate": 0.6666666666666666
+      },
+      "aggregation_error": {
+        "total": 1,
+        "passed": 0,
+        "pass_rate": 0.0
+      },
+      "condition_error": {
+        "total": 7,
+        "passed": 4,
+        "pass_rate": 0.5714285714285714
+      },
+      "index_error": {
+        "total": 1,
+        "passed": 1,
+        "pass_rate": 1.0
+      }
+    }
+  }
+}
