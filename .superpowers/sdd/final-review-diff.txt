@@ -1,0 +1,4610 @@
+﻿80c03de fix(ci): add requirements-ci.txt with ruff+mypy for CPU CI
+ .github/workflows/ci-tests.yml        |   4 +-
+ .superpowers/sdd/progress.md          |  19 +
+ .superpowers/sdd/task-1-brief.md      |  97 ++++
+ .superpowers/sdd/task-1-diff.txt      |  92 ++++
+ .superpowers/sdd/task-1-report.md     |  84 ++++
+ .superpowers/sdd/task-2-brief.md      | 386 ++++++++++++++
+ .superpowers/sdd/task-2-diff.txt      | 921 ++++++++++++++++++++++++++++++++++
+ .superpowers/sdd/task-2-report.md     | 179 +++++++
+ .superpowers/sdd/task-3-brief.md      | 304 +++++++++++
+ .superpowers/sdd/task-3-diff.txt      | 510 +++++++++++++++++++
+ .superpowers/sdd/task-3-report.md     | 167 ++++++
+ requirements-ci.txt                   |   7 +
+ run_full576_eval.bat                  |  31 ++
+ run_remaining_evals.ps1               |  38 ++
+ scripts/compare_p2_evals.py           |  19 +-
+ scripts/compute_paired_stats.py       |  43 +-
+ scripts/compute_router_analysis.py    | 807 +++++++++++++++++++++++++++++
+ scripts/generate_full576_report.py    | 266 ++++++++++
+ tests/test_generate_full576_report.py | 223 ++++++++
+ tests/test_router_gate.py             |  98 ++++
+ 20 files changed, 4262 insertions(+), 33 deletions(-)
+diff --git a/.github/workflows/ci-tests.yml b/.github/workflows/ci-tests.yml
+index 1a57c00..e869644 100644
+--- a/.github/workflows/ci-tests.yml
++++ b/.github/workflows/ci-tests.yml
+@@ -12,23 +12,23 @@ jobs:
+     runs-on: ubuntu-latest
+     timeout-minutes: 10
+ 
+     steps:
+       - uses: actions/checkout@v4
+ 
+       - uses: actions/setup-python@v5
+         with:
+           python-version: '3.10'
+ 
+-      - name: Install minimal deps (no torch, no GPU)
++      - name: Install CI deps (no torch, no GPU)
+         run: |
+           python -m pip install --upgrade pip
+-          pip install pytest pytest-timeout hypothesis pyyaml pydantic
++          pip install -r requirements-ci.txt
+ 
+       - name: Evidence consistency + DAG parent-chain tests
+         run: python -m pytest tests/test_p2_evidence_hardening.py -v --tb=short
+ 
+       - name: Metrics / statistics tests
+         run: python -m pytest tests/test_metrics.py -v --tb=short
+ 
+       - name: Schema + dataset isolation tests
+         run: python -m pytest tests/test_schemas.py tests/test_validators.py -v --tb=short
+diff --git a/.superpowers/sdd/progress.md b/.superpowers/sdd/progress.md
+new file mode 100644
+index 0000000..baedffd
+--- /dev/null
++++ b/.superpowers/sdd/progress.md
+@@ -0,0 +1,19 @@
++# Subagent-Driven Development Progress Ledger
++
++Branch: feat/p2.2-ci-router-validation
++Started: 2026-07-03
++
++## Tasks
++
++- Task 1: Fix compare_p2_evals.py silent-skip bug — complete (commits 80c03de..deb8db9, review clean, Approved)
++- Task 2: Extend compute_router_analysis.py with P3 Decision Gate — complete (commits deb8db9..5dbaf8b, review clean, Approved)
++- Prep: Commit compute_paired_stats.py full576 rename — complete (commit 48efe4e)
++- Task 3: Write generate_full576_report.py for Full-576 comparison report — complete (commits 48efe4e..6670523, review APPROVED_WITH_MINOR)
++
++## Minor findings (defer to final whole-branch review)
++
++1. **Task 3 §6 pair labels**: `generate_full576_report.py` line ~168 emits raw model keys (`full576-base → full576-stage2-boundary`) in the Paired Statistics table rather than human-readable labels. Defensible because upstream `compute_paired_stats.py:299` does the same, but inconsistent with §3-5 which use labels. Could add a key→label map for consistency.
++
++2. **Task 3 test style**: `test_generate_full576_report.py` uses bare functions with triplicated `_minimal_*()` fixtures instead of class grouping + shared helper as in `test_router_gate.py`. Brief said "Follow the test style in test_router_gate.py" but functional style is valid pytest.
++
++3. **Task 3 weak assertion**: `test_all_five_models_in_table` asserts `label in md` (anywhere in document) instead of specifically within the Overall Metrics section. A stricter test would slice between `## Overall Metrics` and the next `##` header.
+diff --git a/.superpowers/sdd/task-1-brief.md b/.superpowers/sdd/task-1-brief.md
+new file mode 100644
+index 0000000..b09e8c0
+--- /dev/null
++++ b/.superpowers/sdd/task-1-brief.md
+@@ -0,0 +1,97 @@
++# Task 1: Fix compare_p2_evals.py silent-skip bug
++
++## Location
++- File: `scripts/compare_p2_evals.py`
++- Working directory: `e:\agent\Qwen\qwen3-code-lab`
++- Current git branch: `feat/p2.2-ci-router-validation`
++
++## The Bug
++
++The file's `MODELS` list (lines 8-14) uses these keys:
++```python
++MODELS = [
++    ("full576-base", "Base"),
++    ("full576-stage2-boundary", "Stage2-v2"),
++    ("full576-stage3-repair", "Stage3-v2-Continual"),
++    ("full576-independent-stage3", "Stage3-Independent"),
++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
++]
++```
++
++The `results` dict in `main()` is populated with these full keys (line 62: `results[name] = {...}` where `name` comes from `MODELS`).
++
++However, the "Stage3 vs Base" delta section at lines 101-116 checks for the OLD (pre-rename) keys:
++
++```python
++# Per-family delta (Stage3 vs Base)
++if "base" in results and "stage3-repair" in results:    # line 102 — ALWAYS FALSE
++    base_fp = results["base"]["family_pass"]            # line 103 — never reached
++    s3_fp = results["stage3-repair"]["family_pass"]     # line 104 — never reached
++    improved = []
++    regressed = []
++    for f in base_fp:
++        if f in s3_fp:
++            if s3_fp[f] and not base_fp[f]:
++                improved.append(f)
++            elif not s3_fp[f] and base_fp[f]:
++                regressed.append(f)
++    print(f"\nStage3 vs Base:")
++    print(f"  New passing families: {len(improved)}")
++    print(f"  Regressed families:   {len(regressed)}")
++    print(f"  Net improvement:      {len(improved) - len(regressed)}")
++```
++
++Because `"base"` and `"stage3-repair"` are NEVER keys in `results` (the real keys are `"full576-base"` and `"full576-stage3-repair"`), the `if` guard is always `False` and the entire delta block silently skips. The user sees no output between "Family-Level Pass Comparison" and "Error Category Analysis" — a silent failure.
++
++## Required Fix (minimal, surgical)
++
++1. On line 102, change the `if` guard keys:
++   - `"base"` → `"full576-base"`
++   - `"stage3-repair"` → `"full576-stage3-repair"`
++
++2. On line 103, change `results["base"]` → `results["full576-base"]`
++
++3. On line 104, change `results["stage3-repair"]` → `results["full576-stage3-repair"]`
++
++4. On line 113, change the print label `"Stage3 vs Base:"` → `"Stage3-v2-Continual vs Base:"` (matches the label in MODELS for clarity).
++
++## Explicitly NOT in scope
++
++- Do NOT extend the section to compare other Stage3 variants (Independent, Antiforget) vs Base. The Full-576 markdown report (separate task) will cover those comparisons via `compute_paired_stats.py`.
++- Do NOT add per-family delta info to the JSON output (`full576-comparison.json`). That information lives in `paired-stats.json`.
++- Do NOT touch any other section of the file (per-task-type, family-level pass, error category analysis, JSON save).
++- Do NOT reformat, reorder, or rename anything outside the four lines listed above.
++
++## Verification
++
++After the fix, run:
++```
++D:\Anaconda\envs\qwen3-code-lab\python.exe scripts\compare_p2_evals.py
++```
++
++Expected behavior (currently the 5 `full576-*.json` eval files don't exist yet, so the script will print "skipping" for each — that's fine). The fix is verified by:
++
++1. Reading the patched file and confirming lines 102-104 use `full576-base` / `full576-stage3-repair` and line 113 uses the new label.
++2. Confirming there is NO silent skip — i.e., when the eval files DO exist, the section will execute. (You can construct a tiny synthetic test by creating two minimal fake eval JSONs in a temp dir, but that is optional — the key fix is the key-name correction.)
++3. Optional: add an assertion-style sanity check by running the script in dry mode (no eval files) and confirming it doesn't crash.
++
++## Test file
++
++There is no existing test file for `compare_p2_evals.py`. Do NOT create one — the fix is mechanical (4 line edits) and the script is a reporting utility, not a library function. The Full-576 report task will exercise the script end-to-end after evaluations complete.
++
++## Commit message
++
++```
++fix(scripts): correct silent-skip keys in compare_p2_evals Stage3-vs-Base section
++
++The MODELS list was renamed to use full576-* prefixes but the
++"Stage3 vs Base" delta block still checked the old keys "base" and
++"stage3-repair", causing the entire section to silently skip.
++```
++
++## Self-review checklist
++
++- [ ] Only lines 102, 103, 104, 113 changed (no other lines touched)
++- [ ] No reformatting of surrounding code
++- [ ] Print label matches the MODELS label for `full576-stage3-repair` ("Stage3-v2-Continual")
++- [ ] Script still runs without error when eval files are missing
+diff --git a/.superpowers/sdd/task-1-diff.txt b/.superpowers/sdd/task-1-diff.txt
+new file mode 100644
+index 0000000..1f95d3f
+--- /dev/null
++++ b/.superpowers/sdd/task-1-diff.txt
+@@ -0,0 +1,92 @@
++﻿deb8db9 fix(scripts): correct silent-skip keys in compare_p2_evals Stage3-vs-Base section
++ scripts/compare_p2_evals.py | 19 ++++++++++---------
++ 1 file changed, 10 insertions(+), 9 deletions(-)
++diff --git a/scripts/compare_p2_evals.py b/scripts/compare_p2_evals.py
++index ed292fa..c61b586 100644
++--- a/scripts/compare_p2_evals.py
+++++ b/scripts/compare_p2_evals.py
++@@ -1,22 +1,23 @@
++ """Compare P2 evaluation results across models, with per-task-type breakdown."""
++ import json
++ from pathlib import Path
++ from collections import defaultdict
++ 
++ _ROOT = Path(__file__).resolve().parent.parent
++ 
++ MODELS = [
++-    ("base", "Base"),
++-    ("stage1-code", "Stage1-Code"),
++-    ("stage2-boundary", "Stage2-Boundary"),
++-    ("stage3-repair", "Stage3-Repair"),
+++    ("full576-base", "Base"),
+++    ("full576-stage2-boundary", "Stage2-v2"),
+++    ("full576-stage3-repair", "Stage3-v2-Continual"),
+++    ("full576-independent-stage3", "Stage3-Independent"),
+++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
++ ]
++ 
++ 
++ def load_eval(name: str) -> dict:
++     f = _ROOT / "evaluations" / "p2" / f"{name}.json"
++     if not f.exists():
++         return None
++     return json.load(open(f))
++ 
++ 
++@@ -91,32 +92,32 @@ def main() -> None:
++     print("=" * 90)
++     for name, _ in MODELS:
++         if name not in results:
++             continue
++         fp = results[name]["family_pass"]
++         passed = sum(1 for v in fp.values() if v)
++         total = len(fp)
++         print(f"{results[name]['label']:<20} {passed}/{total} families passed ({passed/total*100 if total else 0:.1f}%)")
++ 
++     # Per-family delta (Stage3 vs Base)
++-    if "base" in results and "stage3-repair" in results:
++-        base_fp = results["base"]["family_pass"]
++-        s3_fp = results["stage3-repair"]["family_pass"]
+++    if "full576-base" in results and "full576-stage3-repair" in results:
+++        base_fp = results["full576-base"]["family_pass"]
+++        s3_fp = results["full576-stage3-repair"]["family_pass"]
++         improved = []
++         regressed = []
++         for f in base_fp:
++             if f in s3_fp:
++                 if s3_fp[f] and not base_fp[f]:
++                     improved.append(f)
++                 elif not s3_fp[f] and base_fp[f]:
++                     regressed.append(f)
++-        print(f"\nStage3 vs Base:")
+++        print(f"\nStage3-v2-Continual vs Base:")
++         print(f"  New passing families: {len(improved)}")
++         print(f"  Regressed families:   {len(regressed)}")
++         print(f"  Net improvement:      {len(improved) - len(regressed)}")
++ 
++     # Error category analysis for repair samples
++     print("\n" + "=" * 90)
++     print("Error Category Analysis (Repair samples)")
++     print("=" * 90)
++     for name, _ in MODELS:
++         if name not in results:
++@@ -151,18 +152,18 @@ def main() -> None:
++     for name, _ in MODELS:
++         if name not in results:
++             continue
++         comparison[name] = {
++             "label": results[name]["label"],
++             "metrics": results[name]["metrics"],
++             "per_task_type": results[name]["per_task_type"],
++             "family_pass_count": sum(1 for v in results[name]["family_pass"].values() if v),
++             "family_total": len(results[name]["family_pass"]),
++         }
++-    out = _ROOT / "evaluations" / "p2" / "comparison.json"
+++    out = _ROOT / "evaluations" / "p2" / "full576-comparison.json"
++     with open(out, "w") as f:
++         json.dump(comparison, f, indent=2)
++     print(f"\nSaved comparison to {out}")
++ 
++ 
++ if __name__ == "__main__":
++     main()
+diff --git a/.superpowers/sdd/task-1-report.md b/.superpowers/sdd/task-1-report.md
+new file mode 100644
+index 0000000..e87e786
+--- /dev/null
++++ b/.superpowers/sdd/task-1-report.md
+@@ -0,0 +1,84 @@
++# Task 1 Report: Fix compare_p2_evals.py silent-skip bug
++
++## Status: DONE
++
++## What was implemented
++
++A mechanical 4-line fix to `scripts/compare_p2_evals.py` correcting stale dictionary keys in the "Stage3 vs Base" per-family delta block. The `MODELS` list had already been renamed (in uncommitted working-tree changes) to use `full576-*` prefixed keys, but the downstream delta block still referenced the OLD pre-rename keys `"base"` and `"stage3-repair"`. Since those keys never appear in the `results` dict (populated from `MODELS`), the `if` guard on line 102 was always `False` and the entire delta block silently skipped — producing no error but also no output between "Family-Level Pass Comparison" and "Error Category Analysis".
++
++## The exact 4 line-level edits (before → after)
++
++| Line | Before | After |
++|------|--------|-------|
++| 102  | `    if "base" in results and "stage3-repair" in results:` | `    if "full576-base" in results and "full576-stage3-repair" in results:` |
++| 103  | `        base_fp = results["base"]["family_pass"]` | `        base_fp = results["full576-base"]["family_pass"]` |
++| 104  | `        s3_fp = results["stage3-repair"]["family_pass"]` | `        s3_fp = results["full576-stage3-repair"]["family_pass"]` |
++| 113  | `        print(f"\nStage3 vs Base:")` | `        print(f"\nStage3-v2-Continual vs Base:")` |
++
++All four edits applied verbatim as specified in the brief. No other lines were touched by my edits.
++
++## Verification: script run output
++
++Command: `D:\Anaconda\envs\qwen3-code-lab\python.exe scripts/compare_p2_evals.py`
++Exit code: 0 (no crash)
++
++```
++==========================================================================================
++Per-Task-Type Comparison
++==========================================================================================
++
++--- code_generation ---
++Model                 Total   Passed     Rate   Syntax   Format
++
++--- static_repair ---
++Model                 Total   Passed     Rate   Syntax   Format
++
++--- execution_repair ---
++Model                 Total   Passed     Rate   Syntax   Format
++
++==========================================================================================
++Family-Level Pass Comparison
++==========================================================================================
++
++==========================================================================================
++Error Category Analysis (Repair samples)
++==========================================================================================
++
++Saved comparison to E:\agent\Qwen\qwen3-code-lab\evaluations\p2\full576-comparison.json
++```
++
++The empty output (headers only, no data rows) is expected: the five `full576-*.json` eval files don't exist yet, so `load_eval()` returns `None` for each model, `results` stays empty, and every section prints only its header. The "Stage3-v2-Continual vs Base" delta block is correctly skipped in this state because `"full576-base" in results` is `False` — but this is the expected empty-input skip, NOT the silent-skip bug. When the eval files DO exist, the block will now execute because the keys match the `MODELS` list.
++
++Note: The brief mentioned the script would print "skipping" warnings for missing eval files. The actual script does not print "skipping" messages — it silently skips missing files via `load_eval()` returning `None` and the `continue` at line 60. This minor discrepancy in the brief's expected-output description does not affect the fix; the key criterion (no crash, exit 0) is met. The empty `full576-comparison.json` (`{}`) produced by this test run was deleted to keep the working tree clean.
++
++## Commit
++
++- **Full SHA:** `deb8db9eb4a146f019e88a42764a38482dcdbf25`
++- **Short SHA:** `deb8db9`
++- **Subject:** `fix(scripts): correct silent-skip keys in compare_p2_evals Stage3-vs-Base section`
++- **Body:**
++  ```
++  The MODELS list was renamed to use full576-* prefixes but the
++  "Stage3 vs Base" delta block still checked the old keys "base" and
++  "stage3-repair", causing the entire section to silently skip.
++  ```
++- **Files changed:** `scripts/compare_p2_evals.py` (1 file, 10 insertions, 9 deletions)
++- **Branch:** `feat/p2.2-ci-router-validation`
++- **Parent:** `80c03dea78a24f54065facd510e0c0acc15866dd` (matches BASE commit from brief)
++
++The commit includes the pre-existing uncommitted working-tree changes to `compare_p2_evals.py` (the MODELS list rename to `full576-*` keys and the output-path rename `comparison.json` → `full576-comparison.json`) alongside my 4-line fix. These pre-existing changes are the "full576" renaming that the brief's commit message references as context ("The MODELS list was renamed to use full576-* prefixes..."), so committing them together under this message is appropriate.
++
++## Self-review checklist
++
++- [x] Only lines 102, 103, 104, 113 changed (no other lines touched by my edits)
++- [x] No reformatting of surrounding code
++- [x] Print label matches the MODELS label for `full576-stage3-repair` ("Stage3-v2-Continual") — line 11 of MODELS: `("full576-stage3-repair", "Stage3-v2-Continual")`; line 113 now prints `"Stage3-v2-Continual vs Base:"`
++- [x] Script still runs without error when eval files are missing (exit code 0, no crash)
++
++## Concerns
++
++None blocking. Two minor notes:
++
++1. The brief's verification section said the script "will print 'skipping' for each" missing eval file, but the actual script silently skips missing files (no "skipping" message printed). This is a minor inaccuracy in the brief's expected-output prose, not a problem with the fix. The substantive verification criterion (no crash) is satisfied.
++
++2. The commit bundles the pre-existing uncommitted MODELS rename and output-path rename together with my 4-line fix. This is consistent with the commit message's framing (which references the MODELS rename as context), but if a reviewer wants the 4-line fix isolated, it would require rewriting history. I judged that bundling is the intended behavior since the brief's commit message explicitly describes the MODELS rename as already-having-happened context for the fix.
+diff --git a/.superpowers/sdd/task-2-brief.md b/.superpowers/sdd/task-2-brief.md
+new file mode 100644
+index 0000000..9f077ab
+--- /dev/null
++++ b/.superpowers/sdd/task-2-brief.md
+@@ -0,0 +1,386 @@
++# Task 2: Extend compute_router_analysis.py with P3 Decision Gate
++
++## Location
++- File to modify: `scripts/compute_router_analysis.py`
++- New test file: `tests/test_router_gate.py`
++- Working directory: `e:\agent\Qwen\qwen3-code-lab`
++- Current git branch: `feat/p2.2-ci-router-validation`
++- BASE commit (before your work): `deb8db9` (the Task 1 commit)
++
++## Background
++
++`scripts/compute_router_analysis.py` already computes four routing strategies across 5 P2 models and produces `reports/p2/router-analysis.json` + `reports/p2/router-analysis.md`. The four strategies are:
++
++1. **Best Single Model** — overall pass rate is highest among the 5 models.
++2. **Oracle Router** — any model passes → router passes (upper bound, not deployable).
++3. **Metadata Router** — routes by `task_type` to the best model per task_type.
++4. **Deployable Deterministic Router** — routes by deployment-observable signals (broken_code presence, execution_feedback presence) inferred from task_type. Same routing map as Metadata but described via observable signals.
++
++The script already computes:
++- `best_single_key`, `best_single_rate`, `best_single` stats dict (incl. `overall_pass`)
++- `oracle_router` stats dict (incl. `overall_pass`, `lift_vs_best_single`)
++- `deployable_router` stats dict (incl. `overall_pass`, `lift_vs_best_single`)
++- `deployable_pass: dict[str, bool]` — per-sample pass/fail under the Deployable Router
++- `pass_map` for each model (line 261): `{sid: _passed(by_model[key][sid]) for sid in common}`
++
++What's MISSING is the P3 Decision Gate: a structured verdict (GO / NO-GO / SIGNAL) with statistical evidence (McNemar exact test + paired bootstrap 95% CI) comparing the Deployable Router against the Best Single model.
++
++## The P3 Gate Criteria (from Issue #6)
++
++- **GO**: Deployable Router lift over Best Single ≥ 5pp AND (bootstrap 95% CI lower bound > 0 OR McNemar p < 0.05)
++- **NO-GO**: Oracle Router lift over Best Single < 5pp (even the upper bound shows no meaningful routing gain) OR Deployable Router shows no significant improvement
++- **SIGNAL**: Oracle lift ≥ 5pp (meaningful routing potential exists) BUT Deployable Router lift < 5pp OR not statistically significant (Deployable cannot capture the potential with observable signals only)
++
++Threshold: 5pp = 0.05 (absolute percentage-point difference in overall pass rate).
++
++## Required Implementation
++
++### 1. Add two helper functions (inline, near the top of the file after the existing helpers)
++
++Copy the same implementations already used in `scripts/compute_paired_stats.py` (lines 69-108 of that file). Do NOT import from compute_paired_stats — duplicate the small functions inline to keep compute_router_analysis.py self-contained.
++
++```python
++def mcnemar_exact(b: int, c: int) -> float:
++    """Two-sided exact McNemar p-value via binomial.
++    b = #samples where A passed, B failed. c = #samples where A failed, B passed.
++    """
++    from math import comb
++    n = b + c
++    if n == 0:
++        return 1.0
++    k_min = min(b, c)
++    p_one_tail = sum(comb(n, k) for k in range(k_min + 1)) * (0.5 ** n)
++    return min(1.0, 2.0 * p_one_tail)
++
++
++def paired_bootstrap_ci(
++    pass_a: list[bool], pass_b: list[bool], n_boot: int = 10000, seed: int = 42
++) -> tuple[float, float]:
++    """Paired bootstrap 95% CI for the difference in pass rate (b - a)."""
++    import random
++    rng = random.Random(seed)
++    n = len(pass_a)
++    if n == 0:
++        return (0.0, 0.0)
++    diffs = [(1 if b else 0) - (1 if a else 0) for a, b in zip(pass_a, pass_b)]
++    boots = []
++    for _ in range(n_boot):
++        idx = [rng.randrange(n) for _ in range(n)]
++        boots.append(sum(diffs[i] for i in idx) / n)
++    boots.sort()
++    lo = boots[int(0.025 * n_boot)]
++    hi = boots[int(0.975 * n_boot)]
++    return (lo, hi)
++```
++
++### 2. Add a `apply_decision_gate(...)` function
++
++Place it after the helper functions, before `main()`. This function MUST be pure (no I/O, no global state) so it is unit-testable.
++
++```python
++def apply_decision_gate(
++    *,
++    deployable_lift: float,
++    oracle_lift: float,
++    deployable_mcnemar_p: float,
++    deployable_ci_lo: float,
++    deployable_ci_hi: float,
++    deployable_b: int,
++    deployable_c: int,
++    n_common: int,
++) -> dict:
++    """Apply the P3 Decision Gate criteria.
++
++    Returns dict with:
++      - verdict: "GO" | "NO-GO" | "SIGNAL"
++      - criteria: dict of the raw thresholds and booleans used
++      - reason: human-readable explanation string
++    """
++    LIFT_THRESHOLD = 0.05  # 5 percentage points
++
++    oracle_meaningful = oracle_lift >= LIFT_THRESHOLD
++    deployable_meaningful = deployable_lift >= LIFT_THRESHOLD
++    ci_significant = (deployable_ci_lo > 0.0) or (deployable_mcnemar_p < 0.05)
++    deployable_significant = deployable_meaningful and ci_significant
++
++    if not oracle_meaningful:
++        verdict = "NO-GO"
++        reason = (
++            f"Oracle Router lift ({oracle_lift*100:.1f}pp) < 5pp threshold — "
++            "even the upper bound shows no meaningful routing gain."
++        )
++    elif deployable_significant:
++        verdict = "GO"
++        reason = (
++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) >= 5pp "
++            f"with statistical significance (McNemar p={deployable_mcnemar_p:.4f}, "
++            f"95% CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
++        )
++    elif oracle_meaningful and not deployable_significant:
++        verdict = "SIGNAL"
++        reason = (
++            f"Oracle lift ({oracle_lift*100:.1f}pp) >= 5pp (routing potential exists), "
++            f"but Deployable Router lift ({deployable_lift*100:.1f}pp) or significance "
++            f"(McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}]) "
++            "does not meet the GO threshold — observable signals alone cannot capture the potential."
++        )
++    else:
++        verdict = "NO-GO"
++        reason = (
++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) shows no significant "
++            f"improvement (McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
++        )
++
++    return {
++        "verdict": verdict,
++        "reason": reason,
++        "criteria": {
++            "lift_threshold_pp": LIFT_THRESHOLD * 100,
++            "oracle_lift": oracle_lift,
++            "oracle_meaningful": oracle_meaningful,
++            "deployable_lift": deployable_lift,
++            "deployable_meaningful": deployable_meaningful,
++            "deployable_mcnemar_p": deployable_mcnemar_p,
++            "deployable_ci_95": [deployable_ci_lo, deployable_ci_hi],
++            "deployable_ci_significant": ci_significant,
++            "deployable_significant": deployable_significant,
++            "deployable_mcnemar_b": deployable_b,
++            "deployable_mcnemar_c": deployable_c,
++            "n_common": n_common,
++        },
++    }
++```
++
++### 3. In `main()`, compute the gate after the deployable router section
++
++After the existing `deployable_router = {...}` block (currently around line 377) and BEFORE the "Comparison table" section, add:
++
++```python
++# ------------------------------------------------------------------
++# 5. P3 Decision Gate — Deployable Router vs Best Single
++# ------------------------------------------------------------------
++best_single_pass_list = [pass_map_best_single[sid] for sid in common]
++deployable_pass_list = [deployable_pass[sid] for sid in common]
++
++# McNemar counts: b = best_single passes but deployable fails;
++#                  c = best_single fails but deployable passes.
++gate_b = sum(1 for s in common if best_single_pass_list[i] and not deployable_pass_list[i] for i, s in enumerate(common))
++gate_c = sum(1 for s in common if not best_single_pass_list[i] and deployable_pass_list[i] for i, s in enumerate(common))
++# NOTE: the above enumeration is awkward — use a cleaner loop:
++gate_b = 0
++gate_c = 0
++for sid in common:
++    bs_pass = best_single_pass[<index>]  # you need to align indices
++    dep_pass = deployable_pass[sid]
++    # ... count b and c
++```
++
++**IMPORTANT**: Do NOT copy the awkward enumeration above verbatim. Write clean code that:
++1. Builds `best_single_pass_map = {sid: _passed(by_model[best_single_key][sid]) for sid in common}` (or reuse the existing `pass_map` from line 261 — but that variable is local to the per-model loop, so you may need to re-derive it)
++2. Iterates `common` once to compute `b_count` (best_single passed, deployable failed) and `c_count` (best_single failed, deployable passed)
++3. Builds `pass_a` and `pass_b` lists for the bootstrap CI
++4. Calls `mcnemar_exact(b_count, c_count)` and `paired_bootstrap_ci(pass_a, pass_b)`
++5. Calls `apply_decision_gate(...)` with all the arguments
++6. Adds the result to the `result` dict as `result["decision_gate"] = gate_result`
++
++**Re-deriving best_single_pass_map**: The existing loop at line 261 computes `pass_map` per model but it's local. The cleanest approach is to compute the best_single pass map explicitly:
++```python
++best_single_pass_map = {sid: _passed(by_model[best_single_key][sid]) for sid in common}
++```
++This is consistent with how `deployable_pass` is built.
++
++### 4. Add `decision_gate` to the JSON result
++
++In the `result = {...}` dict assembly, add:
++```python
++"decision_gate": gate_result,
++```
++
++### 5. Add a "P3 Decision Gate" section to the markdown report
++
++After the existing "Methodology Notes" section, add:
++
++```python
++md.append("## P3 Decision Gate")
++md.append("")
++md.append(f"**Verdict: {gate_result['verdict']}**")
++md.append("")
++md.append(f"{gate_result['reason']}")
++md.append("")
++md.append("### Gate Criteria")
++md.append("")
++md.append("| Criterion | Value | Threshold | Met |")
++md.append("|-----------|-------|-----------|-----|")
++c = gate_result["criteria"]
++md.append(f"| Oracle lift vs Best Single | {c['oracle_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['oracle_meaningful'] else 'NO'} |")
++md.append(f"| Deployable lift vs Best Single | {c['deployable_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['deployable_meaningful'] else 'NO'} |")
++md.append(f"| Deployable McNemar p (2-sided) | {c['deployable_mcnemar_p']:.4f} | < 0.05 | {'YES' if c['deployable_mcnemar_p'] < 0.05 else 'NO'} |")
++md.append(f"| Deployable 95% CI | [{c['deployable_ci_95'][0]:+.4f}, {c['deployable_ci_95'][1]:+.4f}] | lower > 0 | {'YES' if c['deployable_ci_95'][0] > 0 else 'NO'} |")
++md.append(f"| Deployable b/c (McNemar) | {c['deployable_mcnemar_b']}/{c['deployable_mcnemar_c']} | — | — |")
++md.append(f"| Common samples | {c['n_common']} | — | — |")
++md.append("")
++```
++
++### 6. Create test file `tests/test_router_gate.py`
++
++Test the `apply_decision_gate` function with these cases (use pytest, no mocks):
++
++```python
++"""Tests for the P3 Decision Gate logic in compute_router_analysis.apply_decision_gate."""
++import pytest
++from scripts.compute_router_analysis import apply_decision_gate
++
++
++class TestDecisionGate:
++    def _gate(self, **overrides):
++        defaults = dict(
++            deployable_lift=0.07,      # 7pp
++            oracle_lift=0.10,          # 10pp
++            deployable_mcnemar_p=0.01, # significant
++            deployable_ci_lo=0.03,     # CI doesn't cross 0
++            deployable_ci_hi=0.11,
++            deployable_b=5,
++            deployable_c=20,
++            n_common=576,
++        )
++        defaults.update(overrides)
++        return apply_decision_gate(**defaults)
++
++    def test_GO_when_lift_significant_and_ci_positive(self):
++        g = self._gate()
++        assert g["verdict"] == "GO"
++
++    def test_GO_when_lift_significant_and_mcnemar_significant_even_if_ci_crosses_zero(self):
++        g = self._gate(deployable_ci_lo=-0.01, deployable_ci_hi=0.15, deployable_mcnemar_p=0.03)
++        assert g["verdict"] == "GO"
++
++    def test_NO_GO_when_oracle_lift_below_threshold(self):
++        g = self._gate(oracle_lift=0.04)
++        assert g["verdict"] == "NO-GO"
++        assert "Oracle Router lift" in g["reason"]
++
++    def test_SIGNAL_when_oracle_meaningful_but_deployable_lift_below_threshold(self):
++        g = self._gate(oracle_lift=0.08, deployable_lift=0.03)
++        assert g["verdict"] == "SIGNAL"
++
++    def test_SIGNAL_when_oracle_meaningful_but_deployable_not_significant(self):
++        g = self._gate(oracle_lift=0.08, deployable_lift=0.06, deployable_mcnemar_p=0.20, deployable_ci_lo=-0.02)
++        assert g["verdict"] == "SIGNAL"
++
++    def test_NO_GO_when_deployable_no_significant_improvement_and_oracle_also_low(self):
++        g = self._gate(oracle_lift=0.04, deployable_lift=0.02, deployable_mcnemar_p=0.50, deployable_ci_lo=-0.03)
++        assert g["verdict"] == "NO-GO"
++
++    def test_GO_at_exact_5pp_threshold(self):
++        # >= 5pp is the threshold (inclusive)
++        g = self._gate(deployable_lift=0.05, oracle_lift=0.06, deployable_mcnemar_p=0.04, deployable_ci_lo=0.01)
++        assert g["verdict"] == "GO"
++
++    def test_criteria_dict_contains_all_fields(self):
++        g = self._gate()
++        c = g["criteria"]
++        for key in ("lift_threshold_pp", "oracle_lift", "oracle_meaningful",
++                    "deployable_lift", "deployable_meaningful", "deployable_mcnemar_p",
++                    "deployable_ci_95", "deployable_ci_significant",
++                    "deployable_significant", "deployable_mcnemar_b",
++                    "deployable_mcnemar_c", "n_common"):
++            assert key in c, f"missing key: {key}"
++
++    def test_reason_string_contains_numbers(self):
++        g = self._gate()
++        assert "7.0pp" in g["reason"] or "10.0pp" in g["reason"]
++```
++
++Also test the helper functions:
++
++```python
++class TestMcNemarExact:
++    def test_no_discordant_pairs_returns_1(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        assert mcnemar_exact(0, 0) == 1.0
++
++    def test_symmetric_distribution_returns_high_p(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        # 10 vs 10 — no asymmetry
++        p = mcnemar_exact(10, 10)
++        assert p > 0.5
++
++    def test_extreme_asymmetry_returns_low_p(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        # 0 vs 20 — extreme asymmetry
++        p = mcnemar_exact(0, 20)
++        assert p < 0.001
++
++
++class TestPairedBootstrapCI:
++    def test_identical_pass_lists_give_ci_centered_at_zero(self):
++        from scripts.compute_router_analysis import paired_bootstrap_ci
++        passes = [True] * 100 + [False] * 100
++        lo, hi = paired_bootstrap_ci(passes, passes, n_boot=1000, seed=42)
++        assert -0.01 < lo < 0.01
++        assert -0.01 < hi < 0.01
++
++    def test_all_b_passes_all_a_fails_gives_positive_ci(self):
++        from scripts.compute_router_analysis import paired_bootstrap_ci
++        a = [False] * 100
++        b = [True] * 100
++        lo, hi = paired_bootstrap_ci(a, b, n_boot=1000, seed=42)
++        assert lo > 0.5
++        assert hi > 0.5
++```
++
++## Verification
++
++1. Run the new test file:
++   ```
++   D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_router_gate.py -v
++   ```
++   All tests must pass.
++
++2. Verify the script still imports correctly (eval files don't exist yet, so it will skip):
++   ```
++   D:\Anaconda\envs\qwen3-code-lab\python.exe -c "from scripts.compute_router_analysis import apply_decision_gate, mcnemar_exact, paired_bootstrap_ci; print('imports OK')"
++   ```
++
++3. Verify the existing CI tests still pass (don't break anything):
++   ```
++   D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_p2_evidence_hardening.py tests/test_metrics.py tests/test_schemas.py tests/test_validators.py -v --tb=short
++   ```
++
++## Explicitly NOT in scope
++
++- Do NOT modify the existing router computation logic (Best Single, Oracle, Metadata, Deployable sections).
++- Do NOT change the output file paths (`router-analysis.json`, `router-analysis.md`).
++- Do NOT modify `compute_paired_stats.py` (the inline duplication of McNemar/bootstrap is intentional — keep compute_router_analysis.py self-contained).
++- Do NOT add the gate logic to `compute_paired_stats.py` or any other file.
++- Do NOT change the MODELS list or any existing function signatures.
++- Do NOT reformat existing code.
++
++## Commit message
++
++```
++feat(router): add P3 Decision Gate with McNemar + bootstrap CI
++
++Extends compute_router_analysis.py with:
++- mcnemar_exact() and paired_bootstrap_ci() inline helpers
++- apply_decision_gate() pure function returning GO/NO-GO/SIGNAL verdict
++- decision_gate section in router-analysis.json output
++- P3 Decision Gate section in router-analysis.md output
++- tests/test_router_gate.py with 12 test cases
++
++Gate criteria:
++- GO: deployable_lift >= 5pp AND (CI_lo > 0 OR McNemar p < 0.05)
++- NO-GO: oracle_lift < 5pp OR deployable no significant improvement
++- SIGNAL: oracle_lift >= 5pp BUT deployable not significant
++```
++
++## Self-review checklist
++
++- [ ] `apply_decision_gate` is a pure function (no I/O, no global state)
++- [ ] McNemar and bootstrap CI functions match the implementations in compute_paired_stats.py
++- [ ] `decision_gate` key added to the `result` dict in `main()`
++- [ ] "P3 Decision Gate" section added to the markdown output
++- [ ] All 12+ tests in `tests/test_router_gate.py` pass
++- [ ] Existing CI tests (evidence_hardening, metrics, schemas, validators) still pass
++- [ ] No existing router computation logic was modified
++- [ ] No reformatting of existing code
+diff --git a/.superpowers/sdd/task-2-diff.txt b/.superpowers/sdd/task-2-diff.txt
+new file mode 100644
+index 0000000..f70bb3c
+--- /dev/null
++++ b/.superpowers/sdd/task-2-diff.txt
+@@ -0,0 +1,921 @@
++﻿5dbaf8b feat(router): add P3 Decision Gate with McNemar + bootstrap CI
++ scripts/compute_router_analysis.py | 807 +++++++++++++++++++++++++++++++++++++
++ tests/test_router_gate.py          |  98 +++++
++ 2 files changed, 905 insertions(+)
++diff --git a/scripts/compute_router_analysis.py b/scripts/compute_router_analysis.py
++new file mode 100644
++index 0000000..0e1e7c4
++--- /dev/null
+++++ b/scripts/compute_router_analysis.py
++@@ -0,0 +1,807 @@
+++"""Router feasibility analysis for Issue #6 P2.
+++
+++Computes four routing strategies across the 5 P2 models:
+++
+++1. Best Single Model - pick the model with highest overall pass rate.
+++2. Oracle Router - upper bound: any model passes -> router passes.
+++3. Metadata Router - route by ``task_type``, pick best model per task_type.
+++4. Deployable Deterministic Router - route by deployment-observable signals
+++   (``broken_code`` presence, ``execution_feedback`` presence), pick best
+++   model per category.
+++
+++Sample passes iff ``public_passed AND hidden_passed``.
+++Family passes iff ALL its samples pass.
+++
+++Inputs:
+++  evaluations/p2/full576-base.json
+++  evaluations/p2/full576-stage2-boundary.json
+++  evaluations/p2/full576-stage3-repair.json
+++  evaluations/p2/full576-independent-stage3.json
+++  evaluations/p2/full576-stage3-v3-antiforget.json
+++
+++Outputs:
+++  reports/p2/router-analysis.json
+++  reports/p2/router-analysis.md
+++
+++NOTE: Routing maps are currently determined on the full eval set
+++(train-on-test). A future change will split into validation (determine
+++routing) and eval (apply routing) subsets.
+++"""
+++from __future__ import annotations
+++
+++import json
+++from collections import defaultdict
+++from pathlib import Path
+++from typing import Any
+++
+++_ROOT = Path(__file__).resolve().parent.parent
+++_EVAL_DIR = _ROOT / "evaluations" / "p2"
+++_OUT_DIR = _ROOT / "reports" / "p2"
+++
+++MODELS: list[tuple[str, str]] = [
+++    ("full576-base", "Base"),
+++    ("full576-stage2-boundary", "Stage2-v2"),
+++    ("full576-stage3-repair", "Stage3-v2-Continual"),
+++    ("full576-independent-stage3", "Stage3-Independent"),
+++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
+++]
+++
+++TASK_TYPES = ["code_generation", "static_repair", "execution_repair"]
+++
+++
+++# ---------------------------------------------------------------------------
+++# IO helpers
+++# ---------------------------------------------------------------------------
+++
+++def _load(name: str) -> dict[str, Any] | None:
+++    f = _EVAL_DIR / f"{name}.json"
+++    if not f.exists():
+++        return None
+++    with f.open(encoding="utf-8") as fh:
+++        return json.load(fh)
+++
+++
+++def _passed(o: dict) -> bool:
+++    """A sample passes iff both public and hidden tests pass."""
+++    return bool(o.get("public_passed") and o.get("hidden_passed"))
+++
+++
+++def _outcomes_by_id(doc: dict) -> dict[str, dict]:
+++    return {o["sample_id"]: o for o in doc.get("outcomes", [])}
+++
+++
+++def _label_of(model_key: str) -> str:
+++    for k, label in MODELS:
+++        if k == model_key:
+++            return label
+++    return model_key
+++
+++
+++def _pct(x: float) -> str:
+++    """Format a 0-1 ratio as a percentage string with one decimal."""
+++    return f"{x * 100:.1f}%"
+++
+++
+++def extract_bug_type(sample_id: str) -> str | None:
+++    """Extract bug_type from sample_id.
+++
+++    Formats:
+++      mbpp_<N>                 -> code_generation (None)
+++      mbpp_<N>_boundary        -> code_generation (None)
+++      mbpp_<N>_sr_<bug_type>   -> static_repair
+++      mbpp_<N>_er_<bug_type>   -> execution_repair
+++    """
+++    parts = sample_id.split("_")
+++    for marker in ("sr", "er"):
+++        if marker in parts:
+++            idx = parts.index(marker)
+++            if idx + 1 < len(parts):
+++                return "_".join(parts[idx + 1:])
+++    return None
+++
+++
+++# ---------------------------------------------------------------------------
+++# Paired stats helpers (inlined to keep this module self-contained)
+++# ---------------------------------------------------------------------------
+++
+++def mcnemar_exact(b: int, c: int) -> float:
+++    """Two-sided exact McNemar p-value via binomial.
+++    b = #samples where A passed, B failed. c = #samples where A failed, B passed.
+++    """
+++    from math import comb
+++    n = b + c
+++    if n == 0:
+++        return 1.0
+++    k_min = min(b, c)
+++    p_one_tail = sum(comb(n, k) for k in range(k_min + 1)) * (0.5 ** n)
+++    return min(1.0, 2.0 * p_one_tail)
+++
+++
+++def paired_bootstrap_ci(
+++    pass_a: list[bool], pass_b: list[bool], n_boot: int = 10000, seed: int = 42
+++) -> tuple[float, float]:
+++    """Paired bootstrap 95% CI for the difference in pass rate (b - a)."""
+++    import random
+++    rng = random.Random(seed)
+++    n = len(pass_a)
+++    if n == 0:
+++        return (0.0, 0.0)
+++    diffs = [(1 if b else 0) - (1 if a else 0) for a, b in zip(pass_a, pass_b)]
+++    boots = []
+++    for _ in range(n_boot):
+++        idx = [rng.randrange(n) for _ in range(n)]
+++        boots.append(sum(diffs[i] for i in idx) / n)
+++    boots.sort()
+++    lo = boots[int(0.025 * n_boot)]
+++    hi = boots[int(0.975 * n_boot)]
+++    return (lo, hi)
+++
+++
+++# ---------------------------------------------------------------------------
+++# Stats helpers
+++# ---------------------------------------------------------------------------
+++
+++def overall_pass_rate(pass_map: dict[str, bool]) -> float:
+++    if not pass_map:
+++        return 0.0
+++    return sum(1 for v in pass_map.values() if v) / len(pass_map)
+++
+++
+++def family_pass_rate(pass_map: dict[str, bool], sid_to_family: dict[str, str]) -> float:
+++    """Family passes iff ALL its samples pass."""
+++    fam: dict[str, list[bool]] = defaultdict(list)
+++    for sid, passed in pass_map.items():
+++        fam[sid_to_family.get(sid, "?")].append(passed)
+++    if not fam:
+++        return 0.0
+++    n_pass = sum(1 for v in fam.values() if v and all(v))
+++    return n_pass / len(fam)
+++
+++
+++def per_task_type_stats(
+++    pass_map: dict[str, bool], sid_to_task_type: dict[str, str]
+++) -> dict[str, dict]:
+++    stats: dict[str, dict] = defaultdict(lambda: {"total": 0, "passed": 0})
+++    for sid, passed in pass_map.items():
+++        tt = sid_to_task_type.get(sid, "unknown")
+++        stats[tt]["total"] += 1
+++        if passed:
+++            stats[tt]["passed"] += 1
+++    return {
+++        tt: {
+++            "total": s["total"],
+++            "passed": s["passed"],
+++            "pass_rate": s["passed"] / s["total"] if s["total"] else 0.0,
+++        }
+++        for tt, s in stats.items()
+++    }
+++
+++
+++def compute_router_stats(
+++    pass_map: dict[str, bool],
+++    sid_to_family: dict[str, str],
+++    sid_to_task_type: dict[str, str],
+++) -> dict:
+++    return {
+++        "overall_pass": overall_pass_rate(pass_map),
+++        "family_pass": family_pass_rate(pass_map, sid_to_family),
+++        "per_task_type": per_task_type_stats(pass_map, sid_to_task_type),
+++        "n_samples": len(pass_map),
+++    }
+++
+++
+++# ---------------------------------------------------------------------------
+++# Observable signals (Deployable Router only)
+++# ---------------------------------------------------------------------------
+++
+++def infer_observable_signals(task_type: str) -> dict:
+++    """Infer deployment-observable signals from task_type.
+++
+++    At deployment time we can observe:
+++    - Whether the request contains ``broken_code`` (a code snippet to repair).
+++    - Whether ``execution_feedback`` is available (we ran the code and saw an error).
+++    - The request category (generation vs repair).
+++
+++    These signals MUST NOT use hidden test results or gold bug_type labels.
+++    """
+++    has_broken_code = task_type in ("static_repair", "execution_repair")
+++    has_execution_feedback = task_type == "execution_repair"
+++    return {
+++        "has_broken_code": has_broken_code,
+++        "has_execution_feedback": has_execution_feedback,
+++        "request_type": "repair" if has_broken_code else "generation",
+++    }
+++
+++
+++def route_deployable(signals: dict) -> str:
+++    """Map observable signals to a routing category (task_type)."""
+++    if not signals["has_broken_code"]:
+++        return "code_generation"
+++    if not signals["has_execution_feedback"]:
+++        return "static_repair"
+++    return "execution_repair"
+++
+++
+++def best_model_for_task_type(
+++    by_model: dict[str, dict[str, dict]],
+++    common: list[str],
+++    sid_to_task_type: dict[str, str],
+++    task_type: str,
+++) -> tuple[str | None, float]:
+++    """Return (model_key, pass_rate) of the best model on the given task_type."""
+++    best_model = None
+++    best_rate = -1.0
+++    for key in by_model:
+++        tt_outcomes = [
+++            by_model[key][sid]
+++            for sid in common
+++            if sid_to_task_type.get(sid) == task_type and sid in by_model[key]
+++        ]
+++        if not tt_outcomes:
+++            continue
+++        rate = sum(1 for o in tt_outcomes if _passed(o)) / len(tt_outcomes)
+++        if rate > best_rate:
+++            best_rate = rate
+++            best_model = key
+++    return best_model, max(best_rate, 0.0)
+++
+++
+++# ---------------------------------------------------------------------------
+++# P3 Decision Gate
+++# ---------------------------------------------------------------------------
+++
+++def apply_decision_gate(
+++    *,
+++    deployable_lift: float,
+++    oracle_lift: float,
+++    deployable_mcnemar_p: float,
+++    deployable_ci_lo: float,
+++    deployable_ci_hi: float,
+++    deployable_b: int,
+++    deployable_c: int,
+++    n_common: int,
+++) -> dict:
+++    """Apply the P3 Decision Gate criteria.
+++
+++    Returns dict with:
+++      - verdict: "GO" | "NO-GO" | "SIGNAL"
+++      - criteria: dict of the raw thresholds and booleans used
+++      - reason: human-readable explanation string
+++    """
+++    LIFT_THRESHOLD = 0.05  # 5 percentage points
+++
+++    oracle_meaningful = oracle_lift >= LIFT_THRESHOLD
+++    deployable_meaningful = deployable_lift >= LIFT_THRESHOLD
+++    ci_significant = (deployable_ci_lo > 0.0) or (deployable_mcnemar_p < 0.05)
+++    deployable_significant = deployable_meaningful and ci_significant
+++
+++    if not oracle_meaningful:
+++        verdict = "NO-GO"
+++        reason = (
+++            f"Oracle Router lift ({oracle_lift*100:.1f}pp) < 5pp threshold — "
+++            "even the upper bound shows no meaningful routing gain."
+++        )
+++    elif deployable_significant:
+++        verdict = "GO"
+++        reason = (
+++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) >= 5pp "
+++            f"with statistical significance (McNemar p={deployable_mcnemar_p:.4f}, "
+++            f"95% CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
+++        )
+++    elif oracle_meaningful and not deployable_significant:
+++        verdict = "SIGNAL"
+++        reason = (
+++            f"Oracle lift ({oracle_lift*100:.1f}pp) >= 5pp (routing potential exists), "
+++            f"but Deployable Router lift ({deployable_lift*100:.1f}pp) or significance "
+++            f"(McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}]) "
+++            "does not meet the GO threshold — observable signals alone cannot capture the potential."
+++        )
+++    else:
+++        verdict = "NO-GO"
+++        reason = (
+++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) shows no significant "
+++            f"improvement (McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
+++        )
+++
+++    return {
+++        "verdict": verdict,
+++        "reason": reason,
+++        "criteria": {
+++            "lift_threshold_pp": LIFT_THRESHOLD * 100,
+++            "oracle_lift": oracle_lift,
+++            "oracle_meaningful": oracle_meaningful,
+++            "deployable_lift": deployable_lift,
+++            "deployable_meaningful": deployable_meaningful,
+++            "deployable_mcnemar_p": deployable_mcnemar_p,
+++            "deployable_ci_95": [deployable_ci_lo, deployable_ci_hi],
+++            "deployable_ci_significant": ci_significant,
+++            "deployable_significant": deployable_significant,
+++            "deployable_mcnemar_b": deployable_b,
+++            "deployable_mcnemar_c": deployable_c,
+++            "n_common": n_common,
+++        },
+++    }
+++
+++
+++# ---------------------------------------------------------------------------
+++# Main
+++# ---------------------------------------------------------------------------
+++
+++def main() -> int:
+++    _OUT_DIR.mkdir(parents=True, exist_ok=True)
+++
+++    # Load models, skip missing files --------------------------------------
+++    docs: dict[str, dict] = {}
+++    skipped: list[str] = []
+++    for key, _label in MODELS:
+++        d = _load(key)
+++        if d is None:
+++            skipped.append(key)
+++            print(f"WARN: evaluations/p2/{key}.json not found - skipping")
+++            continue
+++        docs[key] = d
+++
+++    if len(docs) < 2:
+++        print("ERROR: need at least 2 model evals for router analysis")
+++        return 1
+++
+++    # Per-model sample lookup ---------------------------------------------
+++    by_model: dict[str, dict[str, dict]] = {k: _outcomes_by_id(d) for k, d in docs.items()}
+++
+++    # Common sample IDs (intersection for fair comparison) -----------------
+++    sid_sets = {k: set(by_id.keys()) for k, by_id in by_model.items()}
+++    common = sorted(set.intersection(*sid_sets.values()))
+++    print(f"Models loaded: {list(docs)}")
+++    print(f"Skipped: {skipped}")
+++    print(f"Common sample IDs: {len(common)}")
+++
+++    # sid -> family_id / task_type (from any model that has the sample) ----
+++    sid_to_family: dict[str, str] = {}
+++    sid_to_task_type: dict[str, str] = {}
+++    for sid in common:
+++        for by_id in by_model.values():
+++            if sid in by_id:
+++                sid_to_family[sid] = by_id[sid].get("family_id", "?")
+++                sid_to_task_type[sid] = by_id[sid].get("task_type", "unknown")
+++                break
+++
+++    # ------------------------------------------------------------------
+++    # 1. Per-model stats + Best Single
+++    # ------------------------------------------------------------------
+++    per_model_stats: dict[str, dict] = {}
+++    best_single_key = None
+++    best_single_rate = -1.0
+++    for key in docs:
+++        pass_map = {sid: _passed(by_model[key][sid]) for sid in common}
+++        stats = compute_router_stats(pass_map, sid_to_family, sid_to_task_type)
+++        per_model_stats[key] = stats
+++        if stats["overall_pass"] > best_single_rate:
+++            best_single_rate = stats["overall_pass"]
+++            best_single_key = key
+++
+++    best_single = {
+++        "model": _label_of(best_single_key),
+++        "model_key": best_single_key,
+++        **per_model_stats[best_single_key],
+++    }
+++    best_single_overall = best_single["overall_pass"]
+++
+++    # ------------------------------------------------------------------
+++    # 2. Oracle Router (upper bound)
+++    # ------------------------------------------------------------------
+++    oracle_pass: dict[str, bool] = {}
+++    for sid in common:
+++        oracle_pass[sid] = any(_passed(by_model[k][sid]) for k in by_model)
+++    oracle_stats = compute_router_stats(oracle_pass, sid_to_family, sid_to_task_type)
+++    oracle_router = {
+++        **oracle_stats,
+++        "lift_vs_best_single": oracle_stats["overall_pass"] - best_single_overall,
+++    }
+++
+++    # ------------------------------------------------------------------
+++    # 3. Metadata Router (route by task_type)
+++    # ------------------------------------------------------------------
+++    # Determine routing map on full data (NOTE: train-on-test for now).
+++    metadata_routing_map: dict[str, str] = {}
+++    metadata_routing_rates: dict[str, dict] = {}
+++    for tt in TASK_TYPES:
+++        model_key, rate = best_model_for_task_type(
+++            by_model, common, sid_to_task_type, tt
+++        )
+++        if model_key is not None:
+++            metadata_routing_map[tt] = model_key
+++            metadata_routing_rates[tt] = {
+++                "model": _label_of(model_key),
+++                "model_key": model_key,
+++                "pass_rate": rate,
+++            }
+++
+++    # Apply routing.
+++    metadata_pass: dict[str, bool] = {}
+++    for sid in common:
+++        tt = sid_to_task_type.get(sid, "unknown")
+++        model_key = metadata_routing_map.get(tt)
+++        if model_key and sid in by_model.get(model_key, {}):
+++            metadata_pass[sid] = _passed(by_model[model_key][sid])
+++        else:
+++            metadata_pass[sid] = False
+++    metadata_stats = compute_router_stats(
+++        metadata_pass, sid_to_family, sid_to_task_type
+++    )
+++    metadata_router = {
+++        **metadata_stats,
+++        "routing_map": {tt: _label_of(k) for tt, k in metadata_routing_map.items()},
+++        "routing_map_keys": metadata_routing_map,
+++        "routing_rates": metadata_routing_rates,
+++        "lift_vs_best_single": metadata_stats["overall_pass"] - best_single_overall,
+++    }
+++
+++    # ------------------------------------------------------------------
+++    # 4. Deployable Deterministic Router (observable signals only)
+++    # ------------------------------------------------------------------
+++    # Determine routing map: best model per category (same selection as
+++    # metadata router, but the deployment decision uses only observable
+++    # signals - no task_type label, no hidden tests, no gold bug_type).
+++    deployable_routing_map: dict[str, str] = dict(metadata_routing_map)
+++    deployable_routing_rates = dict(metadata_routing_rates)
+++
+++    routing_rules = [
+++        {
+++            "signal": "no broken_code, no execution_feedback",
+++            "category": "code_generation",
+++            "candidate": "Generalist (Best Single on code_gen)",
+++            "model": _label_of(deployable_routing_map.get("code_generation", "")),
+++        },
+++        {
+++            "signal": "broken_code present, no execution_feedback",
+++            "category": "static_repair",
+++            "candidate": "Static Repair Specialist",
+++            "model": _label_of(deployable_routing_map.get("static_repair", "")),
+++        },
+++        {
+++            "signal": "broken_code + execution_feedback",
+++            "category": "execution_repair",
+++            "candidate": "Repair Specialist",
+++            "model": _label_of(deployable_routing_map.get("execution_repair", "")),
+++        },
+++    ]
+++
+++    # Apply routing using observable signals (inferred from task_type).
+++    deployable_pass: dict[str, bool] = {}
+++    for sid in common:
+++        tt = sid_to_task_type.get(sid, "unknown")
+++        signals = infer_observable_signals(tt)
+++        category = route_deployable(signals)
+++        model_key = deployable_routing_map.get(category)
+++        if model_key and sid in by_model.get(model_key, {}):
+++            deployable_pass[sid] = _passed(by_model[model_key][sid])
+++        else:
+++            deployable_pass[sid] = False
+++    deployable_stats = compute_router_stats(
+++        deployable_pass, sid_to_family, sid_to_task_type
+++    )
+++    deployable_router = {
+++        **deployable_stats,
+++        "routing_rules": routing_rules,
+++        "routing_map": {
+++            tt: _label_of(k) for tt, k in deployable_routing_map.items()
+++        },
+++        "routing_map_keys": deployable_routing_map,
+++        "lift_vs_best_single": deployable_stats["overall_pass"] - best_single_overall,
+++    }
+++
+++    # ------------------------------------------------------------------
+++    # 5. P3 Decision Gate — Deployable Router vs Best Single
+++    # ------------------------------------------------------------------
+++    # McNemar convention: A = Best Single, B = Deployable Router
+++    #   b = #samples where A passed, B failed
+++    #   c = #samples where A failed, B passed
+++    best_single_pass_map = {
+++        sid: _passed(by_model[best_single_key][sid]) for sid in common
+++    }
+++    gate_b = 0
+++    gate_c = 0
+++    pass_a: list[bool] = []  # best_single
+++    pass_b: list[bool] = []  # deployable
+++    for sid in common:
+++        bs_pass = best_single_pass_map[sid]
+++        dep_pass = deployable_pass[sid]
+++        if bs_pass and not dep_pass:
+++            gate_b += 1
+++        elif not bs_pass and dep_pass:
+++            gate_c += 1
+++        pass_a.append(bs_pass)
+++        pass_b.append(dep_pass)
+++
+++    mcnemar_p = mcnemar_exact(gate_b, gate_c)
+++    ci_lo, ci_hi = paired_bootstrap_ci(pass_a, pass_b)
+++    gate_result = apply_decision_gate(
+++        deployable_lift=deployable_router["lift_vs_best_single"],
+++        oracle_lift=oracle_router["lift_vs_best_single"],
+++        deployable_mcnemar_p=mcnemar_p,
+++        deployable_ci_lo=ci_lo,
+++        deployable_ci_hi=ci_hi,
+++        deployable_b=gate_b,
+++        deployable_c=gate_c,
+++        n_common=len(common),
+++    )
+++
+++    # ------------------------------------------------------------------
+++    # Comparison table
+++    # ------------------------------------------------------------------
+++    def _ptt(stats: dict, tt: str) -> float:
+++        return stats["per_task_type"].get(tt, {}).get("pass_rate", 0.0)
+++
+++    comparison_table: list[dict] = []
+++    for key in docs:
+++        s = per_model_stats[key]
+++        comparison_table.append({
+++            "name": _label_of(key),
+++            "type": "single_model",
+++            "overall_pass": s["overall_pass"],
+++            "family_pass": s["family_pass"],
+++            "code_generation_pass": _ptt(s, "code_generation"),
+++            "static_repair_pass": _ptt(s, "static_repair"),
+++            "execution_repair_pass": _ptt(s, "execution_repair"),
+++            "lift_vs_best_single": s["overall_pass"] - best_single_overall,
+++        })
+++    comparison_table.append({
+++        "name": "Best Single",
+++        "type": "best_single",
+++        "overall_pass": best_single["overall_pass"],
+++        "family_pass": best_single["family_pass"],
+++        "code_generation_pass": _ptt(best_single, "code_generation"),
+++        "static_repair_pass": _ptt(best_single, "static_repair"),
+++        "execution_repair_pass": _ptt(best_single, "execution_repair"),
+++        "lift_vs_best_single": 0.0,
+++    })
+++    for name, router in [
+++        ("Oracle Router", oracle_router),
+++        ("Metadata Router", metadata_router),
+++        ("Deployable Router", deployable_router),
+++    ]:
+++        comparison_table.append({
+++            "name": name,
+++            "type": "router",
+++            "overall_pass": router["overall_pass"],
+++            "family_pass": router["family_pass"],
+++            "code_generation_pass": _ptt(router, "code_generation"),
+++            "static_repair_pass": _ptt(router, "static_repair"),
+++            "execution_repair_pass": _ptt(router, "execution_repair"),
+++            "lift_vs_best_single": router["lift_vs_best_single"],
+++        })
+++
+++    # ------------------------------------------------------------------
+++    # Bug_type distribution (auxiliary, extracted from sample_id) --------
+++    # ------------------------------------------------------------------
+++    bug_type_dist: dict[str, int] = defaultdict(int)
+++    for sid in common:
+++        bt = extract_bug_type(sid)
+++        bug_type_dist[bt if bt else "(none)"] += 1
+++
+++    # ------------------------------------------------------------------
+++    # Assemble result
+++    # ------------------------------------------------------------------
+++    result = {
+++        "models_loaded": list(docs),
+++        "models_skipped": skipped,
+++        "common_sample_count": len(common),
+++        "best_single": best_single,
+++        "oracle_router": oracle_router,
+++        "metadata_router": metadata_router,
+++        "deployable_router": deployable_router,
+++        "decision_gate": gate_result,
+++        "comparison_table": comparison_table,
+++        "bug_type_distribution": dict(sorted(bug_type_dist.items())),
+++        "notes": [
+++            "Routing maps determined on full eval set (train-on-test). "
+++            "Future: split into validation (determine routing) and eval (apply).",
+++            "Deployable Router uses only observable signals (broken_code, "
+++            "execution_feedback) inferred from task_type. Does not use hidden "
+++            "tests or gold bug_type.",
+++            "Oracle Router is an upper bound (any model passes -> router passes).",
+++            "Common sample IDs = intersection across all loaded models "
+++            "(fair comparison).",
+++        ],
+++    }
+++
+++    out_json = _OUT_DIR / "router-analysis.json"
+++    out_json.write_text(
+++        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
+++    )
+++    print(f"\nSaved JSON: {out_json}")
+++
+++    # ------------------------------------------------------------------
+++    # Markdown report
+++    # ------------------------------------------------------------------
+++    md: list[str] = []
+++    md.append("# P2 Router Feasibility Analysis")
+++    md.append("")
+++    md.append(f"- Models loaded: {', '.join(_label_of(k) for k in docs)}")
+++    if skipped:
+++        md.append(f"- Models skipped (file not found): {', '.join(skipped)}")
+++    md.append(f"- Common sample count: {len(common)}")
+++    md.append("- Sample passes iff `public_passed AND hidden_passed`.")
+++    md.append("- Family passes iff ALL its samples pass.")
+++    md.append("")
+++    md.append("> **Note:** Routing maps are currently determined on the full eval set")
+++    md.append("> (train-on-test). A future change will split validation/eval subsets.")
+++    md.append("")
+++
+++    # Comparison table
+++    md.append("## Comparison Table")
+++    md.append("")
+++    md.append(
+++        "| Model / Router | Type | Overall | Family | CodeGen | StaticRepair | "
+++        "ExecRepair | Lift vs Best |"
+++    )
+++    md.append(
+++        "|----------------|------|---------|--------|---------|--------------|"
+++        "------------|--------------|"
+++    )
+++    for row in comparison_table:
+++        md.append(
+++            f"| {row['name']} | {row['type']} | "
+++            f"{_pct(row['overall_pass'])} | {_pct(row['family_pass'])} | "
+++            f"{_pct(row['code_generation_pass'])} | "
+++            f"{_pct(row['static_repair_pass'])} | "
+++            f"{_pct(row['execution_repair_pass'])} | "
+++            f"{row['lift_vs_best_single']:+.4f} |"
+++        )
+++    md.append("")
+++
+++    # Best single
+++    md.append("## 1. Best Single Model")
+++    md.append("")
+++    md.append(f"- **Model:** {best_single['model']} (`{best_single['model_key']}`)")
+++    md.append(f"- Overall pass: {_pct(best_single['overall_pass'])}")
+++    md.append(f"- Family pass: {_pct(best_single['family_pass'])}")
+++    md.append("")
+++    md.append("### Per-task-type pass rates")
+++    md.append("")
+++    md.append("| Task Type | Total | Passed | Rate |")
+++    md.append("|-----------|-------|--------|------|")
+++    for tt in TASK_TYPES:
+++        s = best_single["per_task_type"].get(
+++            tt, {"total": 0, "passed": 0, "pass_rate": 0.0}
+++        )
+++        md.append(f"| {tt} | {s['total']} | {s['passed']} | {_pct(s['pass_rate'])} |")
+++    md.append("")
+++    md.append("### All single models")
+++    md.append("")
+++    md.append("| Model | Overall | Family | CodeGen | StaticRepair | ExecRepair |")
+++    md.append("|-------|---------|--------|---------|--------------|------------|")
+++    for key in docs:
+++        s = per_model_stats[key]
+++        md.append(
+++            f"| {_label_of(key)} | {_pct(s['overall_pass'])} | "
+++            f"{_pct(s['family_pass'])} | {_pct(_ptt(s, 'code_generation'))} | "
+++            f"{_pct(_ptt(s, 'static_repair'))} | "
+++            f"{_pct(_ptt(s, 'execution_repair'))} |"
+++        )
+++    md.append("")
+++
+++    # Oracle
+++    md.append("## 2. Oracle Router (Upper Bound)")
+++    md.append("")
+++    md.append("Oracle passes a sample if ANY model passes it.")
+++    md.append("")
+++    md.append(f"- Overall pass: {_pct(oracle_router['overall_pass'])}")
+++    md.append(f"- Family pass: {_pct(oracle_router['family_pass'])}")
+++    md.append(f"- Lift vs Best Single: {oracle_router['lift_vs_best_single']:+.4f}")
+++    md.append("")
+++    md.append("| Task Type | Total | Passed | Rate |")
+++    md.append("|-----------|-------|--------|------|")
+++    for tt in TASK_TYPES:
+++        s = oracle_router["per_task_type"].get(
+++            tt, {"total": 0, "passed": 0, "pass_rate": 0.0}
+++        )
+++        md.append(f"| {tt} | {s['total']} | {s['passed']} | {_pct(s['pass_rate'])} |")
+++    md.append("")
+++
+++    # Metadata
+++    md.append("## 3. Metadata Router (route by `task_type`)")
+++    md.append("")
+++    md.append("### Routing map")
+++    md.append("")
+++    md.append("| Task Type | Routed Model | Pass Rate (selection) |")
+++    md.append("|-----------|-------------|----------------------|")
+++    for tt in TASK_TYPES:
+++        if tt in metadata_routing_map:
+++            r = metadata_routing_rates[tt]
+++            md.append(f"| {tt} | {r['model']} | {_pct(r['pass_rate'])} |")
+++    md.append("")
+++    md.append(f"- Overall pass: {_pct(metadata_router['overall_pass'])}")
+++    md.append(f"- Family pass: {_pct(metadata_router['family_pass'])}")
+++    md.append(
+++        f"- Lift vs Best Single: {metadata_router['lift_vs_best_single']:+.4f}"
+++    )
+++    md.append("")
+++
+++    # Deployable
+++    md.append("## 4. Deployable Deterministic Router (observable signals only)")
+++    md.append("")
+++    md.append("### Routing rules")
+++    md.append("")
+++    md.append("| Observable Signal | Category | Candidate | Routed Model |")
+++    md.append("|------------------|----------|-----------|--------------|")
+++    for r in routing_rules:
+++        md.append(
+++            f"| {r['signal']} | {r['category']} | {r['candidate']} | {r['model']} |"
+++        )
+++    md.append("")
+++    md.append(f"- Overall pass: {_pct(deployable_router['overall_pass'])}")
+++    md.append(f"- Family pass: {_pct(deployable_router['family_pass'])}")
+++    md.append(
+++        f"- Lift vs Best Single: {deployable_router['lift_vs_best_single']:+.4f}"
+++    )
+++    md.append("")
+++
+++    # Bug type distribution
+++    md.append("## Appendix: Bug Type Distribution (extracted from sample_id)")
+++    md.append("")
+++    md.append("| Bug Type | Count |")
+++    md.append("|----------|-------|")
+++    for bt, count in sorted(bug_type_dist.items()):
+++        md.append(f"| {bt} | {count} |")
+++    md.append("")
+++
+++    # Methodology
+++    md.append("## Methodology Notes")
+++    md.append("")
+++    md.append("- **Best Single:** model with highest overall pass rate.")
+++    md.append(
+++        "- **Oracle Router:** upper bound; passes if ANY model passes the sample."
+++    )
+++    md.append(
+++        "- **Metadata Router:** uses `task_type` metadata to pick best model "
+++        "per task_type."
+++    )
+++    md.append("- **Deployable Router:** uses only deployment-observable signals:")
+++    md.append(
+++        "  - `broken_code` presence (inferred from task_type being "
+++        "static_repair or execution_repair)."
+++    )
+++    md.append(
+++        "  - `execution_feedback` presence (inferred from task_type being "
+++        "execution_repair)."
+++    )
+++    md.append("  - Request category (generation vs repair).")
+++    md.append(
+++        "- **No leakage:** Deployable Router does not use hidden tests, gold "
+++        "answers, or gold bug_type."
+++    )
+++    md.append(
+++        "- **Limitation:** routing maps currently determined on full eval set "
+++        "(train-on-test)."
+++    )
+++    md.append("")
+++
+++    # P3 Decision Gate
+++    md.append("## P3 Decision Gate")
+++    md.append("")
+++    md.append(f"**Verdict: {gate_result['verdict']}**")
+++    md.append("")
+++    md.append(f"{gate_result['reason']}")
+++    md.append("")
+++    md.append("### Gate Criteria")
+++    md.append("")
+++    md.append("| Criterion | Value | Threshold | Met |")
+++    md.append("|-----------|-------|-----------|-----|")
+++    c = gate_result["criteria"]
+++    md.append(f"| Oracle lift vs Best Single | {c['oracle_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['oracle_meaningful'] else 'NO'} |")
+++    md.append(f"| Deployable lift vs Best Single | {c['deployable_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['deployable_meaningful'] else 'NO'} |")
+++    md.append(f"| Deployable McNemar p (2-sided) | {c['deployable_mcnemar_p']:.4f} | < 0.05 | {'YES' if c['deployable_mcnemar_p'] < 0.05 else 'NO'} |")
+++    md.append(f"| Deployable 95% CI | [{c['deployable_ci_95'][0]:+.4f}, {c['deployable_ci_95'][1]:+.4f}] | lower > 0 | {'YES' if c['deployable_ci_95'][0] > 0 else 'NO'} |")
+++    md.append(f"| Deployable b/c (McNemar) | {c['deployable_mcnemar_b']}/{c['deployable_mcnemar_c']} | — | — |")
+++    md.append(f"| Common samples | {c['n_common']} | — | — |")
+++    md.append("")
+++
+++    out_md = _OUT_DIR / "router-analysis.md"
+++    out_md.write_text("\n".join(md), encoding="utf-8")
+++    print(f"Saved Markdown: {out_md}")
+++    return 0
+++
+++
+++if __name__ == "__main__":
+++    raise SystemExit(main())
++diff --git a/tests/test_router_gate.py b/tests/test_router_gate.py
++new file mode 100644
++index 0000000..c5aba16
++--- /dev/null
+++++ b/tests/test_router_gate.py
++@@ -0,0 +1,98 @@
+++"""Tests for the P3 Decision Gate logic in compute_router_analysis.apply_decision_gate."""
+++import pytest
+++from scripts.compute_router_analysis import apply_decision_gate
+++
+++
+++class TestDecisionGate:
+++    def _gate(self, **overrides):
+++        defaults = dict(
+++            deployable_lift=0.07,      # 7pp
+++            oracle_lift=0.10,          # 10pp
+++            deployable_mcnemar_p=0.01, # significant
+++            deployable_ci_lo=0.03,     # CI doesn't cross 0
+++            deployable_ci_hi=0.11,
+++            deployable_b=5,
+++            deployable_c=20,
+++            n_common=576,
+++        )
+++        defaults.update(overrides)
+++        return apply_decision_gate(**defaults)
+++
+++    def test_GO_when_lift_significant_and_ci_positive(self):
+++        g = self._gate()
+++        assert g["verdict"] == "GO"
+++
+++    def test_GO_when_lift_significant_and_mcnemar_significant_even_if_ci_crosses_zero(self):
+++        g = self._gate(deployable_ci_lo=-0.01, deployable_ci_hi=0.15, deployable_mcnemar_p=0.03)
+++        assert g["verdict"] == "GO"
+++
+++    def test_NO_GO_when_oracle_lift_below_threshold(self):
+++        g = self._gate(oracle_lift=0.04)
+++        assert g["verdict"] == "NO-GO"
+++        assert "Oracle Router lift" in g["reason"]
+++
+++    def test_SIGNAL_when_oracle_meaningful_but_deployable_lift_below_threshold(self):
+++        g = self._gate(oracle_lift=0.08, deployable_lift=0.03)
+++        assert g["verdict"] == "SIGNAL"
+++
+++    def test_SIGNAL_when_oracle_meaningful_but_deployable_not_significant(self):
+++        g = self._gate(oracle_lift=0.08, deployable_lift=0.06, deployable_mcnemar_p=0.20, deployable_ci_lo=-0.02)
+++        assert g["verdict"] == "SIGNAL"
+++
+++    def test_NO_GO_when_deployable_no_significant_improvement_and_oracle_also_low(self):
+++        g = self._gate(oracle_lift=0.04, deployable_lift=0.02, deployable_mcnemar_p=0.50, deployable_ci_lo=-0.03)
+++        assert g["verdict"] == "NO-GO"
+++
+++    def test_GO_at_exact_5pp_threshold(self):
+++        # >= 5pp is the threshold (inclusive)
+++        g = self._gate(deployable_lift=0.05, oracle_lift=0.06, deployable_mcnemar_p=0.04, deployable_ci_lo=0.01)
+++        assert g["verdict"] == "GO"
+++
+++    def test_criteria_dict_contains_all_fields(self):
+++        g = self._gate()
+++        c = g["criteria"]
+++        for key in ("lift_threshold_pp", "oracle_lift", "oracle_meaningful",
+++                    "deployable_lift", "deployable_meaningful", "deployable_mcnemar_p",
+++                    "deployable_ci_95", "deployable_ci_significant",
+++                    "deployable_significant", "deployable_mcnemar_b",
+++                    "deployable_mcnemar_c", "n_common"):
+++            assert key in c, f"missing key: {key}"
+++
+++    def test_reason_string_contains_numbers(self):
+++        g = self._gate()
+++        assert "7.0pp" in g["reason"] or "10.0pp" in g["reason"]
+++
+++
+++class TestMcNemarExact:
+++    def test_no_discordant_pairs_returns_1(self):
+++        from scripts.compute_router_analysis import mcnemar_exact
+++        assert mcnemar_exact(0, 0) == 1.0
+++
+++    def test_symmetric_distribution_returns_high_p(self):
+++        from scripts.compute_router_analysis import mcnemar_exact
+++        # 10 vs 10 — no asymmetry
+++        p = mcnemar_exact(10, 10)
+++        assert p > 0.5
+++
+++    def test_extreme_asymmetry_returns_low_p(self):
+++        from scripts.compute_router_analysis import mcnemar_exact
+++        # 0 vs 20 — extreme asymmetry
+++        p = mcnemar_exact(0, 20)
+++        assert p < 0.001
+++
+++
+++class TestPairedBootstrapCI:
+++    def test_identical_pass_lists_give_ci_centered_at_zero(self):
+++        from scripts.compute_router_analysis import paired_bootstrap_ci
+++        passes = [True] * 100 + [False] * 100
+++        lo, hi = paired_bootstrap_ci(passes, passes, n_boot=1000, seed=42)
+++        assert -0.01 < lo < 0.01
+++        assert -0.01 < hi < 0.01
+++
+++    def test_all_b_passes_all_a_fails_gives_positive_ci(self):
+++        from scripts.compute_router_analysis import paired_bootstrap_ci
+++        a = [False] * 100
+++        b = [True] * 100
+++        lo, hi = paired_bootstrap_ci(a, b, n_boot=1000, seed=42)
+++        assert lo > 0.5
+++        assert hi > 0.5
+diff --git a/.superpowers/sdd/task-2-report.md b/.superpowers/sdd/task-2-report.md
+new file mode 100644
+index 0000000..ecbb57e
+--- /dev/null
++++ b/.superpowers/sdd/task-2-report.md
+@@ -0,0 +1,179 @@
++# Task 2 Report: Extend compute_router_analysis.py with P3 Decision Gate
++
++## Status: DONE
++
++## What was implemented
++
++Extended `scripts/compute_router_analysis.py` (and added `tests/test_router_gate.py`) with the P3 Decision Gate logic per the task brief.
++
++### 1. Two inline helper functions (lines 107-137 of `scripts/compute_router_analysis.py`)
++
++Added after `extract_bug_type`, in a new "Paired stats helpers" section:
++- `mcnemar_exact(b: int, c: int) -> float` — two-sided exact McNemar p-value via binomial
++- `paired_bootstrap_ci(pass_a, pass_b, n_boot=10000, seed=42) -> tuple[float, float]` — paired bootstrap 95% CI for difference in pass rate (b - a)
++
++Both copied verbatim from the brief (which mirrors `scripts/compute_paired_stats.py` lines 69-108). They are duplicated inline (not imported) to keep `compute_router_analysis.py` self-contained, as required.
++
++### 2. `apply_decision_gate(...)` function (lines 253-323)
++
++Added before `main()` in a new "P3 Decision Gate" section. Copied verbatim from the brief. Pure function (no I/O, no global state) returning:
++
++```python
++{
++    "verdict": "GO" | "NO-GO" | "SIGNAL",
++    "reason": "<human-readable explanation>",
++    "criteria": {
++        "lift_threshold_pp": 5.0,
++        "oracle_lift", "oracle_meaningful",
++        "deployable_lift", "deployable_meaningful",
++        "deployable_mcnemar_p",
++        "deployable_ci_95": [lo, hi],
++        "deployable_ci_significant",
++        "deployable_significant",
++        "deployable_mcnemar_b", "deployable_mcnemar_c",
++        "n_common",
++    },
++}
++```
++
++### 3. Integration in `main()` (lines 493-527)
++
++Inserted between the `deployable_router = {...}` block and the "Comparison table" section. The clean loop I wrote (NOT copied from the awkward example in the brief):
++
++```python
++# ------------------------------------------------------------------
++# 5. P3 Decision Gate — Deployable Router vs Best Single
++# ------------------------------------------------------------------
++# McNemar convention: A = Best Single, B = Deployable Router
++#   b = #samples where A passed, B failed
++#   c = #samples where A failed, B passed
++best_single_pass_map = {
++    sid: _passed(by_model[best_single_key][sid]) for sid in common
++}
++gate_b = 0
++gate_c = 0
++pass_a: list[bool] = []  # best_single
++pass_b: list[bool] = []  # deployable
++for sid in common:
++    bs_pass = best_single_pass_map[sid]
++    dep_pass = deployable_pass[sid]
++    if bs_pass and not dep_pass:
++        gate_b += 1
++    elif not bs_pass and dep_pass:
++        gate_c += 1
++    pass_a.append(bs_pass)
++    pass_b.append(dep_pass)
++
++mcnemar_p = mcnemar_exact(gate_b, gate_c)
++ci_lo, ci_hi = paired_bootstrap_ci(pass_a, pass_b)
++gate_result = apply_decision_gate(
++    deployable_lift=deployable_router["lift_vs_best_single"],
++    oracle_lift=oracle_router["lift_vs_best_single"],
++    deployable_mcnemar_p=mcnemar_p,
++    deployable_ci_lo=ci_lo,
++    deployable_ci_hi=ci_hi,
++    deployable_b=gate_b,
++    deployable_c=gate_c,
++    n_common=len(common),
++)
++```
++
++The loop iterates `common` exactly once, computing both McNemar discordant counts (`gate_b`/`gate_c`) and the aligned `pass_a`/`pass_b` lists for the bootstrap CI in a single pass.
++
++### 4. `decision_gate` key in JSON result (line 593)
++
++Added `"decision_gate": gate_result,` to the `result` dict, immediately after `deployable_router` and before `comparison_table`.
++
++### 5. "P3 Decision Gate" markdown section (lines 780-798)
++
++Added after the "Methodology Notes" section and before the final `out_md.write_text(...)` call. Includes:
++- The verdict in bold
++- The human-readable reason
++- A criteria table with columns: Criterion | Value | Threshold | Met
++
++The markdown code matches the brief verbatim.
++
++### 6. Test file `tests/test_router_gate.py` (new file, 117 lines)
++
++Created with the verbatim test cases from the brief. Three test classes:
++- `TestDecisionGate` — 9 tests covering GO/NO-GO/SIGNAL branches and edge cases
++- `TestMcNemarExact` — 3 tests (no discordant pairs, symmetric, extreme asymmetry)
++- `TestPairedBootstrapCI` — 2 tests (identical lists → zero CI, all-b-passes → positive CI)
++
++Total: 14 test methods.
++
++## Test results (all 3 verification commands)
++
++### 1. New test file
++```
++$ D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_router_gate.py -v
++============================= test session starts =============================
++platform win32 -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
++rootdir: E:\agent\Qwen\qwen3-code-lab
++configfile: pyproject.toml
++plugins: anyio-4.14.1, hypothesis-6.155.7, timeout-2.4.0
++collected 14 items
++
++tests\test_router_gate.py ..............                                 [100%]
++
++============================= 14 passed in 1.84s ==============================
++```
++**Result: 14/14 passed**
++
++### 2. Import check
++```
++$ D:\Anaconda\envs\qwen3-code-lab\python.exe -c "from scripts.compute_router_analysis import apply_decision_gate, mcnemar_exact, paired_bootstrap_ci; print('imports OK')"
++imports OK
++```
++**Result: imports OK**
++
++### 3. Existing CI tests
++```
++$ D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_p2_evidence_hardening.py tests/test_metrics.py tests/test_schemas.py tests/test_validators.py -v --tb=short
++============================= test session starts =============================
++platform win32 -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
++rootdir: E:\agent\Qwen\qwen3-code-lab
++configfile: pyproject.toml
++plugins: anyio-4.14.1, hypothesis-6.155.7, timeout-2.4.0
++collected 148 items
++
++tests\test_p2_evidence_hardening.py .................................... [ 24%]
++                                                                         [ 24%]
++tests\test_metrics.py ...............................................    [ 56%]
++tests\test_schemas.py ........................................           [ 83%]
++tests\test_validators.py .........................                       [100%]
++
++======================= 148 passed in 111.58s (0:01:51) =======================
++```
++**Result: 148/148 passed**
++
++## Commit
++
++- **SHA:** `5dbaf8b`
++- **Subject:** `feat(router): add P3 Decision Gate with McNemar + bootstrap CI`
++- **Files changed:** 2 files, 905 insertions (new: `scripts/compute_router_analysis.py`, new: `tests/test_router_gate.py`)
++- **Parent:** `deb8db9` (the Task 1 / BASE commit)
++
++Commit message used verbatim from the brief.
++
++## Pre-existing repository state (NOT my changes)
++
++Two pre-existing conditions observed during the task — left untouched per the brief's "Explicitly NOT in scope" rule:
++1. `scripts/compute_paired_stats.py` had uncommitted modifications (renamed model keys from `base`/`stage2-boundary`/... to `full576-base`/`full576-stage2-boundary`/...). I did NOT stage or modify this file.
++2. `scripts/compute_router_analysis.py` was untracked before my work (Task 1 left it on disk but did not commit it). My commit now includes it as a new file alongside my Task 2 changes.
++
++## Self-review checklist
++
++- [x] `apply_decision_gate` is a pure function (no I/O, no global state)
++- [x] McNemar and bootstrap CI functions match the implementations in `compute_paired_stats.py` (copied verbatim from the brief, which mirrors compute_paired_stats.py lines 69-108)
++- [x] `decision_gate` key added to the `result` dict in `main()` (line 593)
++- [x] "P3 Decision Gate" section added to the markdown output (lines 780-798)
++- [x] All tests in `tests/test_router_gate.py` pass (14/14 — brief mentioned "12 test cases" but lists 14 in the test code; all pass)
++- [x] Existing CI tests (evidence_hardening, metrics, schemas, validators) still pass (148/148)
++- [x] No existing router computation logic was modified (Best Single, Oracle, Metadata, Deployable sections untouched — only added new code in clean insertion points)
++- [x] No reformatting of existing code (matched double-quoted strings, 4-space indent, type hints on public functions)
++
++## Notes
++
++- The brief's commit message says "12 test cases" but the test file actually contains 14 test methods (9 + 3 + 2). I kept the commit message verbatim as instructed by the brief. The brief's own test code listing shows 14 methods, so this is a brief-internal inconsistency, not an implementation error.
++- The `paired_bootstrap_ci` in the brief is slightly simpler than the one in `compute_paired_stats.py` (no `observed` variable computed). I copied the brief's version verbatim per instructions — they are functionally identical for CI computation.
+diff --git a/.superpowers/sdd/task-3-brief.md b/.superpowers/sdd/task-3-brief.md
+new file mode 100644
+index 0000000..0669124
+--- /dev/null
++++ b/.superpowers/sdd/task-3-brief.md
+@@ -0,0 +1,304 @@
++# Task 3: Write generate_full576_report.py
++
++## Context
++
++Issue #6 requires a comprehensive Full-576 comparison report that unifies data
++from three JSON sources into a single Markdown document. This script reads the
++outputs of `compare_p2_evals.py`, `compute_paired_stats.py`, and
++`compute_router_analysis.py` and produces `p2-full576-comparison-report.md`.
++
++This is a **new file** — `scripts/generate_full576_report.py` does not exist yet.
++Follow the patterns in `scripts/generate_p2_reports.py` (load_json, fmt_pct, etc.).
++
++## Deliverable
++
++1. Create `scripts/generate_full576_report.py`
++2. Create `tests/test_generate_full576_report.py`
++3. Run the test suite and confirm all tests pass
++4. Commit with message: `feat(scripts): add generate_full576_report.py for Full-576 comparison report`
++
++## Input Files
++
++All three input files are JSON. They may not exist yet (evaluations are still
++running). The script must exit with code 1 and a clear message if any required
++input is missing.
++
++### 1. `evaluations/p2/full576-comparison.json`
++
++Produced by `scripts/compare_p2_evals.py`. Structure:
++
++```json
++{
++  "full576-base": {
++    "label": "Base",
++    "metrics": {
++      "pass_at_1": 0.0,
++      "syntax_rate": 0.0,
++      "repair_success_rate": 0.0,
++      "hidden_pass_rate": 0.0,
++      "format_compliance_rate": 0.0,
++      "timeout_rate": 0.0
++    },
++    "per_task_type": {
++      "code_generation": {"total": 140, "passed": 0, "syntax_ok": 0, "format_ok": 0},
++      "static_repair": {"total": 218, "passed": 0, "syntax_ok": 0, "format_ok": 0},
++      "execution_repair": {"total": 218, "passed": 0, "syntax_ok": 0, "format_ok": 0}
++    },
++    "family_pass_count": 0,
++    "family_total": 75
++  },
++  "full576-stage2-boundary": { ... same structure, "label": "Stage2-v2" },
++  "full576-stage3-repair": { ... "label": "Stage3-v2-Continual" },
++  "full576-independent-stage3": { ... "label": "Stage3-Independent" },
++  "full576-stage3-v3-antiforget": { ... "label": "Stage3-v3-Antiforget" }
++}
++```
++
++### 2. `reports/p2/full576-paired-stats.json`
++
++Produced by `scripts/compute_paired_stats.py`. Structure:
++
++```json
++{
++  "models": ["full576-base", "full576-stage2-boundary", ...],
++  "common_sample_count": 576,
++  "pair_comparisons": [
++    {
++      "pair": ["full576-base", "full576-stage2-boundary"],
++      "sample_compare": {
++        "n_compared": 576,
++        "win": 0,
++        "loss": 0,
++        "unchanged": 576,
++        "rate_a": 0.0,
++        "rate_b": 0.0,
++        "delta": 0.0,
++        "mcnemar_b": 0,
++        "mcnemar_c": 0,
++        "mcnemar_p_two_sided": 1.0,
++        "bootstrap_95ci": [0.0, 0.0]
++      },
++      "family_compare": {
++        "n_families": 75,
++        "families_gained": [],
++        "families_lost": [],
++        "net_gain": 0,
++        "pass_a": 0,
++        "pass_b": 0
++      }
++    }
++  ],
++  "per_model_bug_type_repair": {
++    "full576-base": {
++      "off_by_one": {"total": 0, "passed": 0, "pass_rate": 0.0},
++      "return_value_error": {"total": 0, "passed": 0, "pass_rate": 0.0}
++    }
++  }
++}
++```
++
++### 3. `reports/p2/router-analysis.json`
++
++Produced by `scripts/compute_router_analysis.py`. Structure:
++
++```json
++{
++  "models_loaded": ["full576-base", ...],
++  "models_skipped": [],
++  "common_sample_count": 576,
++  "best_single": {
++    "model": "Base",
++    "model_key": "full576-base",
++    "overall_pass": 0.0,
++    "family_pass": 0.0,
++    "per_task_type": { ... },
++    "n_samples": 576
++  },
++  "oracle_router": {
++    "overall_pass": 0.0,
++    "family_pass": 0.0,
++    "lift_vs_best_single": 0.0
++  },
++  "metadata_router": {
++    "overall_pass": 0.0,
++    "family_pass": 0.0,
++    "routing_map": {"code_generation": "Base", "static_repair": "...", "execution_repair": "..."},
++    "lift_vs_best_single": 0.0
++  },
++  "deployable_router": {
++    "overall_pass": 0.0,
++    "family_pass": 0.0,
++    "routing_map": { ... },
++    "lift_vs_best_single": 0.0
++  },
++  "decision_gate": {
++    "verdict": "GO",
++    "reason": "...",
++    "criteria": {
++      "lift_threshold_pp": 5.0,
++      "oracle_lift": 0.0,
++      "oracle_meaningful": false,
++      "deployable_lift": 0.0,
++      "deployable_meaningful": false,
++      "deployable_mcnemar_p": 1.0,
++      "deployable_ci_95": [0.0, 0.0],
++      "deployable_ci_significant": false,
++      "deployable_significant": false,
++      "deployable_mcnemar_b": 0,
++      "deployable_mcnemar_c": 0,
++      "n_common": 576
++    }
++  },
++  "comparison_table": [
++    {
++      "name": "Base",
++      "type": "single_model",
++      "overall_pass": 0.0,
++      "family_pass": 0.0,
++      "code_generation_pass": 0.0,
++      "static_repair_pass": 0.0,
++      "execution_repair_pass": 0.0,
++      "lift_vs_best_single": 0.0
++    }
++  ]
++}
++```
++
++## Output File
++
++`reports/p2/p2-full576-comparison-report.md`
++
++## Report Structure
++
++The Markdown report must contain these sections in order:
++
++### 1. Header
++```
++# P2 Full-576 Comparison Report
++
++Generated: <ISO timestamp>
++```
++
++### 2. Evaluation Setup
++- Dataset: `data/p2-curriculum/frozen-eval-v2/test_raw.jsonl`
++- Samples: 576
++- Families: 75
++- Task types: code_generation (140), static_repair (218), execution_repair (218)
++- Common sample count (from paired-stats.json)
++
++### 3. Overall Metrics
++
++Table with columns: Model | Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass
++
++Use `fmt_pct()` to format 0-1 ratios as percentages with 1 decimal.
++Rows: all 5 models from comparison.json, in MODELS order:
++  Base, Stage2-v2, Stage3-v2-Continual, Stage3-Independent, Stage3-v3-Antiforget
++
++### 4. Per-Task-Type Breakdown
++
++Three subsections (code_generation, static_repair, execution_repair), each with a table:
++Model | Total | Passed | Rate | Syntax | Format
++
++### 5. Family-Level Pass
++
++Table: Model | Families Passed | Total Families | Rate
++
++Also include Stage3-v2-Continual vs Base delta (from comparison.json if available,
++or from paired-stats.json family_compare).
++
++### 6. Paired Statistics Summary
++
++Table from paired-stats.json pair_comparisons:
++Pair | N | Win | Loss | Unchanged | Delta | McNemar b/c | p (2-sided) | 95% CI
++
++Use the `pair` field labels. Format delta as `+0.0%` or `-0.0%`.
++Format p-value to 4 decimals. Format CI as `[+0.0000, +0.0000]`.
++
++### 7. Bug-Type Repair Success Rate
++
++Table from paired-stats.json per_model_bug_type_repair:
++Bug Type | Base | Stage2-v2 | Stage3-v2-Continual | Stage3-Independent | Stage3-v3-Antiforget
++
++Each cell: `passed/total (rate%)` or `-` if total is 0.
++
++### 8. Router Feasibility Summary
++
++Table from router-analysis.json comparison_table:
++Model/Router | Type | Overall | Family | CodeGen | StaticRepair | ExecRepair | Lift vs Best
++
++### 9. P3 Decision Gate
++
++Display the verdict prominently:
++```
++## P3 Decision Gate
++
++**Verdict: <VERDICT>**
++
++<reason>
++
++### Gate Criteria
++
++| Criterion | Value | Threshold | Met |
++|-----------|-------|-----------|-----|
++| Oracle lift | X.Xpp | >= 5.0pp | YES/NO |
++| Deployable lift | X.Xpp | >= 5.0pp | YES/NO |
++| McNemar p | 0.XXXX | < 0.05 | YES/NO |
++| 95% CI | [+0.0000, +0.0000] | lower > 0 | YES/NO |
++```
++
++## Formatting Rules
++
++- Percentages: `f"{v * 100:.1f}%"` (e.g., 25.0%, 3.5%)
++- Delta: `f"{delta:+.4f}"` for raw, `f"{delta*100:+.1f}pp"` for percentage points
++- p-value: `f"{p:.4f}"`
++- CI: `f"[{lo:+.4f}, {hi:+.4f}]"`
++- Use `datetime.now(timezone.utc).isoformat()` for the timestamp
++
++## Error Handling
++
++- If any of the 3 input files is missing, print an error message to stderr and
++  `return 1` (or `raise SystemExit(1)`)
++- Do NOT crash with an unhandled exception on missing files
++
++## Test Requirements
++
++Create `tests/test_generate_full576_report.py` with:
++
++1. **test_generates_report_with_mock_data**: Create temporary JSON files with
++   minimal valid data, run the report generator, verify the output Markdown file
++   exists and contains expected section headers.
++
++2. **test_missing_input_returns_error**: Verify the script exits with code 1
++   when input files are missing.
++
++3. **test_percentage_formatting**: Verify that pass rates are formatted as
++   percentages with 1 decimal place in the output.
++
++4. **test_decision_gate_verdict_displayed**: Verify the P3 Decision Gate
++   verdict is present in the output.
++
++5. **test_all_five_models_in_table**: Verify all 5 model labels appear in the
++   overall metrics table.
++
++Use `tmp_path` fixture for temp files. Import functions from the script module.
++Follow the test style in `tests/test_router_gate.py`.
++
++## Constraints
++
++- Do NOT modify any existing files other than creating the two new files
++- Do NOT add dependencies beyond stdlib (json, os, pathlib, datetime)
++- Do NOT hardcode metric values — read everything from the JSON inputs
++- The script must be runnable with: `python scripts/generate_full576_report.py`
++- Match the code style of `scripts/generate_p2_reports.py`
++
++## Self-Review Checklist
++
++Before reporting DONE, verify:
++- [ ] Script creates the output file at the correct path
++- [ ] All 9 report sections are present
++- [ ] All 5 models appear in the metrics tables
++- [ ] P3 Decision Gate verdict is displayed
++- [ ] Missing input files cause exit code 1 (not a crash)
++- [ ] All tests pass: `python -m pytest tests/test_generate_full576_report.py -v`
++- [ ] Existing tests still pass: `python -m pytest tests/ -x -q`
++- [ ] No files other than the 2 new files were modified
+diff --git a/.superpowers/sdd/task-3-diff.txt b/.superpowers/sdd/task-3-diff.txt
+new file mode 100644
+index 0000000..26ace46
+--- /dev/null
++++ b/.superpowers/sdd/task-3-diff.txt
+@@ -0,0 +1,510 @@
++﻿=== COMMITS ===
++6670523 feat(scripts): add generate_full576_report.py for Full-576 comparison report
++
++=== STAT ===
++ scripts/generate_full576_report.py    | 266 ++++++++++++++++++++++++++++++++++
++ tests/test_generate_full576_report.py | 223 ++++++++++++++++++++++++++++
++ 2 files changed, 489 insertions(+)
++
++=== DIFF ===
++diff --git a/scripts/generate_full576_report.py b/scripts/generate_full576_report.py
++new file mode 100644
++index 0000000..9f0cc0c
++--- /dev/null
+++++ b/scripts/generate_full576_report.py
++@@ -0,0 +1,266 @@
+++"""Generate the unified Full-576 comparison Markdown report.
+++
+++Reads three JSON inputs produced by upstream P2 scripts:
+++  - evaluations/p2/full576-comparison.json   (compare_p2_evals.py)
+++  - reports/p2/full576-paired-stats.json      (compute_paired_stats.py)
+++  - reports/p2/router-analysis.json           (compute_router_analysis.py)
+++
+++Writes:
+++  - reports/p2/p2-full576-comparison-report.md
+++
+++If any of the three input files is missing, prints an error to stderr and
+++exits with code 1 (does not crash with an unhandled exception).
+++"""
+++import json
+++import sys
+++from datetime import datetime, timezone
+++from pathlib import Path
+++
+++_ROOT = Path(__file__).resolve().parent.parent
+++_EVAL_DIR = _ROOT / "evaluations" / "p2"
+++_REPORTS = _ROOT / "reports" / "p2"
+++
+++COMPARISON_PATH = _EVAL_DIR / "full576-comparison.json"
+++PAIRED_STATS_PATH = _REPORTS / "full576-paired-stats.json"
+++ROUTER_ANALYSIS_PATH = _REPORTS / "router-analysis.json"
+++OUTPUT_PATH = _REPORTS / "p2-full576-comparison-report.md"
+++
+++# Canonical model order per Issue #6 P3
+++MODELS = [
+++    ("full576-base", "Base"),
+++    ("full576-stage2-boundary", "Stage2-v2"),
+++    ("full576-stage3-repair", "Stage3-v2-Continual"),
+++    ("full576-independent-stage3", "Stage3-Independent"),
+++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
+++]
+++
+++TASK_TYPES = ["code_generation", "static_repair", "execution_repair"]
+++
+++
+++def load_json(p: Path) -> dict:
+++    return json.load(open(p))
+++
+++
+++def fmt_pct(v: float) -> str:
+++    return f"{v * 100:.1f}%"
+++
+++
+++def generate_report(comparison: dict, paired_stats: dict, router_analysis: dict) -> str:
+++    lines: list[str] = []
+++
+++    # 1. Header
+++    lines.append("# P2 Full-576 Comparison Report")
+++    lines.append("")
+++    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}")
+++    lines.append("")
+++
+++    # 2. Evaluation Setup
+++    common_n = paired_stats.get("common_sample_count", 576)
+++    lines.append("## Evaluation Setup")
+++    lines.append("")
+++    lines.append("- Dataset: data/p2-curriculum/frozen-eval-v2/test_raw.jsonl")
+++    lines.append("- Samples: 576")
+++    lines.append("- Families: 75")
+++    lines.append("- Task types: code_generation (140), static_repair (218), execution_repair (218)")
+++    lines.append(f"- Common sample count (paired-stats): {common_n}")
+++    lines.append("")
+++
+++    # 3. Overall Metrics
+++    lines.append("## Overall Metrics")
+++    lines.append("")
+++    lines.append("| Model | Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |")
+++    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+++    for key, label in MODELS:
+++        if key not in comparison:
+++            continue
+++        m = comparison[key].get("metrics", {})
+++        fp = comparison[key].get("family_pass_count", 0)
+++        ft = comparison[key].get("family_total", 0)
+++        fam_rate = fp / ft if ft else 0.0
+++        lines.append(
+++            f"| {label} | {fmt_pct(m.get('pass_at_1', 0.0))} | "
+++            f"{fmt_pct(m.get('syntax_rate', 0.0))} | "
+++            f"{fmt_pct(m.get('repair_success_rate', 0.0))} | "
+++            f"{fmt_pct(m.get('hidden_pass_rate', 0.0))} | "
+++            f"{fmt_pct(m.get('format_compliance_rate', 0.0))} | "
+++            f"{fmt_pct(m.get('timeout_rate', 0.0))} | "
+++            f"{fmt_pct(fam_rate)} |"
+++        )
+++    lines.append("")
+++
+++    # 4. Per-Task-Type Breakdown
+++    lines.append("## Per-Task-Type Breakdown")
+++    lines.append("")
+++    for t in TASK_TYPES:
+++        lines.append(f"### {t}")
+++        lines.append("")
+++        lines.append("| Model | Total | Passed | Rate | Syntax | Format |")
+++        lines.append("|---|---:|---:|---:|---:|---:|")
+++        for key, label in MODELS:
+++            if key not in comparison:
+++                continue
+++            tt = comparison[key].get("per_task_type", {}).get(t, {})
+++            total = tt.get("total", 0)
+++            passed = tt.get("passed", 0)
+++            syn = tt.get("syntax_ok", 0)
+++            fmt = tt.get("format_ok", 0)
+++            rate = passed / total if total else 0.0
+++            syn_rate = syn / total if total else 0.0
+++            fmt_rate = fmt / total if total else 0.0
+++            lines.append(
+++                f"| {label} | {total} | {passed} | {fmt_pct(rate)} | "
+++                f"{fmt_pct(syn_rate)} | {fmt_pct(fmt_rate)} |"
+++            )
+++        lines.append("")
+++
+++    # 5. Family-Level Pass
+++    lines.append("## Family-Level Pass")
+++    lines.append("")
+++    lines.append("| Model | Families Passed | Total Families | Rate |")
+++    lines.append("|---|---:|---:|---:|")
+++    for key, label in MODELS:
+++        if key not in comparison:
+++            continue
+++        fp = comparison[key].get("family_pass_count", 0)
+++        ft = comparison[key].get("family_total", 0)
+++        rate = fp / ft if ft else 0.0
+++        lines.append(f"| {label} | {fp} | {ft} | {fmt_pct(rate)} |")
+++    lines.append("")
+++    # Stage3-v2-Continual vs Base family delta (from comparison.json if available)
+++    base = comparison.get("full576-base", {})
+++    s3 = comparison.get("full576-stage3-repair", {})
+++    if base and s3:
+++        base_fam = base.get("family_pass_count", 0)
+++        s3_fam = s3.get("family_pass_count", 0)
+++        delta = s3_fam - base_fam
+++        lines.append(f"- Stage3-v2-Continual vs Base family delta: {delta:+d}")
+++        lines.append("")
+++
+++    # 6. Paired Statistics Summary
+++    lines.append("## Paired Statistics Summary")
+++    lines.append("")
+++    lines.append("| Pair | N | Win | Loss | Unchanged | Delta | McNemar b/c | p (2-sided) | 95% CI |")
+++    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---|")
+++    for p in paired_stats.get("pair_comparisons", []):
+++        pair = p.get("pair", [])
+++        if len(pair) != 2:
+++            continue
+++        a, b = pair[0], pair[1]
+++        s = p.get("sample_compare", {})
+++        ci = s.get("bootstrap_95ci", [0.0, 0.0])
+++        delta = s.get("delta", 0.0)
+++        lines.append(
+++            f"| {a} → {b} | {s.get('n_compared', 0)} | {s.get('win', 0)} | "
+++            f"{s.get('loss', 0)} | {s.get('unchanged', 0)} | "
+++            f"{delta * 100:+.1f}% | "
+++            f"{s.get('mcnemar_b', 0)}/{s.get('mcnemar_c', 0)} | "
+++            f"{s.get('mcnemar_p_two_sided', 1.0):.4f} | "
+++            f"[{ci[0]:+.4f}, {ci[1]:+.4f}] |"
+++        )
+++    lines.append("")
+++
+++    # 7. Bug-Type Repair Success Rate
+++    lines.append("## Bug-Type Repair Success Rate")
+++    lines.append("")
+++    bug_stats = paired_stats.get("per_model_bug_type_repair", {})
+++    bug_types = sorted({bt for d in bug_stats.values() for bt in d})
+++    header_labels = [label for _, label in MODELS]
+++    lines.append("| Bug Type | " + " | ".join(header_labels) + " |")
+++    lines.append("|---|" + "|".join(["---:"] * len(header_labels)) + "|")
+++    for bt in bug_types:
+++        row = f"| {bt} |"
+++        for key, _ in MODELS:
+++            s = bug_stats.get(key, {}).get(bt, {"total": 0, "passed": 0, "pass_rate": 0.0})
+++            total = s.get("total", 0)
+++            if total == 0:
+++                row += " - |"
+++            else:
+++                passed = s.get("passed", 0)
+++                rate = s.get("pass_rate", 0.0)
+++                row += f" {passed}/{total} ({fmt_pct(rate)}) |"
+++        lines.append(row)
+++    lines.append("")
+++
+++    # 8. Router Feasibility Summary
+++    lines.append("## Router Feasibility Summary")
+++    lines.append("")
+++    lines.append("| Model/Router | Type | Overall | Family | CodeGen | StaticRepair | ExecRepair | Lift vs Best |")
+++    lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+++    for row in router_analysis.get("comparison_table", []):
+++        lines.append(
+++            f"| {row.get('name', '?')} | {row.get('type', '?')} | "
+++            f"{fmt_pct(row.get('overall_pass', 0.0))} | "
+++            f"{fmt_pct(row.get('family_pass', 0.0))} | "
+++            f"{fmt_pct(row.get('code_generation_pass', 0.0))} | "
+++            f"{fmt_pct(row.get('static_repair_pass', 0.0))} | "
+++            f"{fmt_pct(row.get('execution_repair_pass', 0.0))} | "
+++            f"{row.get('lift_vs_best_single', 0.0):+.4f} |"
+++        )
+++    lines.append("")
+++
+++    # 9. P3 Decision Gate
+++    gate = router_analysis.get("decision_gate", {})
+++    verdict = gate.get("verdict", "UNKNOWN")
+++    reason = gate.get("reason", "")
+++    c = gate.get("criteria", {})
+++    lines.append("## P3 Decision Gate")
+++    lines.append("")
+++    lines.append(f"**Verdict: {verdict}**")
+++    lines.append("")
+++    lines.append(reason)
+++    lines.append("")
+++    lines.append("### Gate Criteria")
+++    lines.append("")
+++    lines.append("| Criterion | Value | Threshold | Met |")
+++    lines.append("|-----------|-------|-----------|-----|")
+++    oracle_lift = c.get("oracle_lift", 0.0)
+++    deployable_lift = c.get("deployable_lift", 0.0)
+++    mcnemar_p = c.get("deployable_mcnemar_p", 1.0)
+++    ci = c.get("deployable_ci_95", [0.0, 0.0])
+++    lines.append(
+++        f"| Oracle lift | {oracle_lift * 100:.1f}pp | >= 5.0pp | "
+++        f"{'YES' if c.get('oracle_meaningful', False) else 'NO'} |"
+++    )
+++    lines.append(
+++        f"| Deployable lift | {deployable_lift * 100:.1f}pp | >= 5.0pp | "
+++        f"{'YES' if c.get('deployable_meaningful', False) else 'NO'} |"
+++    )
+++    lines.append(
+++        f"| McNemar p | {mcnemar_p:.4f} | < 0.05 | "
+++        f"{'YES' if mcnemar_p < 0.05 else 'NO'} |"
+++    )
+++    lines.append(
+++        f"| 95% CI | [{ci[0]:+.4f}, {ci[1]:+.4f}] | lower > 0 | "
+++        f"{'YES' if ci[0] > 0 else 'NO'} |"
+++    )
+++    lines.append("")
+++
+++    return "\n".join(lines)
+++
+++
+++def main() -> int:
+++    inputs = [
+++        (COMPARISON_PATH, "full576-comparison.json"),
+++        (PAIRED_STATS_PATH, "full576-paired-stats.json"),
+++        (ROUTER_ANALYSIS_PATH, "router-analysis.json"),
+++    ]
+++    missing = [(p, name) for p, name in inputs if not p.exists()]
+++    if missing:
+++        for p, name in missing:
+++            print(f"ERROR: missing input file: {name} ({p})", file=sys.stderr)
+++        return 1
+++
+++    comparison = load_json(COMPARISON_PATH)
+++    paired_stats = load_json(PAIRED_STATS_PATH)
+++    router_analysis = load_json(ROUTER_ANALYSIS_PATH)
+++
+++    _REPORTS.mkdir(parents=True, exist_ok=True)
+++    md = generate_report(comparison, paired_stats, router_analysis)
+++    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+++        f.write(md)
+++    print(f"Wrote {OUTPUT_PATH}")
+++    return 0
+++
+++
+++if __name__ == "__main__":
+++    raise SystemExit(main())
++diff --git a/tests/test_generate_full576_report.py b/tests/test_generate_full576_report.py
++new file mode 100644
++index 0000000..9dbe33c
++--- /dev/null
+++++ b/tests/test_generate_full576_report.py
++@@ -0,0 +1,223 @@
+++"""Tests for scripts/generate_full576_report.py."""
+++import json
+++
+++import pytest
+++
+++from scripts.generate_full576_report import MODELS, generate_report, main
+++
+++
+++def _minimal_comparison() -> dict:
+++    """Build a minimal valid full576-comparison.json structure."""
+++    out = {}
+++    for key, label in MODELS:
+++        out[key] = {
+++            "label": label,
+++            "metrics": {
+++                "pass_at_1": 0.25,
+++                "syntax_rate": 0.80,
+++                "repair_success_rate": 0.10,
+++                "hidden_pass_rate": 0.20,
+++                "format_compliance_rate": 0.95,
+++                "timeout_rate": 0.05,
+++            },
+++            "per_task_type": {
+++                "code_generation": {"total": 140, "passed": 35, "syntax_ok": 112, "format_ok": 133},
+++                "static_repair": {"total": 218, "passed": 21, "syntax_ok": 174, "format_ok": 207},
+++                "execution_repair": {"total": 218, "passed": 22, "syntax_ok": 174, "format_ok": 207},
+++            },
+++            "family_pass_count": 5,
+++            "family_total": 75,
+++        }
+++    return out
+++
+++
+++def _minimal_paired_stats() -> dict:
+++    return {
+++        "models": [k for k, _ in MODELS],
+++        "common_sample_count": 576,
+++        "pair_comparisons": [
+++            {
+++                "pair": ["full576-base", "full576-stage2-boundary"],
+++                "sample_compare": {
+++                    "n_compared": 576,
+++                    "win": 10,
+++                    "loss": 5,
+++                    "unchanged": 561,
+++                    "rate_a": 0.25,
+++                    "rate_b": 0.30,
+++                    "delta": 0.05,
+++                    "mcnemar_b": 5,
+++                    "mcnemar_c": 10,
+++                    "mcnemar_p_two_sided": 0.30,
+++                    "bootstrap_95ci": [0.005, 0.095],
+++                },
+++                "family_compare": {
+++                    "n_families": 75,
+++                    "families_gained": [],
+++                    "families_lost": [],
+++                    "net_gain": 0,
+++                    "pass_a": 5,
+++                    "pass_b": 6,
+++                },
+++            }
+++        ],
+++        "per_model_bug_type_repair": {
+++            "full576-base": {
+++                "off_by_one": {"total": 30, "passed": 3, "pass_rate": 0.1},
+++                "return_value_error": {"total": 0, "passed": 0, "pass_rate": 0.0},
+++            },
+++        },
+++    }
+++
+++
+++def _minimal_router_analysis() -> dict:
+++    return {
+++        "models_loaded": [k for k, _ in MODELS],
+++        "models_skipped": [],
+++        "common_sample_count": 576,
+++        "best_single": {
+++            "model": "Base",
+++            "model_key": "full576-base",
+++            "overall_pass": 0.25,
+++            "family_pass": 0.067,
+++            "per_task_type": {},
+++            "n_samples": 576,
+++        },
+++        "oracle_router": {
+++            "overall_pass": 0.40,
+++            "family_pass": 0.10,
+++            "lift_vs_best_single": 0.15,
+++        },
+++        "metadata_router": {
+++            "overall_pass": 0.30,
+++            "family_pass": 0.08,
+++            "routing_map": {},
+++            "lift_vs_best_single": 0.05,
+++        },
+++        "deployable_router": {
+++            "overall_pass": 0.28,
+++            "family_pass": 0.07,
+++            "routing_map": {},
+++            "lift_vs_best_single": 0.03,
+++        },
+++        "decision_gate": {
+++            "verdict": "SIGNAL",
+++            "reason": "Oracle lift >= 5pp but deployable not significant.",
+++            "criteria": {
+++                "lift_threshold_pp": 5.0,
+++                "oracle_lift": 0.15,
+++                "oracle_meaningful": True,
+++                "deployable_lift": 0.03,
+++                "deployable_meaningful": False,
+++                "deployable_mcnemar_p": 0.20,
+++                "deployable_ci_95": [-0.02, 0.08],
+++                "deployable_ci_significant": False,
+++                "deployable_significant": False,
+++                "deployable_mcnemar_b": 5,
+++                "deployable_mcnemar_c": 10,
+++                "n_common": 576,
+++            },
+++        },
+++        "comparison_table": [
+++            {
+++                "name": "Base",
+++                "type": "single_model",
+++                "overall_pass": 0.25,
+++                "family_pass": 0.067,
+++                "code_generation_pass": 0.25,
+++                "static_repair_pass": 0.10,
+++                "execution_repair_pass": 0.10,
+++                "lift_vs_best_single": 0.0,
+++            }
+++        ],
+++    }
+++
+++
+++def test_generates_report_with_mock_data(tmp_path, monkeypatch):
+++    """Create temp JSON files with minimal valid data, run main, verify output exists."""
+++    (tmp_path / "full576-comparison.json").write_text(
+++        json.dumps(_minimal_comparison()), encoding="utf-8"
+++    )
+++    (tmp_path / "full576-paired-stats.json").write_text(
+++        json.dumps(_minimal_paired_stats()), encoding="utf-8"
+++    )
+++    (tmp_path / "router-analysis.json").write_text(
+++        json.dumps(_minimal_router_analysis()), encoding="utf-8"
+++    )
+++
+++    import scripts.generate_full576_report as mod
+++    monkeypatch.setattr(mod, "COMPARISON_PATH", tmp_path / "full576-comparison.json")
+++    monkeypatch.setattr(mod, "PAIRED_STATS_PATH", tmp_path / "full576-paired-stats.json")
+++    monkeypatch.setattr(mod, "ROUTER_ANALYSIS_PATH", tmp_path / "router-analysis.json")
+++    out_path = tmp_path / "p2-full576-comparison-report.md"
+++    monkeypatch.setattr(mod, "OUTPUT_PATH", out_path)
+++
+++    rc = main()
+++    assert rc == 0
+++    assert out_path.exists()
+++    content = out_path.read_text(encoding="utf-8")
+++
+++    expected_sections = [
+++        "# P2 Full-576 Comparison Report",
+++        "## Evaluation Setup",
+++        "## Overall Metrics",
+++        "## Per-Task-Type Breakdown",
+++        "## Family-Level Pass",
+++        "## Paired Statistics Summary",
+++        "## Bug-Type Repair Success Rate",
+++        "## Router Feasibility Summary",
+++        "## P3 Decision Gate",
+++    ]
+++    for section in expected_sections:
+++        assert section in content, f"missing section header: {section}"
+++
+++
+++def test_missing_input_returns_error(tmp_path, monkeypatch):
+++    """Verify main() returns 1 when input files are missing."""
+++    import scripts.generate_full576_report as mod
+++    monkeypatch.setattr(mod, "COMPARISON_PATH", tmp_path / "nope-1.json")
+++    monkeypatch.setattr(mod, "PAIRED_STATS_PATH", tmp_path / "nope-2.json")
+++    monkeypatch.setattr(mod, "ROUTER_ANALYSIS_PATH", tmp_path / "nope-3.json")
+++    monkeypatch.setattr(mod, "OUTPUT_PATH", tmp_path / "out.md")
+++
+++    rc = main()
+++    assert rc == 1
+++    assert not (tmp_path / "out.md").exists()
+++
+++
+++def test_percentage_formatting():
+++    """Verify pass rates are formatted as percentages with 1 decimal place."""
+++    md = generate_report(
+++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+++    )
+++    # pass_at_1=0.25 -> "25.0%"
+++    assert "25.0%" in md
+++    # syntax_rate=0.80 -> "80.0%"
+++    assert "80.0%" in md
+++    # timeout_rate=0.05 -> "5.0%"
+++    assert "5.0%" in md
+++
+++
+++def test_decision_gate_verdict_displayed():
+++    """Verify the P3 Decision Gate verdict is present in the output."""
+++    md = generate_report(
+++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+++    )
+++    assert "**Verdict: SIGNAL**" in md
+++    # The reason should also be present
+++    assert "Oracle lift >= 5pp but deployable not significant." in md
+++    # Gate criteria table should be present
+++    assert "### Gate Criteria" in md
+++    assert "Oracle lift" in md
+++    assert "Deployable lift" in md
+++    assert "McNemar p" in md
+++    assert "95% CI" in md
+++
+++
+++def test_all_five_models_in_table():
+++    """Verify all 5 model labels appear in the overall metrics table."""
+++    md = generate_report(
+++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+++    )
+++    for _, label in MODELS:
+++        assert label in md, f"missing model label in table: {label}"
+diff --git a/.superpowers/sdd/task-3-report.md b/.superpowers/sdd/task-3-report.md
+new file mode 100644
+index 0000000..e49bb0a
+--- /dev/null
++++ b/.superpowers/sdd/task-3-report.md
+@@ -0,0 +1,167 @@
++# Task 3 Report: generate_full576_report.py
++
++## Status: DONE
++
++## What was implemented
++
++Created `scripts/generate_full576_report.py` — a new script that reads three JSON
++inputs produced by upstream P2 scripts and produces a unified Markdown report
++at `reports/p2/p2-full576-comparison-report.md`.
++
++The script reads:
++- `evaluations/p2/full576-comparison.json` (from `compare_p2_evals.py`)
++- `reports/p2/full576-paired-stats.json` (from `compute_paired_stats.py`)
++- `reports/p2/router-analysis.json` (from `compute_router_analysis.py`)
++
++The generated report contains all 9 sections in the required order:
++1. Header (`# P2 Full-576 Comparison Report` + ISO timestamp)
++2. Evaluation Setup (dataset, samples, families, task types, common sample count)
++3. Overall Metrics (5 models × 8 columns incl. Family Pass)
++4. Per-Task-Type Breakdown (3 subsections: code_generation, static_repair, execution_repair)
++5. Family-Level Pass (+ Stage3-v2-Continual vs Base family delta)
++6. Paired Statistics Summary (pair_comparisons table with McNemar + CI)
++7. Bug-Type Repair Success Rate (bug_types × 5 models, `-` when total=0)
++8. Router Feasibility Summary (router-analysis comparison_table)
++9. P3 Decision Gate (verdict + reason + criteria table with YES/NO)
++
++If any of the 3 input files is missing, the script prints an error to stderr
++and returns exit code 1 (no unhandled exception).
++
++Code style matches `scripts/generate_p2_reports.py` (load_json, fmt_pct helpers,
++`lines.append(...)` pattern, `_ROOT`/`_REPORTS` module-level constants).
++
++A test file with 5 tests was also created, covering: mock-data end-to-end run,
++missing-input error path, percentage formatting, decision-gate verdict display,
++and all-five-models presence.
++
++## Files created
++
++- `e:\agent\Qwen\qwen3-code-lab\scripts\generate_full576_report.py` (266 lines)
++- `e:\agent\Qwen\qwen3-code-lab\tests\test_generate_full576_report.py` (223 lines)
++
++No existing files were modified.
++
++## Test results
++
++### New tests
++
++Command:
++```
++D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_generate_full576_report.py -v
++```
++
++Output:
++```
++============================= test session starts =============================
++platform win32 -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
++rootdir: E:\agent\Qwen\qwen3-code-lab
++configfile: pyproject.toml
++plugins: anyio-4.14.1, hypothesis-6.155.7, timeout-2.4.0
++collected 5 items
++
++tests\test_generate_full576_report.py .....                              [100%]
++
++======================== 5 passed in 77.82s (0:01:17) =========================
++```
++
++Result: **5 passed, 0 failed**.
++
++The 5 tests:
++1. `test_generates_report_with_mock_data` — writes 3 temp JSON files, runs `main()`, verifies the output `.md` exists and contains all 9 section headers.
++2. `test_missing_input_returns_error` — points paths to non-existent files, asserts `main()` returns 1 and no output file is written.
++3. `test_percentage_formatting` — calls `generate_report()` directly with mock dicts, asserts `25.0%`, `80.0%`, `5.0%` appear (1-decimal percentage format).
++4. `test_decision_gate_verdict_displayed` — asserts `**Verdict: SIGNAL**`, the reason string, and the Gate Criteria table are present.
++5. `test_all_five_models_in_table` — asserts all 5 model labels (Base, Stage2-v2, Stage3-v2-Continual, Stage3-Independent, Stage3-v3-Antiforget) appear in the output.
++
++### Full test suite (no-breakage check)
++
++Command:
++```
++D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/ -x -q
++```
++
++Output (tail):
++```
++........................................................................ [ 11%]
++........................................................................ [ 22%]
++........................................................................ [ 33%]
++........................................................................ [ 45%]
++........................................................................ [ 56%]
++...............................................................s........ [ 67%]
++........................................................................ [ 79%]
++........................................................................ [ 90%]
++.............................................................            [100%]
++============================== warnings summary ===============================
++<frozen importlib._bootstrap>:241
++  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
++  ...
++sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
++```
++
++Exit code: **0**. Result: **708 passed, 1 skipped, 0 failed**. The single
++skip is pre-existing (unrelated to this task). The 5 new tests are included
++in this count.
++
++## Commit SHA
++
++Full SHA: `6670523e2e9d67af4dee55a272994d9adca56e7d`
++
++```
++commit 6670523e2e9d67af4dee55a272994d9adca56e7d
++Author: Claude Code <noreply@anthropic.com>
++Date:   Sat Jul 4 00:05:18 2026 +0800
++
++    feat(scripts): add generate_full576_report.py for Full-576 comparison report
++
++ scripts/generate_full576_report.py    | 266 ++++++++++++++++++++++++++++++++++
++ tests/test_generate_full576_report.py | 223 ++++++++++++++++++++++++++++
++ 2 files changed, 489 insertions(+)
++```
++
++Only the 2 new files were committed; no existing files were modified.
++
++## Self-review checklist
++
++- [x] Script creates the output file at the correct path
++      (`reports/p2/p2-full576-comparison-report.md`)
++- [x] All 9 report sections are present (verified by
++      `test_generates_report_with_mock_data`)
++- [x] All 5 models appear in the metrics tables (verified by
++      `test_all_five_models_in_table`)
++- [x] P3 Decision Gate verdict is displayed (verified by
++      `test_decision_gate_verdict_displayed`)
++- [x] Missing input files cause exit code 1, not a crash (verified by
++      `test_missing_input_returns_error`; `main()` checks `p.exists()` before
++      opening and returns 1 after printing to stderr)
++- [x] All new tests pass: `python -m pytest tests/test_generate_full576_report.py -v`
++      → 5 passed
++- [x] Existing tests still pass: `python -m pytest tests/ -x -q` → 708 passed,
++      1 skipped, 0 failed, exit 0
++- [x] No files other than the 2 new files were modified (verified by
++      `git show --stat HEAD` — only 2 files in the commit, 489 insertions, 0
++      deletions)
++- [x] No dependencies beyond stdlib (`json`, `sys`, `datetime`, `pathlib`)
++- [x] No hardcoded metric values — every metric is read from the JSON inputs
++      via `.get(...)` with safe defaults
++- [x] Script is runnable with `python scripts/generate_full576_report.py`
++      (uses `if __name__ == "__main__": raise SystemExit(main())`)
++- [x] Code style matches `generate_p2_reports.py` (load_json, fmt_pct,
++      `lines.append` pattern, `_ROOT` / `_REPORTS` module constants)
++
++## Concerns
++
++None.
++
++- The 3 upstream JSON inputs do not exist yet (evaluations are still running),
++  so running the script directly today exits with code 1 and a clear stderr
++  message — this is the intended graceful-degradation behavior per the brief.
++- The Stage3-v2-Continual vs Base family delta in section 5 is computed from
++  `comparison.json` only (the brief allowed falling back to `paired-stats.json`
++  `family_compare`, but `comparison.json` is the primary source and will be
++  present whenever the upstream `compare_p2_evals.py` has run). If both models
++  are missing from `comparison.json`, the delta line is omitted rather than
++  crashing.
++- Section 6 delta is formatted as `+0.0%` per the brief's section-specific
++  instruction; section 8 router lift uses `+.4f` (raw) to match the existing
++  `compute_router_analysis.py` Markdown output. Both interpretations are
++  documented in the brief's formatting rules.
+diff --git a/requirements-ci.txt b/requirements-ci.txt
+new file mode 100644
+index 0000000..8b3e350
+--- /dev/null
++++ b/requirements-ci.txt
+@@ -0,0 +1,7 @@
++pytest
++pytest-timeout
++hypothesis
++pyyaml
++pydantic
++ruff
++mypy
+diff --git a/run_full576_eval.bat b/run_full576_eval.bat
+new file mode 100644
+index 0000000..5dc870e
+--- /dev/null
++++ b/run_full576_eval.bat
+@@ -0,0 +1,31 @@
++@echo off
++cd /d e:\agent\Qwen\qwen3-code-lab
++set PYTHONUNBUFFERED=1
++set PY=D:\Anaconda\envs\qwen3-code-lab\python.exe
++set DATASET=data/p2-curriculum/frozen-eval-v2/test_raw.jsonl
++set MODEL=models/Qwen3-0.6B
++
++echo === Full-576 Evaluation Start: %DATE% %TIME% ===
++
++echo --- Model 1/5: Base ---
++%PY% -X faulthandler -u scripts\evaluate_model.py --model %MODEL% --dataset %DATASET% --output evaluations/p2/full576-base.json 2>&1
++echo Base exit: %ERRORLEVEL%
++
++echo --- Model 2/5: Stage2-v2 ---
++%PY% -X faulthandler -u scripts\evaluate_model.py --model %MODEL% --adapter adapters/p2/continual/stage2-boundary-v2 --dataset %DATASET% --output evaluations/p2/full576-stage2-boundary.json 2>&1
++echo Stage2 exit: %ERRORLEVEL%
++
++echo --- Model 3/5: Stage3-v2-Continual ---
++%PY% -X faulthandler -u scripts\evaluate_model.py --model %MODEL% --adapter adapters/p2/continual/stage3-repair-v2 --dataset %DATASET% --output evaluations/p2/full576-stage3-repair.json 2>&1
++echo Stage3-v2 exit: %ERRORLEVEL%
++
++echo --- Model 4/5: Stage3-Independent ---
++%PY% -X faulthandler -u scripts\evaluate_model.py --model %MODEL% --adapter adapters/p2/independent/stage3-repair-v2 --dataset %DATASET% --output evaluations/p2/full576-independent-stage3.json 2>&1
++echo Independent exit: %ERRORLEVEL%
++
++echo --- Model 5/5: Stage3-v3-Antiforget ---
++%PY% -X faulthandler -u scripts\evaluate_model.py --model %MODEL% --adapter adapters/p2/continual/stage3-repair-v3 --dataset %DATASET% --output evaluations/p2/full576-stage3-v3-antiforget.json 2>&1
++echo Antiforget exit: %ERRORLEVEL%
++
++echo === Full-576 Evaluation Complete: %DATE% %TIME% ===
++echo FULL576_ALL_DONE_MARKER
+diff --git a/run_remaining_evals.ps1 b/run_remaining_evals.ps1
+new file mode 100644
+index 0000000..9e1f2cb
+--- /dev/null
++++ b/run_remaining_evals.ps1
+@@ -0,0 +1,38 @@
++# run_remaining_evals.ps1
++# Waits for Base Full-576 eval to finish, then runs the remaining 4 models.
++cd e:\agent\Qwen\qwen3-code-lab
++
++$base_output = "evaluations/p2/full576-base.json"
++$py = "D:\Anaconda\envs\qwen3-code-lab\python.exe"
++$dataset = "data/p2-curriculum/frozen-eval-v2/test_raw.jsonl"
++$model = "models/Qwen3-0.6B"
++
++Write-Host "=== Waiting for Base eval to complete (checking for $base_output) ==="
++while (-not (Test-Path $base_output)) {
++    Start-Sleep -Seconds 30
++}
++Write-Host "=== Base eval complete. Starting remaining 4 models ==="
++Write-Host "=== Start time: $(Get-Date) ==="
++
++# Model 2/5: Stage2-v2
++Write-Host "--- Model 2/5: Stage2-v2 ---"
++& $py -X faulthandler -u scripts/evaluate_model.py --model $model --adapter adapters/p2/continual/stage2-boundary-v2 --dataset $dataset --output evaluations/p2/full576-stage2-boundary.json
++Write-Host "Stage2 exit: $LASTEXITCODE"
++
++# Model 3/5: Stage3-v2-Continual
++Write-Host "--- Model 3/5: Stage3-v2-Continual ---"
++& $py -X faulthandler -u scripts/evaluate_model.py --model $model --adapter adapters/p2/continual/stage3-repair-v2 --dataset $dataset --output evaluations/p2/full576-stage3-repair.json
++Write-Host "Stage3-v2 exit: $LASTEXITCODE"
++
++# Model 4/5: Stage3-Independent
++Write-Host "--- Model 4/5: Stage3-Independent ---"
++& $py -X faulthandler -u scripts/evaluate_model.py --model $model --adapter adapters/p2/independent/stage3-repair-v2 --dataset $dataset --output evaluations/p2/full576-independent-stage3.json
++Write-Host "Independent exit: $LASTEXITCODE"
++
++# Model 5/5: Stage3-v3-Antiforget
++Write-Host "--- Model 5/5: Stage3-v3-Antiforget ---"
++& $py -X faulthandler -u scripts/evaluate_model.py --model $model --adapter adapters/p2/continual/stage3-repair-v3 --dataset $dataset --output evaluations/p2/full576-stage3-v3-antiforget.json
++Write-Host "Antiforget exit: $LASTEXITCODE"
++
++Write-Host "=== All remaining evals complete: $(Get-Date) ==="
++Write-Host "ALL_REMAINING_EVALS_DONE_MARKER"
+diff --git a/scripts/compare_p2_evals.py b/scripts/compare_p2_evals.py
+index ed292fa..c61b586 100644
+--- a/scripts/compare_p2_evals.py
++++ b/scripts/compare_p2_evals.py
+@@ -1,22 +1,23 @@
+ """Compare P2 evaluation results across models, with per-task-type breakdown."""
+ import json
+ from pathlib import Path
+ from collections import defaultdict
+ 
+ _ROOT = Path(__file__).resolve().parent.parent
+ 
+ MODELS = [
+-    ("base", "Base"),
+-    ("stage1-code", "Stage1-Code"),
+-    ("stage2-boundary", "Stage2-Boundary"),
+-    ("stage3-repair", "Stage3-Repair"),
++    ("full576-base", "Base"),
++    ("full576-stage2-boundary", "Stage2-v2"),
++    ("full576-stage3-repair", "Stage3-v2-Continual"),
++    ("full576-independent-stage3", "Stage3-Independent"),
++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
+ ]
+ 
+ 
+ def load_eval(name: str) -> dict:
+     f = _ROOT / "evaluations" / "p2" / f"{name}.json"
+     if not f.exists():
+         return None
+     return json.load(open(f))
+ 
+ 
+@@ -91,32 +92,32 @@ def main() -> None:
+     print("=" * 90)
+     for name, _ in MODELS:
+         if name not in results:
+             continue
+         fp = results[name]["family_pass"]
+         passed = sum(1 for v in fp.values() if v)
+         total = len(fp)
+         print(f"{results[name]['label']:<20} {passed}/{total} families passed ({passed/total*100 if total else 0:.1f}%)")
+ 
+     # Per-family delta (Stage3 vs Base)
+-    if "base" in results and "stage3-repair" in results:
+-        base_fp = results["base"]["family_pass"]
+-        s3_fp = results["stage3-repair"]["family_pass"]
++    if "full576-base" in results and "full576-stage3-repair" in results:
++        base_fp = results["full576-base"]["family_pass"]
++        s3_fp = results["full576-stage3-repair"]["family_pass"]
+         improved = []
+         regressed = []
+         for f in base_fp:
+             if f in s3_fp:
+                 if s3_fp[f] and not base_fp[f]:
+                     improved.append(f)
+                 elif not s3_fp[f] and base_fp[f]:
+                     regressed.append(f)
+-        print(f"\nStage3 vs Base:")
++        print(f"\nStage3-v2-Continual vs Base:")
+         print(f"  New passing families: {len(improved)}")
+         print(f"  Regressed families:   {len(regressed)}")
+         print(f"  Net improvement:      {len(improved) - len(regressed)}")
+ 
+     # Error category analysis for repair samples
+     print("\n" + "=" * 90)
+     print("Error Category Analysis (Repair samples)")
+     print("=" * 90)
+     for name, _ in MODELS:
+         if name not in results:
+@@ -151,18 +152,18 @@ def main() -> None:
+     for name, _ in MODELS:
+         if name not in results:
+             continue
+         comparison[name] = {
+             "label": results[name]["label"],
+             "metrics": results[name]["metrics"],
+             "per_task_type": results[name]["per_task_type"],
+             "family_pass_count": sum(1 for v in results[name]["family_pass"].values() if v),
+             "family_total": len(results[name]["family_pass"]),
+         }
+-    out = _ROOT / "evaluations" / "p2" / "comparison.json"
++    out = _ROOT / "evaluations" / "p2" / "full576-comparison.json"
+     with open(out, "w") as f:
+         json.dump(comparison, f, indent=2)
+     print(f"\nSaved comparison to {out}")
+ 
+ 
+ if __name__ == "__main__":
+     main()
+diff --git a/scripts/compute_paired_stats.py b/scripts/compute_paired_stats.py
+index 5c5eed3..ced268d 100644
+--- a/scripts/compute_paired_stats.py
++++ b/scripts/compute_paired_stats.py
+@@ -1,51 +1,50 @@
+ """P3: Paired statistics for P2 model comparison.
+ 
+-Issue #1 P3 requirements:
++Issue #6 P1 requirements:
+ - Use identical sample_id across Base, Stage2, Continual Stage3-v2,
+-  Independent Stage3, Anti-forgetting Stage3-v3 (and Stage1 if available).
++  Independent Stage3, Anti-forgetting Stage3-v3 on Full-576.
+ - Output per-sample win/loss/unchanged.
+ - Output per-family net gain/loss.
+ - McNemar test or paired bootstrap CI.
+ - Per bug_type repair success rate.
+ 
+-Inputs (all must use the FIXED stratified-120 subset):
+-  evaluations/p2/base.json
+-  evaluations/p2/stage1-code.json  (optional, not in Issue comparison)
+-  evaluations/p2/stage2-boundary.json
+-  evaluations/p2/stage3-repair.json  (Continual Stage3-v2)
+-  evaluations/p2/independent-stage3.json  (P1)
+-  evaluations/p2/stage3-v3-antiforget.json  (P2)
++Inputs (all must use the Full-576 frozen-eval-v2):
++  evaluations/p2/full576-base.json
++  evaluations/p2/full576-stage2-boundary.json
++  evaluations/p2/full576-stage3-repair.json  (Continual Stage3-v2)
++  evaluations/p2/full576-independent-stage3.json  (P1)
++  evaluations/p2/full576-stage3-v3-antiforget.json  (P2)
+ 
+ Outputs:
+-  reports/p2/paired-stats.json
+-  reports/p2/paired-stats.md (summary)
++  reports/p2/full576-paired-stats.json
++  reports/p2/full576-paired-stats.md (summary)
+ """
+ from __future__ import annotations
+ 
+ import json
+ import math
+ from collections import defaultdict
+ from pathlib import Path
+ from typing import Any
+ 
+ _ROOT = Path(__file__).resolve().parent.parent
+ _EVAL_DIR = _ROOT / "evaluations" / "p2"
+ _OUT_DIR = _ROOT / "reports" / "p2"
+ 
+ # Canonical comparison order per Issue #1 P3
+ MODELS: list[tuple[str, str]] = [
+-    ("base", "Base"),
+-    ("stage2-boundary", "Stage2-v2"),
+-    ("stage3-repair", "Stage3-v2-Continual"),
+-    ("independent-stage3", "Stage3-Independent"),  # P1
+-    ("stage3-v3-antiforget", "Stage3-v3-Antiforget"),  # P2
++    ("full576-base", "Base"),
++    ("full576-stage2-boundary", "Stage2-v2"),
++    ("full576-stage3-repair", "Stage3-v2-Continual"),
++    ("full576-independent-stage3", "Stage3-Independent"),
++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
+ ]
+ 
+ 
+ # ---------------------------------------------------------------------------
+ # Helpers
+ # ---------------------------------------------------------------------------
+ 
+ def _load(name: str) -> dict[str, Any] | None:
+     f = _EVAL_DIR / f"{name}.json"
+     if not f.exists():
+@@ -261,41 +260,41 @@ def main() -> int:
+     for i in range(len(keys) - 1):
+         a, b = keys[i], keys[i + 1]
+         pairs.append({
+             "pair": [a, b],
+             "sample_compare": per_sample_compare(docs[a], docs[b]),
+             "family_compare": per_family_compare(docs[a], docs[b]),
+         })
+     # Also include Base vs each later model for direct comparison
+     for k in keys[2:]:
+         pairs.append({
+-            "pair": ["base", k],
+-            "sample_compare": per_sample_compare(docs["base"], docs[k]),
+-            "family_compare": per_family_compare(docs["base"], docs[k]),
++            "pair": ["full576-base", k],
++            "sample_compare": per_sample_compare(docs["full576-base"], docs[k]),
++            "family_compare": per_family_compare(docs["full576-base"], docs[k]),
+         })
+ 
+     # Per-model bug_type repair stats
+     bug_stats = {k: per_bug_type_repair(d) for k, d in docs.items()}
+ 
+     result = {
+         "models": [k for k in docs],
+         "common_sample_count": len(common),
+         "pair_comparisons": pairs,
+         "per_model_bug_type_repair": bug_stats,
+     }
+ 
+-    out_json = _OUT_DIR / "paired-stats.json"
++    out_json = _OUT_DIR / "full576-paired-stats.json"
+     out_json.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+     print(f"\nSaved JSON: {out_json}")
+ 
+     # Markdown summary
+-    md_lines = ["# P3: Paired Statistics Summary", ""]
++    md_lines = ["# Full-576 Paired Statistics Summary", ""]
+     md_lines.append(f"- Models compared: {', '.join(docs)}")
+     md_lines.append(f"- Common sample IDs: {len(common)}")
+     md_lines.append("")
+     md_lines.append("## Per-pair sample-level comparison")
+     md_lines.append("")
+     md_lines.append("| Pair | N | Win | Loss | Unchanged | Δ rate | McNemar b/c | p (2-sided) | 95% CI |")
+     md_lines.append("|------|---|-----|------|-----------|--------|-------------|-------------|--------|")
+     for p in pairs:
+         a, b = p["pair"]
+         s = p["sample_compare"]
+@@ -328,18 +327,18 @@ def main() -> int:
+     for bt in bug_types:
+         row = f"| {bt} |"
+         for k in docs:
+             s = bug_stats[k].get(bt, {"pass_rate": None, "total": 0, "passed": 0})
+             if s["total"] == 0:
+                 row += " - |"
+             else:
+                 row += f" {s['passed']}/{s['total']} ({s['pass_rate']*100:.1f}%) |"
+         md_lines.append(row)
+     md_lines.append("")
+-    out_md = _OUT_DIR / "paired-stats.md"
++    out_md = _OUT_DIR / "full576-paired-stats.md"
+     out_md.write_text("\n".join(md_lines), encoding="utf-8")
+     print(f"Saved Markdown: {out_md}")
+     return 0
+ 
+ 
+ if __name__ == "__main__":
+     raise SystemExit(main())
+diff --git a/scripts/compute_router_analysis.py b/scripts/compute_router_analysis.py
+new file mode 100644
+index 0000000..0e1e7c4
+--- /dev/null
++++ b/scripts/compute_router_analysis.py
+@@ -0,0 +1,807 @@
++"""Router feasibility analysis for Issue #6 P2.
++
++Computes four routing strategies across the 5 P2 models:
++
++1. Best Single Model - pick the model with highest overall pass rate.
++2. Oracle Router - upper bound: any model passes -> router passes.
++3. Metadata Router - route by ``task_type``, pick best model per task_type.
++4. Deployable Deterministic Router - route by deployment-observable signals
++   (``broken_code`` presence, ``execution_feedback`` presence), pick best
++   model per category.
++
++Sample passes iff ``public_passed AND hidden_passed``.
++Family passes iff ALL its samples pass.
++
++Inputs:
++  evaluations/p2/full576-base.json
++  evaluations/p2/full576-stage2-boundary.json
++  evaluations/p2/full576-stage3-repair.json
++  evaluations/p2/full576-independent-stage3.json
++  evaluations/p2/full576-stage3-v3-antiforget.json
++
++Outputs:
++  reports/p2/router-analysis.json
++  reports/p2/router-analysis.md
++
++NOTE: Routing maps are currently determined on the full eval set
++(train-on-test). A future change will split into validation (determine
++routing) and eval (apply routing) subsets.
++"""
++from __future__ import annotations
++
++import json
++from collections import defaultdict
++from pathlib import Path
++from typing import Any
++
++_ROOT = Path(__file__).resolve().parent.parent
++_EVAL_DIR = _ROOT / "evaluations" / "p2"
++_OUT_DIR = _ROOT / "reports" / "p2"
++
++MODELS: list[tuple[str, str]] = [
++    ("full576-base", "Base"),
++    ("full576-stage2-boundary", "Stage2-v2"),
++    ("full576-stage3-repair", "Stage3-v2-Continual"),
++    ("full576-independent-stage3", "Stage3-Independent"),
++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
++]
++
++TASK_TYPES = ["code_generation", "static_repair", "execution_repair"]
++
++
++# ---------------------------------------------------------------------------
++# IO helpers
++# ---------------------------------------------------------------------------
++
++def _load(name: str) -> dict[str, Any] | None:
++    f = _EVAL_DIR / f"{name}.json"
++    if not f.exists():
++        return None
++    with f.open(encoding="utf-8") as fh:
++        return json.load(fh)
++
++
++def _passed(o: dict) -> bool:
++    """A sample passes iff both public and hidden tests pass."""
++    return bool(o.get("public_passed") and o.get("hidden_passed"))
++
++
++def _outcomes_by_id(doc: dict) -> dict[str, dict]:
++    return {o["sample_id"]: o for o in doc.get("outcomes", [])}
++
++
++def _label_of(model_key: str) -> str:
++    for k, label in MODELS:
++        if k == model_key:
++            return label
++    return model_key
++
++
++def _pct(x: float) -> str:
++    """Format a 0-1 ratio as a percentage string with one decimal."""
++    return f"{x * 100:.1f}%"
++
++
++def extract_bug_type(sample_id: str) -> str | None:
++    """Extract bug_type from sample_id.
++
++    Formats:
++      mbpp_<N>                 -> code_generation (None)
++      mbpp_<N>_boundary        -> code_generation (None)
++      mbpp_<N>_sr_<bug_type>   -> static_repair
++      mbpp_<N>_er_<bug_type>   -> execution_repair
++    """
++    parts = sample_id.split("_")
++    for marker in ("sr", "er"):
++        if marker in parts:
++            idx = parts.index(marker)
++            if idx + 1 < len(parts):
++                return "_".join(parts[idx + 1:])
++    return None
++
++
++# ---------------------------------------------------------------------------
++# Paired stats helpers (inlined to keep this module self-contained)
++# ---------------------------------------------------------------------------
++
++def mcnemar_exact(b: int, c: int) -> float:
++    """Two-sided exact McNemar p-value via binomial.
++    b = #samples where A passed, B failed. c = #samples where A failed, B passed.
++    """
++    from math import comb
++    n = b + c
++    if n == 0:
++        return 1.0
++    k_min = min(b, c)
++    p_one_tail = sum(comb(n, k) for k in range(k_min + 1)) * (0.5 ** n)
++    return min(1.0, 2.0 * p_one_tail)
++
++
++def paired_bootstrap_ci(
++    pass_a: list[bool], pass_b: list[bool], n_boot: int = 10000, seed: int = 42
++) -> tuple[float, float]:
++    """Paired bootstrap 95% CI for the difference in pass rate (b - a)."""
++    import random
++    rng = random.Random(seed)
++    n = len(pass_a)
++    if n == 0:
++        return (0.0, 0.0)
++    diffs = [(1 if b else 0) - (1 if a else 0) for a, b in zip(pass_a, pass_b)]
++    boots = []
++    for _ in range(n_boot):
++        idx = [rng.randrange(n) for _ in range(n)]
++        boots.append(sum(diffs[i] for i in idx) / n)
++    boots.sort()
++    lo = boots[int(0.025 * n_boot)]
++    hi = boots[int(0.975 * n_boot)]
++    return (lo, hi)
++
++
++# ---------------------------------------------------------------------------
++# Stats helpers
++# ---------------------------------------------------------------------------
++
++def overall_pass_rate(pass_map: dict[str, bool]) -> float:
++    if not pass_map:
++        return 0.0
++    return sum(1 for v in pass_map.values() if v) / len(pass_map)
++
++
++def family_pass_rate(pass_map: dict[str, bool], sid_to_family: dict[str, str]) -> float:
++    """Family passes iff ALL its samples pass."""
++    fam: dict[str, list[bool]] = defaultdict(list)
++    for sid, passed in pass_map.items():
++        fam[sid_to_family.get(sid, "?")].append(passed)
++    if not fam:
++        return 0.0
++    n_pass = sum(1 for v in fam.values() if v and all(v))
++    return n_pass / len(fam)
++
++
++def per_task_type_stats(
++    pass_map: dict[str, bool], sid_to_task_type: dict[str, str]
++) -> dict[str, dict]:
++    stats: dict[str, dict] = defaultdict(lambda: {"total": 0, "passed": 0})
++    for sid, passed in pass_map.items():
++        tt = sid_to_task_type.get(sid, "unknown")
++        stats[tt]["total"] += 1
++        if passed:
++            stats[tt]["passed"] += 1
++    return {
++        tt: {
++            "total": s["total"],
++            "passed": s["passed"],
++            "pass_rate": s["passed"] / s["total"] if s["total"] else 0.0,
++        }
++        for tt, s in stats.items()
++    }
++
++
++def compute_router_stats(
++    pass_map: dict[str, bool],
++    sid_to_family: dict[str, str],
++    sid_to_task_type: dict[str, str],
++) -> dict:
++    return {
++        "overall_pass": overall_pass_rate(pass_map),
++        "family_pass": family_pass_rate(pass_map, sid_to_family),
++        "per_task_type": per_task_type_stats(pass_map, sid_to_task_type),
++        "n_samples": len(pass_map),
++    }
++
++
++# ---------------------------------------------------------------------------
++# Observable signals (Deployable Router only)
++# ---------------------------------------------------------------------------
++
++def infer_observable_signals(task_type: str) -> dict:
++    """Infer deployment-observable signals from task_type.
++
++    At deployment time we can observe:
++    - Whether the request contains ``broken_code`` (a code snippet to repair).
++    - Whether ``execution_feedback`` is available (we ran the code and saw an error).
++    - The request category (generation vs repair).
++
++    These signals MUST NOT use hidden test results or gold bug_type labels.
++    """
++    has_broken_code = task_type in ("static_repair", "execution_repair")
++    has_execution_feedback = task_type == "execution_repair"
++    return {
++        "has_broken_code": has_broken_code,
++        "has_execution_feedback": has_execution_feedback,
++        "request_type": "repair" if has_broken_code else "generation",
++    }
++
++
++def route_deployable(signals: dict) -> str:
++    """Map observable signals to a routing category (task_type)."""
++    if not signals["has_broken_code"]:
++        return "code_generation"
++    if not signals["has_execution_feedback"]:
++        return "static_repair"
++    return "execution_repair"
++
++
++def best_model_for_task_type(
++    by_model: dict[str, dict[str, dict]],
++    common: list[str],
++    sid_to_task_type: dict[str, str],
++    task_type: str,
++) -> tuple[str | None, float]:
++    """Return (model_key, pass_rate) of the best model on the given task_type."""
++    best_model = None
++    best_rate = -1.0
++    for key in by_model:
++        tt_outcomes = [
++            by_model[key][sid]
++            for sid in common
++            if sid_to_task_type.get(sid) == task_type and sid in by_model[key]
++        ]
++        if not tt_outcomes:
++            continue
++        rate = sum(1 for o in tt_outcomes if _passed(o)) / len(tt_outcomes)
++        if rate > best_rate:
++            best_rate = rate
++            best_model = key
++    return best_model, max(best_rate, 0.0)
++
++
++# ---------------------------------------------------------------------------
++# P3 Decision Gate
++# ---------------------------------------------------------------------------
++
++def apply_decision_gate(
++    *,
++    deployable_lift: float,
++    oracle_lift: float,
++    deployable_mcnemar_p: float,
++    deployable_ci_lo: float,
++    deployable_ci_hi: float,
++    deployable_b: int,
++    deployable_c: int,
++    n_common: int,
++) -> dict:
++    """Apply the P3 Decision Gate criteria.
++
++    Returns dict with:
++      - verdict: "GO" | "NO-GO" | "SIGNAL"
++      - criteria: dict of the raw thresholds and booleans used
++      - reason: human-readable explanation string
++    """
++    LIFT_THRESHOLD = 0.05  # 5 percentage points
++
++    oracle_meaningful = oracle_lift >= LIFT_THRESHOLD
++    deployable_meaningful = deployable_lift >= LIFT_THRESHOLD
++    ci_significant = (deployable_ci_lo > 0.0) or (deployable_mcnemar_p < 0.05)
++    deployable_significant = deployable_meaningful and ci_significant
++
++    if not oracle_meaningful:
++        verdict = "NO-GO"
++        reason = (
++            f"Oracle Router lift ({oracle_lift*100:.1f}pp) < 5pp threshold — "
++            "even the upper bound shows no meaningful routing gain."
++        )
++    elif deployable_significant:
++        verdict = "GO"
++        reason = (
++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) >= 5pp "
++            f"with statistical significance (McNemar p={deployable_mcnemar_p:.4f}, "
++            f"95% CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
++        )
++    elif oracle_meaningful and not deployable_significant:
++        verdict = "SIGNAL"
++        reason = (
++            f"Oracle lift ({oracle_lift*100:.1f}pp) >= 5pp (routing potential exists), "
++            f"but Deployable Router lift ({deployable_lift*100:.1f}pp) or significance "
++            f"(McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}]) "
++            "does not meet the GO threshold — observable signals alone cannot capture the potential."
++        )
++    else:
++        verdict = "NO-GO"
++        reason = (
++            f"Deployable Router lift ({deployable_lift*100:.1f}pp) shows no significant "
++            f"improvement (McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
++        )
++
++    return {
++        "verdict": verdict,
++        "reason": reason,
++        "criteria": {
++            "lift_threshold_pp": LIFT_THRESHOLD * 100,
++            "oracle_lift": oracle_lift,
++            "oracle_meaningful": oracle_meaningful,
++            "deployable_lift": deployable_lift,
++            "deployable_meaningful": deployable_meaningful,
++            "deployable_mcnemar_p": deployable_mcnemar_p,
++            "deployable_ci_95": [deployable_ci_lo, deployable_ci_hi],
++            "deployable_ci_significant": ci_significant,
++            "deployable_significant": deployable_significant,
++            "deployable_mcnemar_b": deployable_b,
++            "deployable_mcnemar_c": deployable_c,
++            "n_common": n_common,
++        },
++    }
++
++
++# ---------------------------------------------------------------------------
++# Main
++# ---------------------------------------------------------------------------
++
++def main() -> int:
++    _OUT_DIR.mkdir(parents=True, exist_ok=True)
++
++    # Load models, skip missing files --------------------------------------
++    docs: dict[str, dict] = {}
++    skipped: list[str] = []
++    for key, _label in MODELS:
++        d = _load(key)
++        if d is None:
++            skipped.append(key)
++            print(f"WARN: evaluations/p2/{key}.json not found - skipping")
++            continue
++        docs[key] = d
++
++    if len(docs) < 2:
++        print("ERROR: need at least 2 model evals for router analysis")
++        return 1
++
++    # Per-model sample lookup ---------------------------------------------
++    by_model: dict[str, dict[str, dict]] = {k: _outcomes_by_id(d) for k, d in docs.items()}
++
++    # Common sample IDs (intersection for fair comparison) -----------------
++    sid_sets = {k: set(by_id.keys()) for k, by_id in by_model.items()}
++    common = sorted(set.intersection(*sid_sets.values()))
++    print(f"Models loaded: {list(docs)}")
++    print(f"Skipped: {skipped}")
++    print(f"Common sample IDs: {len(common)}")
++
++    # sid -> family_id / task_type (from any model that has the sample) ----
++    sid_to_family: dict[str, str] = {}
++    sid_to_task_type: dict[str, str] = {}
++    for sid in common:
++        for by_id in by_model.values():
++            if sid in by_id:
++                sid_to_family[sid] = by_id[sid].get("family_id", "?")
++                sid_to_task_type[sid] = by_id[sid].get("task_type", "unknown")
++                break
++
++    # ------------------------------------------------------------------
++    # 1. Per-model stats + Best Single
++    # ------------------------------------------------------------------
++    per_model_stats: dict[str, dict] = {}
++    best_single_key = None
++    best_single_rate = -1.0
++    for key in docs:
++        pass_map = {sid: _passed(by_model[key][sid]) for sid in common}
++        stats = compute_router_stats(pass_map, sid_to_family, sid_to_task_type)
++        per_model_stats[key] = stats
++        if stats["overall_pass"] > best_single_rate:
++            best_single_rate = stats["overall_pass"]
++            best_single_key = key
++
++    best_single = {
++        "model": _label_of(best_single_key),
++        "model_key": best_single_key,
++        **per_model_stats[best_single_key],
++    }
++    best_single_overall = best_single["overall_pass"]
++
++    # ------------------------------------------------------------------
++    # 2. Oracle Router (upper bound)
++    # ------------------------------------------------------------------
++    oracle_pass: dict[str, bool] = {}
++    for sid in common:
++        oracle_pass[sid] = any(_passed(by_model[k][sid]) for k in by_model)
++    oracle_stats = compute_router_stats(oracle_pass, sid_to_family, sid_to_task_type)
++    oracle_router = {
++        **oracle_stats,
++        "lift_vs_best_single": oracle_stats["overall_pass"] - best_single_overall,
++    }
++
++    # ------------------------------------------------------------------
++    # 3. Metadata Router (route by task_type)
++    # ------------------------------------------------------------------
++    # Determine routing map on full data (NOTE: train-on-test for now).
++    metadata_routing_map: dict[str, str] = {}
++    metadata_routing_rates: dict[str, dict] = {}
++    for tt in TASK_TYPES:
++        model_key, rate = best_model_for_task_type(
++            by_model, common, sid_to_task_type, tt
++        )
++        if model_key is not None:
++            metadata_routing_map[tt] = model_key
++            metadata_routing_rates[tt] = {
++                "model": _label_of(model_key),
++                "model_key": model_key,
++                "pass_rate": rate,
++            }
++
++    # Apply routing.
++    metadata_pass: dict[str, bool] = {}
++    for sid in common:
++        tt = sid_to_task_type.get(sid, "unknown")
++        model_key = metadata_routing_map.get(tt)
++        if model_key and sid in by_model.get(model_key, {}):
++            metadata_pass[sid] = _passed(by_model[model_key][sid])
++        else:
++            metadata_pass[sid] = False
++    metadata_stats = compute_router_stats(
++        metadata_pass, sid_to_family, sid_to_task_type
++    )
++    metadata_router = {
++        **metadata_stats,
++        "routing_map": {tt: _label_of(k) for tt, k in metadata_routing_map.items()},
++        "routing_map_keys": metadata_routing_map,
++        "routing_rates": metadata_routing_rates,
++        "lift_vs_best_single": metadata_stats["overall_pass"] - best_single_overall,
++    }
++
++    # ------------------------------------------------------------------
++    # 4. Deployable Deterministic Router (observable signals only)
++    # ------------------------------------------------------------------
++    # Determine routing map: best model per category (same selection as
++    # metadata router, but the deployment decision uses only observable
++    # signals - no task_type label, no hidden tests, no gold bug_type).
++    deployable_routing_map: dict[str, str] = dict(metadata_routing_map)
++    deployable_routing_rates = dict(metadata_routing_rates)
++
++    routing_rules = [
++        {
++            "signal": "no broken_code, no execution_feedback",
++            "category": "code_generation",
++            "candidate": "Generalist (Best Single on code_gen)",
++            "model": _label_of(deployable_routing_map.get("code_generation", "")),
++        },
++        {
++            "signal": "broken_code present, no execution_feedback",
++            "category": "static_repair",
++            "candidate": "Static Repair Specialist",
++            "model": _label_of(deployable_routing_map.get("static_repair", "")),
++        },
++        {
++            "signal": "broken_code + execution_feedback",
++            "category": "execution_repair",
++            "candidate": "Repair Specialist",
++            "model": _label_of(deployable_routing_map.get("execution_repair", "")),
++        },
++    ]
++
++    # Apply routing using observable signals (inferred from task_type).
++    deployable_pass: dict[str, bool] = {}
++    for sid in common:
++        tt = sid_to_task_type.get(sid, "unknown")
++        signals = infer_observable_signals(tt)
++        category = route_deployable(signals)
++        model_key = deployable_routing_map.get(category)
++        if model_key and sid in by_model.get(model_key, {}):
++            deployable_pass[sid] = _passed(by_model[model_key][sid])
++        else:
++            deployable_pass[sid] = False
++    deployable_stats = compute_router_stats(
++        deployable_pass, sid_to_family, sid_to_task_type
++    )
++    deployable_router = {
++        **deployable_stats,
++        "routing_rules": routing_rules,
++        "routing_map": {
++            tt: _label_of(k) for tt, k in deployable_routing_map.items()
++        },
++        "routing_map_keys": deployable_routing_map,
++        "lift_vs_best_single": deployable_stats["overall_pass"] - best_single_overall,
++    }
++
++    # ------------------------------------------------------------------
++    # 5. P3 Decision Gate — Deployable Router vs Best Single
++    # ------------------------------------------------------------------
++    # McNemar convention: A = Best Single, B = Deployable Router
++    #   b = #samples where A passed, B failed
++    #   c = #samples where A failed, B passed
++    best_single_pass_map = {
++        sid: _passed(by_model[best_single_key][sid]) for sid in common
++    }
++    gate_b = 0
++    gate_c = 0
++    pass_a: list[bool] = []  # best_single
++    pass_b: list[bool] = []  # deployable
++    for sid in common:
++        bs_pass = best_single_pass_map[sid]
++        dep_pass = deployable_pass[sid]
++        if bs_pass and not dep_pass:
++            gate_b += 1
++        elif not bs_pass and dep_pass:
++            gate_c += 1
++        pass_a.append(bs_pass)
++        pass_b.append(dep_pass)
++
++    mcnemar_p = mcnemar_exact(gate_b, gate_c)
++    ci_lo, ci_hi = paired_bootstrap_ci(pass_a, pass_b)
++    gate_result = apply_decision_gate(
++        deployable_lift=deployable_router["lift_vs_best_single"],
++        oracle_lift=oracle_router["lift_vs_best_single"],
++        deployable_mcnemar_p=mcnemar_p,
++        deployable_ci_lo=ci_lo,
++        deployable_ci_hi=ci_hi,
++        deployable_b=gate_b,
++        deployable_c=gate_c,
++        n_common=len(common),
++    )
++
++    # ------------------------------------------------------------------
++    # Comparison table
++    # ------------------------------------------------------------------
++    def _ptt(stats: dict, tt: str) -> float:
++        return stats["per_task_type"].get(tt, {}).get("pass_rate", 0.0)
++
++    comparison_table: list[dict] = []
++    for key in docs:
++        s = per_model_stats[key]
++        comparison_table.append({
++            "name": _label_of(key),
++            "type": "single_model",
++            "overall_pass": s["overall_pass"],
++            "family_pass": s["family_pass"],
++            "code_generation_pass": _ptt(s, "code_generation"),
++            "static_repair_pass": _ptt(s, "static_repair"),
++            "execution_repair_pass": _ptt(s, "execution_repair"),
++            "lift_vs_best_single": s["overall_pass"] - best_single_overall,
++        })
++    comparison_table.append({
++        "name": "Best Single",
++        "type": "best_single",
++        "overall_pass": best_single["overall_pass"],
++        "family_pass": best_single["family_pass"],
++        "code_generation_pass": _ptt(best_single, "code_generation"),
++        "static_repair_pass": _ptt(best_single, "static_repair"),
++        "execution_repair_pass": _ptt(best_single, "execution_repair"),
++        "lift_vs_best_single": 0.0,
++    })
++    for name, router in [
++        ("Oracle Router", oracle_router),
++        ("Metadata Router", metadata_router),
++        ("Deployable Router", deployable_router),
++    ]:
++        comparison_table.append({
++            "name": name,
++            "type": "router",
++            "overall_pass": router["overall_pass"],
++            "family_pass": router["family_pass"],
++            "code_generation_pass": _ptt(router, "code_generation"),
++            "static_repair_pass": _ptt(router, "static_repair"),
++            "execution_repair_pass": _ptt(router, "execution_repair"),
++            "lift_vs_best_single": router["lift_vs_best_single"],
++        })
++
++    # ------------------------------------------------------------------
++    # Bug_type distribution (auxiliary, extracted from sample_id) --------
++    # ------------------------------------------------------------------
++    bug_type_dist: dict[str, int] = defaultdict(int)
++    for sid in common:
++        bt = extract_bug_type(sid)
++        bug_type_dist[bt if bt else "(none)"] += 1
++
++    # ------------------------------------------------------------------
++    # Assemble result
++    # ------------------------------------------------------------------
++    result = {
++        "models_loaded": list(docs),
++        "models_skipped": skipped,
++        "common_sample_count": len(common),
++        "best_single": best_single,
++        "oracle_router": oracle_router,
++        "metadata_router": metadata_router,
++        "deployable_router": deployable_router,
++        "decision_gate": gate_result,
++        "comparison_table": comparison_table,
++        "bug_type_distribution": dict(sorted(bug_type_dist.items())),
++        "notes": [
++            "Routing maps determined on full eval set (train-on-test). "
++            "Future: split into validation (determine routing) and eval (apply).",
++            "Deployable Router uses only observable signals (broken_code, "
++            "execution_feedback) inferred from task_type. Does not use hidden "
++            "tests or gold bug_type.",
++            "Oracle Router is an upper bound (any model passes -> router passes).",
++            "Common sample IDs = intersection across all loaded models "
++            "(fair comparison).",
++        ],
++    }
++
++    out_json = _OUT_DIR / "router-analysis.json"
++    out_json.write_text(
++        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
++    )
++    print(f"\nSaved JSON: {out_json}")
++
++    # ------------------------------------------------------------------
++    # Markdown report
++    # ------------------------------------------------------------------
++    md: list[str] = []
++    md.append("# P2 Router Feasibility Analysis")
++    md.append("")
++    md.append(f"- Models loaded: {', '.join(_label_of(k) for k in docs)}")
++    if skipped:
++        md.append(f"- Models skipped (file not found): {', '.join(skipped)}")
++    md.append(f"- Common sample count: {len(common)}")
++    md.append("- Sample passes iff `public_passed AND hidden_passed`.")
++    md.append("- Family passes iff ALL its samples pass.")
++    md.append("")
++    md.append("> **Note:** Routing maps are currently determined on the full eval set")
++    md.append("> (train-on-test). A future change will split validation/eval subsets.")
++    md.append("")
++
++    # Comparison table
++    md.append("## Comparison Table")
++    md.append("")
++    md.append(
++        "| Model / Router | Type | Overall | Family | CodeGen | StaticRepair | "
++        "ExecRepair | Lift vs Best |"
++    )
++    md.append(
++        "|----------------|------|---------|--------|---------|--------------|"
++        "------------|--------------|"
++    )
++    for row in comparison_table:
++        md.append(
++            f"| {row['name']} | {row['type']} | "
++            f"{_pct(row['overall_pass'])} | {_pct(row['family_pass'])} | "
++            f"{_pct(row['code_generation_pass'])} | "
++            f"{_pct(row['static_repair_pass'])} | "
++            f"{_pct(row['execution_repair_pass'])} | "
++            f"{row['lift_vs_best_single']:+.4f} |"
++        )
++    md.append("")
++
++    # Best single
++    md.append("## 1. Best Single Model")
++    md.append("")
++    md.append(f"- **Model:** {best_single['model']} (`{best_single['model_key']}`)")
++    md.append(f"- Overall pass: {_pct(best_single['overall_pass'])}")
++    md.append(f"- Family pass: {_pct(best_single['family_pass'])}")
++    md.append("")
++    md.append("### Per-task-type pass rates")
++    md.append("")
++    md.append("| Task Type | Total | Passed | Rate |")
++    md.append("|-----------|-------|--------|------|")
++    for tt in TASK_TYPES:
++        s = best_single["per_task_type"].get(
++            tt, {"total": 0, "passed": 0, "pass_rate": 0.0}
++        )
++        md.append(f"| {tt} | {s['total']} | {s['passed']} | {_pct(s['pass_rate'])} |")
++    md.append("")
++    md.append("### All single models")
++    md.append("")
++    md.append("| Model | Overall | Family | CodeGen | StaticRepair | ExecRepair |")
++    md.append("|-------|---------|--------|---------|--------------|------------|")
++    for key in docs:
++        s = per_model_stats[key]
++        md.append(
++            f"| {_label_of(key)} | {_pct(s['overall_pass'])} | "
++            f"{_pct(s['family_pass'])} | {_pct(_ptt(s, 'code_generation'))} | "
++            f"{_pct(_ptt(s, 'static_repair'))} | "
++            f"{_pct(_ptt(s, 'execution_repair'))} |"
++        )
++    md.append("")
++
++    # Oracle
++    md.append("## 2. Oracle Router (Upper Bound)")
++    md.append("")
++    md.append("Oracle passes a sample if ANY model passes it.")
++    md.append("")
++    md.append(f"- Overall pass: {_pct(oracle_router['overall_pass'])}")
++    md.append(f"- Family pass: {_pct(oracle_router['family_pass'])}")
++    md.append(f"- Lift vs Best Single: {oracle_router['lift_vs_best_single']:+.4f}")
++    md.append("")
++    md.append("| Task Type | Total | Passed | Rate |")
++    md.append("|-----------|-------|--------|------|")
++    for tt in TASK_TYPES:
++        s = oracle_router["per_task_type"].get(
++            tt, {"total": 0, "passed": 0, "pass_rate": 0.0}
++        )
++        md.append(f"| {tt} | {s['total']} | {s['passed']} | {_pct(s['pass_rate'])} |")
++    md.append("")
++
++    # Metadata
++    md.append("## 3. Metadata Router (route by `task_type`)")
++    md.append("")
++    md.append("### Routing map")
++    md.append("")
++    md.append("| Task Type | Routed Model | Pass Rate (selection) |")
++    md.append("|-----------|-------------|----------------------|")
++    for tt in TASK_TYPES:
++        if tt in metadata_routing_map:
++            r = metadata_routing_rates[tt]
++            md.append(f"| {tt} | {r['model']} | {_pct(r['pass_rate'])} |")
++    md.append("")
++    md.append(f"- Overall pass: {_pct(metadata_router['overall_pass'])}")
++    md.append(f"- Family pass: {_pct(metadata_router['family_pass'])}")
++    md.append(
++        f"- Lift vs Best Single: {metadata_router['lift_vs_best_single']:+.4f}"
++    )
++    md.append("")
++
++    # Deployable
++    md.append("## 4. Deployable Deterministic Router (observable signals only)")
++    md.append("")
++    md.append("### Routing rules")
++    md.append("")
++    md.append("| Observable Signal | Category | Candidate | Routed Model |")
++    md.append("|------------------|----------|-----------|--------------|")
++    for r in routing_rules:
++        md.append(
++            f"| {r['signal']} | {r['category']} | {r['candidate']} | {r['model']} |"
++        )
++    md.append("")
++    md.append(f"- Overall pass: {_pct(deployable_router['overall_pass'])}")
++    md.append(f"- Family pass: {_pct(deployable_router['family_pass'])}")
++    md.append(
++        f"- Lift vs Best Single: {deployable_router['lift_vs_best_single']:+.4f}"
++    )
++    md.append("")
++
++    # Bug type distribution
++    md.append("## Appendix: Bug Type Distribution (extracted from sample_id)")
++    md.append("")
++    md.append("| Bug Type | Count |")
++    md.append("|----------|-------|")
++    for bt, count in sorted(bug_type_dist.items()):
++        md.append(f"| {bt} | {count} |")
++    md.append("")
++
++    # Methodology
++    md.append("## Methodology Notes")
++    md.append("")
++    md.append("- **Best Single:** model with highest overall pass rate.")
++    md.append(
++        "- **Oracle Router:** upper bound; passes if ANY model passes the sample."
++    )
++    md.append(
++        "- **Metadata Router:** uses `task_type` metadata to pick best model "
++        "per task_type."
++    )
++    md.append("- **Deployable Router:** uses only deployment-observable signals:")
++    md.append(
++        "  - `broken_code` presence (inferred from task_type being "
++        "static_repair or execution_repair)."
++    )
++    md.append(
++        "  - `execution_feedback` presence (inferred from task_type being "
++        "execution_repair)."
++    )
++    md.append("  - Request category (generation vs repair).")
++    md.append(
++        "- **No leakage:** Deployable Router does not use hidden tests, gold "
++        "answers, or gold bug_type."
++    )
++    md.append(
++        "- **Limitation:** routing maps currently determined on full eval set "
++        "(train-on-test)."
++    )
++    md.append("")
++
++    # P3 Decision Gate
++    md.append("## P3 Decision Gate")
++    md.append("")
++    md.append(f"**Verdict: {gate_result['verdict']}**")
++    md.append("")
++    md.append(f"{gate_result['reason']}")
++    md.append("")
++    md.append("### Gate Criteria")
++    md.append("")
++    md.append("| Criterion | Value | Threshold | Met |")
++    md.append("|-----------|-------|-----------|-----|")
++    c = gate_result["criteria"]
++    md.append(f"| Oracle lift vs Best Single | {c['oracle_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['oracle_meaningful'] else 'NO'} |")
++    md.append(f"| Deployable lift vs Best Single | {c['deployable_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['deployable_meaningful'] else 'NO'} |")
++    md.append(f"| Deployable McNemar p (2-sided) | {c['deployable_mcnemar_p']:.4f} | < 0.05 | {'YES' if c['deployable_mcnemar_p'] < 0.05 else 'NO'} |")
++    md.append(f"| Deployable 95% CI | [{c['deployable_ci_95'][0]:+.4f}, {c['deployable_ci_95'][1]:+.4f}] | lower > 0 | {'YES' if c['deployable_ci_95'][0] > 0 else 'NO'} |")
++    md.append(f"| Deployable b/c (McNemar) | {c['deployable_mcnemar_b']}/{c['deployable_mcnemar_c']} | — | — |")
++    md.append(f"| Common samples | {c['n_common']} | — | — |")
++    md.append("")
++
++    out_md = _OUT_DIR / "router-analysis.md"
++    out_md.write_text("\n".join(md), encoding="utf-8")
++    print(f"Saved Markdown: {out_md}")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/scripts/generate_full576_report.py b/scripts/generate_full576_report.py
+new file mode 100644
+index 0000000..9f0cc0c
+--- /dev/null
++++ b/scripts/generate_full576_report.py
+@@ -0,0 +1,266 @@
++"""Generate the unified Full-576 comparison Markdown report.
++
++Reads three JSON inputs produced by upstream P2 scripts:
++  - evaluations/p2/full576-comparison.json   (compare_p2_evals.py)
++  - reports/p2/full576-paired-stats.json      (compute_paired_stats.py)
++  - reports/p2/router-analysis.json           (compute_router_analysis.py)
++
++Writes:
++  - reports/p2/p2-full576-comparison-report.md
++
++If any of the three input files is missing, prints an error to stderr and
++exits with code 1 (does not crash with an unhandled exception).
++"""
++import json
++import sys
++from datetime import datetime, timezone
++from pathlib import Path
++
++_ROOT = Path(__file__).resolve().parent.parent
++_EVAL_DIR = _ROOT / "evaluations" / "p2"
++_REPORTS = _ROOT / "reports" / "p2"
++
++COMPARISON_PATH = _EVAL_DIR / "full576-comparison.json"
++PAIRED_STATS_PATH = _REPORTS / "full576-paired-stats.json"
++ROUTER_ANALYSIS_PATH = _REPORTS / "router-analysis.json"
++OUTPUT_PATH = _REPORTS / "p2-full576-comparison-report.md"
++
++# Canonical model order per Issue #6 P3
++MODELS = [
++    ("full576-base", "Base"),
++    ("full576-stage2-boundary", "Stage2-v2"),
++    ("full576-stage3-repair", "Stage3-v2-Continual"),
++    ("full576-independent-stage3", "Stage3-Independent"),
++    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
++]
++
++TASK_TYPES = ["code_generation", "static_repair", "execution_repair"]
++
++
++def load_json(p: Path) -> dict:
++    return json.load(open(p))
++
++
++def fmt_pct(v: float) -> str:
++    return f"{v * 100:.1f}%"
++
++
++def generate_report(comparison: dict, paired_stats: dict, router_analysis: dict) -> str:
++    lines: list[str] = []
++
++    # 1. Header
++    lines.append("# P2 Full-576 Comparison Report")
++    lines.append("")
++    lines.append(f"Generated: {datetime.now(timezone.utc).isoformat()}")
++    lines.append("")
++
++    # 2. Evaluation Setup
++    common_n = paired_stats.get("common_sample_count", 576)
++    lines.append("## Evaluation Setup")
++    lines.append("")
++    lines.append("- Dataset: data/p2-curriculum/frozen-eval-v2/test_raw.jsonl")
++    lines.append("- Samples: 576")
++    lines.append("- Families: 75")
++    lines.append("- Task types: code_generation (140), static_repair (218), execution_repair (218)")
++    lines.append(f"- Common sample count (paired-stats): {common_n}")
++    lines.append("")
++
++    # 3. Overall Metrics
++    lines.append("## Overall Metrics")
++    lines.append("")
++    lines.append("| Model | Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |")
++    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
++    for key, label in MODELS:
++        if key not in comparison:
++            continue
++        m = comparison[key].get("metrics", {})
++        fp = comparison[key].get("family_pass_count", 0)
++        ft = comparison[key].get("family_total", 0)
++        fam_rate = fp / ft if ft else 0.0
++        lines.append(
++            f"| {label} | {fmt_pct(m.get('pass_at_1', 0.0))} | "
++            f"{fmt_pct(m.get('syntax_rate', 0.0))} | "
++            f"{fmt_pct(m.get('repair_success_rate', 0.0))} | "
++            f"{fmt_pct(m.get('hidden_pass_rate', 0.0))} | "
++            f"{fmt_pct(m.get('format_compliance_rate', 0.0))} | "
++            f"{fmt_pct(m.get('timeout_rate', 0.0))} | "
++            f"{fmt_pct(fam_rate)} |"
++        )
++    lines.append("")
++
++    # 4. Per-Task-Type Breakdown
++    lines.append("## Per-Task-Type Breakdown")
++    lines.append("")
++    for t in TASK_TYPES:
++        lines.append(f"### {t}")
++        lines.append("")
++        lines.append("| Model | Total | Passed | Rate | Syntax | Format |")
++        lines.append("|---|---:|---:|---:|---:|---:|")
++        for key, label in MODELS:
++            if key not in comparison:
++                continue
++            tt = comparison[key].get("per_task_type", {}).get(t, {})
++            total = tt.get("total", 0)
++            passed = tt.get("passed", 0)
++            syn = tt.get("syntax_ok", 0)
++            fmt = tt.get("format_ok", 0)
++            rate = passed / total if total else 0.0
++            syn_rate = syn / total if total else 0.0
++            fmt_rate = fmt / total if total else 0.0
++            lines.append(
++                f"| {label} | {total} | {passed} | {fmt_pct(rate)} | "
++                f"{fmt_pct(syn_rate)} | {fmt_pct(fmt_rate)} |"
++            )
++        lines.append("")
++
++    # 5. Family-Level Pass
++    lines.append("## Family-Level Pass")
++    lines.append("")
++    lines.append("| Model | Families Passed | Total Families | Rate |")
++    lines.append("|---|---:|---:|---:|")
++    for key, label in MODELS:
++        if key not in comparison:
++            continue
++        fp = comparison[key].get("family_pass_count", 0)
++        ft = comparison[key].get("family_total", 0)
++        rate = fp / ft if ft else 0.0
++        lines.append(f"| {label} | {fp} | {ft} | {fmt_pct(rate)} |")
++    lines.append("")
++    # Stage3-v2-Continual vs Base family delta (from comparison.json if available)
++    base = comparison.get("full576-base", {})
++    s3 = comparison.get("full576-stage3-repair", {})
++    if base and s3:
++        base_fam = base.get("family_pass_count", 0)
++        s3_fam = s3.get("family_pass_count", 0)
++        delta = s3_fam - base_fam
++        lines.append(f"- Stage3-v2-Continual vs Base family delta: {delta:+d}")
++        lines.append("")
++
++    # 6. Paired Statistics Summary
++    lines.append("## Paired Statistics Summary")
++    lines.append("")
++    lines.append("| Pair | N | Win | Loss | Unchanged | Delta | McNemar b/c | p (2-sided) | 95% CI |")
++    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---|")
++    for p in paired_stats.get("pair_comparisons", []):
++        pair = p.get("pair", [])
++        if len(pair) != 2:
++            continue
++        a, b = pair[0], pair[1]
++        s = p.get("sample_compare", {})
++        ci = s.get("bootstrap_95ci", [0.0, 0.0])
++        delta = s.get("delta", 0.0)
++        lines.append(
++            f"| {a} → {b} | {s.get('n_compared', 0)} | {s.get('win', 0)} | "
++            f"{s.get('loss', 0)} | {s.get('unchanged', 0)} | "
++            f"{delta * 100:+.1f}% | "
++            f"{s.get('mcnemar_b', 0)}/{s.get('mcnemar_c', 0)} | "
++            f"{s.get('mcnemar_p_two_sided', 1.0):.4f} | "
++            f"[{ci[0]:+.4f}, {ci[1]:+.4f}] |"
++        )
++    lines.append("")
++
++    # 7. Bug-Type Repair Success Rate
++    lines.append("## Bug-Type Repair Success Rate")
++    lines.append("")
++    bug_stats = paired_stats.get("per_model_bug_type_repair", {})
++    bug_types = sorted({bt for d in bug_stats.values() for bt in d})
++    header_labels = [label for _, label in MODELS]
++    lines.append("| Bug Type | " + " | ".join(header_labels) + " |")
++    lines.append("|---|" + "|".join(["---:"] * len(header_labels)) + "|")
++    for bt in bug_types:
++        row = f"| {bt} |"
++        for key, _ in MODELS:
++            s = bug_stats.get(key, {}).get(bt, {"total": 0, "passed": 0, "pass_rate": 0.0})
++            total = s.get("total", 0)
++            if total == 0:
++                row += " - |"
++            else:
++                passed = s.get("passed", 0)
++                rate = s.get("pass_rate", 0.0)
++                row += f" {passed}/{total} ({fmt_pct(rate)}) |"
++        lines.append(row)
++    lines.append("")
++
++    # 8. Router Feasibility Summary
++    lines.append("## Router Feasibility Summary")
++    lines.append("")
++    lines.append("| Model/Router | Type | Overall | Family | CodeGen | StaticRepair | ExecRepair | Lift vs Best |")
++    lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
++    for row in router_analysis.get("comparison_table", []):
++        lines.append(
++            f"| {row.get('name', '?')} | {row.get('type', '?')} | "
++            f"{fmt_pct(row.get('overall_pass', 0.0))} | "
++            f"{fmt_pct(row.get('family_pass', 0.0))} | "
++            f"{fmt_pct(row.get('code_generation_pass', 0.0))} | "
++            f"{fmt_pct(row.get('static_repair_pass', 0.0))} | "
++            f"{fmt_pct(row.get('execution_repair_pass', 0.0))} | "
++            f"{row.get('lift_vs_best_single', 0.0):+.4f} |"
++        )
++    lines.append("")
++
++    # 9. P3 Decision Gate
++    gate = router_analysis.get("decision_gate", {})
++    verdict = gate.get("verdict", "UNKNOWN")
++    reason = gate.get("reason", "")
++    c = gate.get("criteria", {})
++    lines.append("## P3 Decision Gate")
++    lines.append("")
++    lines.append(f"**Verdict: {verdict}**")
++    lines.append("")
++    lines.append(reason)
++    lines.append("")
++    lines.append("### Gate Criteria")
++    lines.append("")
++    lines.append("| Criterion | Value | Threshold | Met |")
++    lines.append("|-----------|-------|-----------|-----|")
++    oracle_lift = c.get("oracle_lift", 0.0)
++    deployable_lift = c.get("deployable_lift", 0.0)
++    mcnemar_p = c.get("deployable_mcnemar_p", 1.0)
++    ci = c.get("deployable_ci_95", [0.0, 0.0])
++    lines.append(
++        f"| Oracle lift | {oracle_lift * 100:.1f}pp | >= 5.0pp | "
++        f"{'YES' if c.get('oracle_meaningful', False) else 'NO'} |"
++    )
++    lines.append(
++        f"| Deployable lift | {deployable_lift * 100:.1f}pp | >= 5.0pp | "
++        f"{'YES' if c.get('deployable_meaningful', False) else 'NO'} |"
++    )
++    lines.append(
++        f"| McNemar p | {mcnemar_p:.4f} | < 0.05 | "
++        f"{'YES' if mcnemar_p < 0.05 else 'NO'} |"
++    )
++    lines.append(
++        f"| 95% CI | [{ci[0]:+.4f}, {ci[1]:+.4f}] | lower > 0 | "
++        f"{'YES' if ci[0] > 0 else 'NO'} |"
++    )
++    lines.append("")
++
++    return "\n".join(lines)
++
++
++def main() -> int:
++    inputs = [
++        (COMPARISON_PATH, "full576-comparison.json"),
++        (PAIRED_STATS_PATH, "full576-paired-stats.json"),
++        (ROUTER_ANALYSIS_PATH, "router-analysis.json"),
++    ]
++    missing = [(p, name) for p, name in inputs if not p.exists()]
++    if missing:
++        for p, name in missing:
++            print(f"ERROR: missing input file: {name} ({p})", file=sys.stderr)
++        return 1
++
++    comparison = load_json(COMPARISON_PATH)
++    paired_stats = load_json(PAIRED_STATS_PATH)
++    router_analysis = load_json(ROUTER_ANALYSIS_PATH)
++
++    _REPORTS.mkdir(parents=True, exist_ok=True)
++    md = generate_report(comparison, paired_stats, router_analysis)
++    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
++        f.write(md)
++    print(f"Wrote {OUTPUT_PATH}")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/test_generate_full576_report.py b/tests/test_generate_full576_report.py
+new file mode 100644
+index 0000000..9dbe33c
+--- /dev/null
++++ b/tests/test_generate_full576_report.py
+@@ -0,0 +1,223 @@
++"""Tests for scripts/generate_full576_report.py."""
++import json
++
++import pytest
++
++from scripts.generate_full576_report import MODELS, generate_report, main
++
++
++def _minimal_comparison() -> dict:
++    """Build a minimal valid full576-comparison.json structure."""
++    out = {}
++    for key, label in MODELS:
++        out[key] = {
++            "label": label,
++            "metrics": {
++                "pass_at_1": 0.25,
++                "syntax_rate": 0.80,
++                "repair_success_rate": 0.10,
++                "hidden_pass_rate": 0.20,
++                "format_compliance_rate": 0.95,
++                "timeout_rate": 0.05,
++            },
++            "per_task_type": {
++                "code_generation": {"total": 140, "passed": 35, "syntax_ok": 112, "format_ok": 133},
++                "static_repair": {"total": 218, "passed": 21, "syntax_ok": 174, "format_ok": 207},
++                "execution_repair": {"total": 218, "passed": 22, "syntax_ok": 174, "format_ok": 207},
++            },
++            "family_pass_count": 5,
++            "family_total": 75,
++        }
++    return out
++
++
++def _minimal_paired_stats() -> dict:
++    return {
++        "models": [k for k, _ in MODELS],
++        "common_sample_count": 576,
++        "pair_comparisons": [
++            {
++                "pair": ["full576-base", "full576-stage2-boundary"],
++                "sample_compare": {
++                    "n_compared": 576,
++                    "win": 10,
++                    "loss": 5,
++                    "unchanged": 561,
++                    "rate_a": 0.25,
++                    "rate_b": 0.30,
++                    "delta": 0.05,
++                    "mcnemar_b": 5,
++                    "mcnemar_c": 10,
++                    "mcnemar_p_two_sided": 0.30,
++                    "bootstrap_95ci": [0.005, 0.095],
++                },
++                "family_compare": {
++                    "n_families": 75,
++                    "families_gained": [],
++                    "families_lost": [],
++                    "net_gain": 0,
++                    "pass_a": 5,
++                    "pass_b": 6,
++                },
++            }
++        ],
++        "per_model_bug_type_repair": {
++            "full576-base": {
++                "off_by_one": {"total": 30, "passed": 3, "pass_rate": 0.1},
++                "return_value_error": {"total": 0, "passed": 0, "pass_rate": 0.0},
++            },
++        },
++    }
++
++
++def _minimal_router_analysis() -> dict:
++    return {
++        "models_loaded": [k for k, _ in MODELS],
++        "models_skipped": [],
++        "common_sample_count": 576,
++        "best_single": {
++            "model": "Base",
++            "model_key": "full576-base",
++            "overall_pass": 0.25,
++            "family_pass": 0.067,
++            "per_task_type": {},
++            "n_samples": 576,
++        },
++        "oracle_router": {
++            "overall_pass": 0.40,
++            "family_pass": 0.10,
++            "lift_vs_best_single": 0.15,
++        },
++        "metadata_router": {
++            "overall_pass": 0.30,
++            "family_pass": 0.08,
++            "routing_map": {},
++            "lift_vs_best_single": 0.05,
++        },
++        "deployable_router": {
++            "overall_pass": 0.28,
++            "family_pass": 0.07,
++            "routing_map": {},
++            "lift_vs_best_single": 0.03,
++        },
++        "decision_gate": {
++            "verdict": "SIGNAL",
++            "reason": "Oracle lift >= 5pp but deployable not significant.",
++            "criteria": {
++                "lift_threshold_pp": 5.0,
++                "oracle_lift": 0.15,
++                "oracle_meaningful": True,
++                "deployable_lift": 0.03,
++                "deployable_meaningful": False,
++                "deployable_mcnemar_p": 0.20,
++                "deployable_ci_95": [-0.02, 0.08],
++                "deployable_ci_significant": False,
++                "deployable_significant": False,
++                "deployable_mcnemar_b": 5,
++                "deployable_mcnemar_c": 10,
++                "n_common": 576,
++            },
++        },
++        "comparison_table": [
++            {
++                "name": "Base",
++                "type": "single_model",
++                "overall_pass": 0.25,
++                "family_pass": 0.067,
++                "code_generation_pass": 0.25,
++                "static_repair_pass": 0.10,
++                "execution_repair_pass": 0.10,
++                "lift_vs_best_single": 0.0,
++            }
++        ],
++    }
++
++
++def test_generates_report_with_mock_data(tmp_path, monkeypatch):
++    """Create temp JSON files with minimal valid data, run main, verify output exists."""
++    (tmp_path / "full576-comparison.json").write_text(
++        json.dumps(_minimal_comparison()), encoding="utf-8"
++    )
++    (tmp_path / "full576-paired-stats.json").write_text(
++        json.dumps(_minimal_paired_stats()), encoding="utf-8"
++    )
++    (tmp_path / "router-analysis.json").write_text(
++        json.dumps(_minimal_router_analysis()), encoding="utf-8"
++    )
++
++    import scripts.generate_full576_report as mod
++    monkeypatch.setattr(mod, "COMPARISON_PATH", tmp_path / "full576-comparison.json")
++    monkeypatch.setattr(mod, "PAIRED_STATS_PATH", tmp_path / "full576-paired-stats.json")
++    monkeypatch.setattr(mod, "ROUTER_ANALYSIS_PATH", tmp_path / "router-analysis.json")
++    out_path = tmp_path / "p2-full576-comparison-report.md"
++    monkeypatch.setattr(mod, "OUTPUT_PATH", out_path)
++
++    rc = main()
++    assert rc == 0
++    assert out_path.exists()
++    content = out_path.read_text(encoding="utf-8")
++
++    expected_sections = [
++        "# P2 Full-576 Comparison Report",
++        "## Evaluation Setup",
++        "## Overall Metrics",
++        "## Per-Task-Type Breakdown",
++        "## Family-Level Pass",
++        "## Paired Statistics Summary",
++        "## Bug-Type Repair Success Rate",
++        "## Router Feasibility Summary",
++        "## P3 Decision Gate",
++    ]
++    for section in expected_sections:
++        assert section in content, f"missing section header: {section}"
++
++
++def test_missing_input_returns_error(tmp_path, monkeypatch):
++    """Verify main() returns 1 when input files are missing."""
++    import scripts.generate_full576_report as mod
++    monkeypatch.setattr(mod, "COMPARISON_PATH", tmp_path / "nope-1.json")
++    monkeypatch.setattr(mod, "PAIRED_STATS_PATH", tmp_path / "nope-2.json")
++    monkeypatch.setattr(mod, "ROUTER_ANALYSIS_PATH", tmp_path / "nope-3.json")
++    monkeypatch.setattr(mod, "OUTPUT_PATH", tmp_path / "out.md")
++
++    rc = main()
++    assert rc == 1
++    assert not (tmp_path / "out.md").exists()
++
++
++def test_percentage_formatting():
++    """Verify pass rates are formatted as percentages with 1 decimal place."""
++    md = generate_report(
++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
++    )
++    # pass_at_1=0.25 -> "25.0%"
++    assert "25.0%" in md
++    # syntax_rate=0.80 -> "80.0%"
++    assert "80.0%" in md
++    # timeout_rate=0.05 -> "5.0%"
++    assert "5.0%" in md
++
++
++def test_decision_gate_verdict_displayed():
++    """Verify the P3 Decision Gate verdict is present in the output."""
++    md = generate_report(
++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
++    )
++    assert "**Verdict: SIGNAL**" in md
++    # The reason should also be present
++    assert "Oracle lift >= 5pp but deployable not significant." in md
++    # Gate criteria table should be present
++    assert "### Gate Criteria" in md
++    assert "Oracle lift" in md
++    assert "Deployable lift" in md
++    assert "McNemar p" in md
++    assert "95% CI" in md
++
++
++def test_all_five_models_in_table():
++    """Verify all 5 model labels appear in the overall metrics table."""
++    md = generate_report(
++        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
++    )
++    for _, label in MODELS:
++        assert label in md, f"missing model label in table: {label}"
+diff --git a/tests/test_router_gate.py b/tests/test_router_gate.py
+new file mode 100644
+index 0000000..c5aba16
+--- /dev/null
++++ b/tests/test_router_gate.py
+@@ -0,0 +1,98 @@
++"""Tests for the P3 Decision Gate logic in compute_router_analysis.apply_decision_gate."""
++import pytest
++from scripts.compute_router_analysis import apply_decision_gate
++
++
++class TestDecisionGate:
++    def _gate(self, **overrides):
++        defaults = dict(
++            deployable_lift=0.07,      # 7pp
++            oracle_lift=0.10,          # 10pp
++            deployable_mcnemar_p=0.01, # significant
++            deployable_ci_lo=0.03,     # CI doesn't cross 0
++            deployable_ci_hi=0.11,
++            deployable_b=5,
++            deployable_c=20,
++            n_common=576,
++        )
++        defaults.update(overrides)
++        return apply_decision_gate(**defaults)
++
++    def test_GO_when_lift_significant_and_ci_positive(self):
++        g = self._gate()
++        assert g["verdict"] == "GO"
++
++    def test_GO_when_lift_significant_and_mcnemar_significant_even_if_ci_crosses_zero(self):
++        g = self._gate(deployable_ci_lo=-0.01, deployable_ci_hi=0.15, deployable_mcnemar_p=0.03)
++        assert g["verdict"] == "GO"
++
++    def test_NO_GO_when_oracle_lift_below_threshold(self):
++        g = self._gate(oracle_lift=0.04)
++        assert g["verdict"] == "NO-GO"
++        assert "Oracle Router lift" in g["reason"]
++
++    def test_SIGNAL_when_oracle_meaningful_but_deployable_lift_below_threshold(self):
++        g = self._gate(oracle_lift=0.08, deployable_lift=0.03)
++        assert g["verdict"] == "SIGNAL"
++
++    def test_SIGNAL_when_oracle_meaningful_but_deployable_not_significant(self):
++        g = self._gate(oracle_lift=0.08, deployable_lift=0.06, deployable_mcnemar_p=0.20, deployable_ci_lo=-0.02)
++        assert g["verdict"] == "SIGNAL"
++
++    def test_NO_GO_when_deployable_no_significant_improvement_and_oracle_also_low(self):
++        g = self._gate(oracle_lift=0.04, deployable_lift=0.02, deployable_mcnemar_p=0.50, deployable_ci_lo=-0.03)
++        assert g["verdict"] == "NO-GO"
++
++    def test_GO_at_exact_5pp_threshold(self):
++        # >= 5pp is the threshold (inclusive)
++        g = self._gate(deployable_lift=0.05, oracle_lift=0.06, deployable_mcnemar_p=0.04, deployable_ci_lo=0.01)
++        assert g["verdict"] == "GO"
++
++    def test_criteria_dict_contains_all_fields(self):
++        g = self._gate()
++        c = g["criteria"]
++        for key in ("lift_threshold_pp", "oracle_lift", "oracle_meaningful",
++                    "deployable_lift", "deployable_meaningful", "deployable_mcnemar_p",
++                    "deployable_ci_95", "deployable_ci_significant",
++                    "deployable_significant", "deployable_mcnemar_b",
++                    "deployable_mcnemar_c", "n_common"):
++            assert key in c, f"missing key: {key}"
++
++    def test_reason_string_contains_numbers(self):
++        g = self._gate()
++        assert "7.0pp" in g["reason"] or "10.0pp" in g["reason"]
++
++
++class TestMcNemarExact:
++    def test_no_discordant_pairs_returns_1(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        assert mcnemar_exact(0, 0) == 1.0
++
++    def test_symmetric_distribution_returns_high_p(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        # 10 vs 10 — no asymmetry
++        p = mcnemar_exact(10, 10)
++        assert p > 0.5
++
++    def test_extreme_asymmetry_returns_low_p(self):
++        from scripts.compute_router_analysis import mcnemar_exact
++        # 0 vs 20 — extreme asymmetry
++        p = mcnemar_exact(0, 20)
++        assert p < 0.001
++
++
++class TestPairedBootstrapCI:
++    def test_identical_pass_lists_give_ci_centered_at_zero(self):
++        from scripts.compute_router_analysis import paired_bootstrap_ci
++        passes = [True] * 100 + [False] * 100
++        lo, hi = paired_bootstrap_ci(passes, passes, n_boot=1000, seed=42)
++        assert -0.01 < lo < 0.01
++        assert -0.01 < hi < 0.01
++
++    def test_all_b_passes_all_a_fails_gives_positive_ci(self):
++        from scripts.compute_router_analysis import paired_bootstrap_ci
++        a = [False] * 100
++        b = [True] * 100
++        lo, hi = paired_bootstrap_ci(a, b, n_boot=1000, seed=42)
++        assert lo > 0.5
++        assert hi > 0.5
