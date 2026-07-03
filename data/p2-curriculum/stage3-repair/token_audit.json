@@ -1,0 +1,33 @@
+{
+  "note": "Character-length based audit (tokenizer not loaded).",
+  "overall": {
+    "count": 786,
+    "mean": 879.32,
+    "max": 2099,
+    "p50": 859,
+    "p90": 1424
+  },
+  "by_task_type": {
+    "code_generation": {
+      "count": 213,
+      "mean": 654.46,
+      "max": 1839,
+      "p50": 574,
+      "p90": 1049
+    },
+    "execution_repair": {
+      "count": 354,
+      "mean": 1149.09,
+      "max": 2099,
+      "p50": 1092,
+      "p90": 1536
+    },
+    "static_repair": {
+      "count": 219,
+      "mean": 661.94,
+      "max": 1620,
+      "p50": 586,
+      "p90": 1011
+    }
+  }
+}

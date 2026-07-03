@@ -9,6 +9,12 @@ adapters/**/adapter_model.safetensors
 adapters/**/*.bin
 adapters/**/*.zip
 adapters/**/checkpoint-*/
+adapters/**/tokenizer.json
+adapters/**/training_args.bin
+adapters/**/optimizer.pt
+adapters/**/rng_state.pth
+adapters/**/scheduler.pt
+adapters/**/trainer_state.json
 
 # Generated / verified / rejected data blobs
 data/generated/*
@@ -34,6 +40,7 @@ __pycache__/
 # Env / secrets
 .env
 *.log
+*_pid.txt
 
 # OS
 Thumbs.db

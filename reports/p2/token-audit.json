@@ -1,0 +1,29 @@
+{
+  "stage1-code": {
+    "total": 84,
+    "truncated": 1,
+    "assistant_intact": 84,
+    "assistant_partial": 0,
+    "assistant_lost": 0,
+    "target_too_long": 0,
+    "retention_rate": 1.0
+  },
+  "stage2-boundary": {
+    "total": 280,
+    "truncated": 7,
+    "assistant_intact": 280,
+    "assistant_partial": 0,
+    "assistant_lost": 0,
+    "target_too_long": 0,
+    "retention_rate": 1.0
+  },
+  "stage3-repair": {
+    "total": 560,
+    "truncated": 131,
+    "assistant_intact": 560,
+    "assistant_partial": 0,
+    "assistant_lost": 0,
+    "target_too_long": 0,
+    "retention_rate": 1.0
+  }
+}

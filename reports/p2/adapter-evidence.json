@@ -1,0 +1,139 @@
+{
+  "stage1-code": {
+    "path": "adapters/p2/continual/stage1-code-v2",
+    "weight_file": "adapter_model.safetensors",
+    "size_bytes": 40422168,
+    "sha256": "eb0fcae67ec9c4714d37850ade2dd7e312aead9c15c73448678fdc543ef61196",
+    "config_sha256": "6655eade4d74a7ce33db8873405e845ee1a1519562e4727b0c11928d343c4e5a",
+    "training_config_sha256": "087dbb5dd41119d0315b20fcd78aa662e5a7c901f75825bbaf1baef5e57ec13e",
+    "parent_adapter_sha256": null,
+    "training_mode": "independent",
+    "initial_adapter": null,
+    "train_hash": "78c2cce6b5d8cc7baf5579600e478bb75e412c4c4d6387267434f81306e242f5",
+    "eval_hash": "462c1f700b21123cf19e61cf96f3e8d653154cdb8b701fb4ab3973ec843ddbdd",
+    "started_at": "2026-07-03T03:31:42.727092+00:00",
+    "finished_at": "2026-07-03T03:34:55.740020+00:00",
+    "train_duration_s": 187.36871910095215,
+    "trainable_params": 10092544,
+    "total_params": 606142464,
+    "peak_gpu_mib": 1348.509765625,
+    "token_audit": {
+      "total": 84,
+      "truncated": 1,
+      "assistant_intact": 84,
+      "assistant_partial": 0,
+      "assistant_lost": 0,
+      "target_too_long": 0
+    },
+    "assistant_only_loss": true,
+    "truncation_policy": "preserve_assistant",
+    "lora_config": {
+      "rank": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    },
+    "max_seq_length": 384
+  },
+  "stage2-boundary": {
+    "path": "adapters/p2/continual/stage2-boundary-v2",
+    "weight_file": "adapter_model.safetensors",
+    "size_bytes": 40422168,
+    "sha256": "62a41f2a8a5c62060eb5301741d0e53ed4e46e8154cacce3979ca07a6a3cc775",
+    "config_sha256": "010670482beb86eec8f77950e91fcb21672cc0463d98c8e598332f056977fcb3",
+    "training_config_sha256": "5edf6396165bd0051595f0b557e0011a3a0955c46bdbb18277d07dfe8b1cbd13",
+    "parent_adapter_sha256": "6655eade4d74a7ce33db8873405e845ee1a1519562e4727b0c11928d343c4e5a",
+    "training_mode": "continual",
+    "initial_adapter": "adapters/p2/continual/stage1-code-v2",
+    "train_hash": "956b6f789909fb4022a6361d9c817384f8509c97822551c04ce07602877016b2",
+    "eval_hash": "0cd916b9c8d958ca639c18831dbf503da164a9e809273d64b019cc4598e27479",
+    "started_at": "2026-07-03T03:35:19.301257+00:00",
+    "finished_at": "2026-07-03T03:43:52.119771+00:00",
+    "train_duration_s": 507.48926067352295,
+    "trainable_params": 10092544,
+    "total_params": 606142464,
+    "peak_gpu_mib": 1353.17138671875,
+    "token_audit": {
+      "total": 280,
+      "truncated": 7,
+      "assistant_intact": 280,
+      "assistant_partial": 0,
+      "assistant_lost": 0,
+      "target_too_long": 0
+    },
+    "assistant_only_loss": true,
+    "truncation_policy": "preserve_assistant",
+    "lora_config": {
+      "rank": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    },
+    "max_seq_length": 384
+  },
+  "stage3-repair": {
+    "path": "adapters/p2/continual/stage3-repair-v2",
+    "weight_file": "adapter_model.safetensors",
+    "size_bytes": 40422168,
+    "sha256": "0c641ce49cf5dc42097ab17d53b1c26f38034682f3adffbca4fb884bae38a6a1",
+    "config_sha256": "52a1aa775bfd56f850771a6c11bc5b80dc317e840046fbed32304cce8b114b9e",
+    "training_config_sha256": "1ade508295a2450528409a396da3dca05affbb36f22b89cab3e3a4f2b7d7a204",
+    "parent_adapter_sha256": "010670482beb86eec8f77950e91fcb21672cc0463d98c8e598332f056977fcb3",
+    "training_mode": "continual",
+    "initial_adapter": "adapters/p2/continual/stage2-boundary-v2",
+    "train_hash": "d5413247371c4da7f80e0e1a25a354f93dafb671fcaf3c868f40cbc1b2ff818c",
+    "eval_hash": "a17e4198196b72123c24d2e54aca8ddce7b7bc09f6ba1d8f9ef9c4561ac36993",
+    "started_at": "2026-07-03T03:44:10.656482+00:00",
+    "finished_at": "2026-07-03T04:05:01.943958+00:00",
+    "train_duration_s": 1245.5318071842194,
+    "trainable_params": 10092544,
+    "total_params": 606142464,
+    "peak_gpu_mib": 1376.6337890625,
+    "token_audit": {
+      "total": 560,
+      "truncated": 131,
+      "assistant_intact": 560,
+      "assistant_partial": 0,
+      "assistant_lost": 0,
+      "target_too_long": 0
+    },
+    "assistant_only_loss": true,
+    "truncation_policy": "preserve_assistant",
+    "lora_config": {
+      "rank": 16,
+      "alpha": 32,
+      "dropout": 0.05,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ]
+    },
+    "max_seq_length": 384
+  },
+  "_verification": {
+    "all_adapter_hashes_different": true,
+    "parent_chain_verified": true,
+    "verification_time": "2026-07-03 04:05:28.898412+00:00"
+  }
+}

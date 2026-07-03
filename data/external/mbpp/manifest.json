@@ -1,0 +1,8 @@
+{
+  "source": "google-research-datasets/mbpp",
+  "split": "train",
+  "sample_count": 374,
+  "sha256": "fb45cb32781a04dc0cc2ff5478427d24a6b10ccc8c72b3821fc9604e10fc400e",
+  "license": "Apache-2.0",
+  "imported_at": "2026-07-02T14:05:40.715694+00:00"
+}

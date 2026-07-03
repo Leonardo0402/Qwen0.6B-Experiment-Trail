@@ -54,8 +54,8 @@ def test_family_count_at_least_eight():
 
 
 def test_all_twelve_families_present():
-    """All 12 designed families are registered."""
-    assert len(TASK_FAMILIES) == 12
+    """All designed families are registered (at least 12, expanded in P2)."""
+    assert len(TASK_FAMILIES) >= 12
 
 
 def test_family_ids_unique():
@@ -96,14 +96,16 @@ def test_generate_filter_by_level_zero():
     """--levels 0 returns only L0 samples."""
     samples = generate_samples(TASK_FAMILIES, levels=[0])
     assert all(s.difficulty == 0 for s in samples)
-    assert len(samples) == 3  # exactly 3 L0 families
+    expected_l0 = sum(1 for f in TASK_FAMILIES if f.difficulty == 0)
+    assert len(samples) == expected_l0
 
 
 def test_generate_filter_by_levels_01():
     """--levels 0 1 returns L0 and L1 samples only."""
     samples = generate_samples(TASK_FAMILIES, levels=[0, 1])
     assert all(s.difficulty in (0, 1) for s in samples)
-    assert len(samples) == 8  # 3 L0 + 5 L1
+    expected_01 = sum(1 for f in TASK_FAMILIES if f.difficulty in (0, 1))
+    assert len(samples) == expected_01
 
 
 def test_generate_count_limit():

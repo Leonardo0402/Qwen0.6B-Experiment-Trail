@@ -43,6 +43,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 from dataclasses import dataclass
 
@@ -237,6 +238,39 @@ def run_python_code(
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+def _normalize_test_code(test_code: str) -> str:
+    """Normalize bare-assert test code to a pytest-collectable format.
+
+    MBPP-style test snippets are top-level ``assert`` statements without
+    ``from solution import ...`` and without ``def test_*`` wrappers.  pytest
+    fails to collect them as tests (raises NameError during collection
+    because the function under test is undefined in the test module's
+    namespace, or reports "no tests ran" if names happen to resolve).
+
+    This function detects such bare-assert tests and rewrites them to::
+
+        from solution import *
+
+        def test_solution():
+            <indented asserts>
+
+    Test code that already contains ``from solution`` or ``def test_`` is
+    returned unchanged.  Empty / comment-only test code is also returned
+    unchanged (the caller handles "no tests" as a failure).
+    """
+    if not test_code or not test_code.strip():
+        return test_code
+    # Already in pytest format - leave as-is
+    if "from solution" in test_code or "def test" in test_code:
+        return test_code
+    # No asserts to wrap
+    if "assert" not in test_code:
+        return test_code
+    # Bare asserts: wrap in a test function with import header
+    indented = textwrap.indent(test_code.strip(), "    ")
+    return f"from solution import *\n\ndef test_solution():\n{indented}\n"
+
+
 def run_pytest(
     target_code: str,
     test_code: str,
@@ -254,12 +288,16 @@ def run_pytest(
 
         from solution import my_function
 
+    Bare-assert MBPP-style tests (no ``from solution`` and no ``def test_*``)
+    are auto-normalized via :func:`_normalize_test_code` so that pytest can
+    collect them as a single ``test_solution`` function.
+
     Parameters
     ----------
     target_code:
         The solution / implementation to be tested.
     test_code:
-        A pytest test file.
+        A pytest test file (or bare asserts).
     timeout_s:
         Maximum wall-clock seconds before the child process is killed.
     max_output_chars:
@@ -274,7 +312,7 @@ def run_pytest(
         with open(os.path.join(tmpdir, "solution.py"), "w", encoding="utf-8") as fh:
             fh.write(target_code)
         with open(os.path.join(tmpdir, "test_solution.py"), "w", encoding="utf-8") as fh:
-            fh.write(test_code)
+            fh.write(_normalize_test_code(test_code))
 
         timed_out = False
         returncode: int | None = None

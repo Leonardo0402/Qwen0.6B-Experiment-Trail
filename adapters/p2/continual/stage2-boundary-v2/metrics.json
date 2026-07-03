@@ -1,0 +1,41 @@
+{
+  "model_name_or_path": "E:\\agent\\Qwen\\qwen3-code-lab\\models\\Qwen3-0.6B",
+  "train_file": "E:\\agent\\Qwen\\qwen3-code-lab\\data\\p2-curriculum\\stage2-boundary\\train.jsonl",
+  "train_hash": "956b6f789909fb4022a6361d9c817384f8509c97822551c04ce07602877016b2",
+  "eval_hash": "0cd916b9c8d958ca639c18831dbf503da164a9e809273d64b019cc4598e27479",
+  "seed": 42,
+  "lora_config": {
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "max_seq_length": 384,
+  "trainable_params": 10092544,
+  "total_params": 606142464,
+  "started_at": "2026-07-03T03:35:19.301257+00:00",
+  "finished_at": "2026-07-03T03:43:52.119771+00:00",
+  "train_duration_s": 507.48926067352295,
+  "training_mode": "continual",
+  "initial_adapter": "adapters/p2/continual/stage1-code-v2",
+  "parent_adapter_sha256": "6655eade4d74a7ce33db8873405e845ee1a1519562e4727b0c11928d343c4e5a",
+  "assistant_only_loss": true,
+  "truncation_policy": "preserve_assistant",
+  "token_audit": {
+    "total": 280,
+    "truncated": 7,
+    "assistant_intact": 280,
+    "assistant_partial": 0,
+    "assistant_lost": 0,
+    "target_too_long": 0
+  },
+  "peak_gpu_mib": 1353.17138671875
+}
