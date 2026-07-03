@@ -9,11 +9,27 @@ Started: 2026-07-03
 - Task 2: Extend compute_router_analysis.py with P3 Decision Gate — complete (commits deb8db9..5dbaf8b, review clean, Approved)
 - Prep: Commit compute_paired_stats.py full576 rename — complete (commit 48efe4e)
 - Task 3: Write generate_full576_report.py for Full-576 comparison report — complete (commits 48efe4e..6670523, review APPROVED_WITH_MINOR)
+- Chore: Commit eval scripts + SDD process files — complete (commit d6f553d)
+- Final whole-branch code review — complete (APPROVED_WITH_MINOR, no Critical/Important)
+- Fix: UTF-8 encoding in generate_full576_report load_json — complete (commit d90ec9b)
 
-## Minor findings (defer to final whole-branch review)
+## Final Review Minor Findings (triaged)
 
-1. **Task 3 §6 pair labels**: `generate_full576_report.py` line ~168 emits raw model keys (`full576-base → full576-stage2-boundary`) in the Paired Statistics table rather than human-readable labels. Defensible because upstream `compute_paired_stats.py:299` does the same, but inconsistent with §3-5 which use labels. Could add a key→label map for consistency.
+### Fixed:
+- **#4 load_json encoding** (FIXED in d90ec9b): `generate_full576_report.py` load_json now uses `p.open(encoding="utf-8")` with `with` statement. Prevents mojibake when reading em-dashes from router-analysis.json on Windows.
 
-2. **Task 3 test style**: `test_generate_full576_report.py` uses bare functions with triplicated `_minimal_*()` fixtures instead of class grouping + shared helper as in `test_router_gate.py`. Brief said "Follow the test style in test_router_gate.py" but functional style is valid pytest.
+### Deferred (acceptable for merge):
+- **#1 §6 pair labels**: Raw model keys in Paired Statistics table (consistent with upstream compute_paired_stats.py)
+- **#2 Test style**: Bare functions vs class grouping (valid pytest, style preference)
+- **#3 Weak assertion**: `label in md` not section-scoped (still verifies model presence)
+- **#5 Dead else branch**: `compute_router_analysis.py:299-304` unreachable else in apply_decision_gate (cosmetic)
+- **#6 Stale comment**: `compute_paired_stats.py` "Issue #1" → "Issue #6" (cosmetic)
 
-3. **Task 3 weak assertion**: `test_all_five_models_in_table` asserts `label in md` (anywhere in document) instead of specifically within the Overall Metrics section. A stricter test would slice between `## Overall Metrics` and the next `##` header.
+## Remaining Work (data-dependent)
+
+1. Wait for Full-576 evaluations to complete (5 models, ~2h each)
+2. Run compute_paired_stats.py + compare_p2_evals.py
+3. Run compute_router_analysis.py (P3 Decision Gate)
+4. Run generate_full576_report.py
+5. Commit generated reports
+6. Push + PR + merge to main
