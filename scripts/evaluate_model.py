@@ -434,6 +434,7 @@ def evaluate_model(
     max_new_tokens: int = 384,
     pytest_timeout_s: float = 10.0,
     skip_canary: bool = False,
+    max_samples: Optional[int] = None,
 ) -> dict:
     """Run evaluation and return a results dict (also saved to *output_path*)."""
     import torch
@@ -457,6 +458,36 @@ def evaluate_model(
     samples = _load_and_validate_samples(dataset_path)
     print(f"  Loaded {len(samples)} validated samples")
     print(f"  Dataset SHA256: {dataset_sha[:16]}...")
+
+    if max_samples is not None and max_samples > 0 and max_samples < len(samples):
+        # Stratified subsample by task_type for representative coverage
+        from collections import defaultdict
+        by_type: dict[str, list] = defaultdict(list)
+        for s in samples:
+            by_type[s.task_type].append(s)
+        n_types = len(by_type)
+        per_type = max(1, max_samples // n_types)
+        remainder = max_samples - per_type * n_types
+        subsampled = []
+        for t, group in by_type.items():
+            take = min(per_type, len(group))
+            subsampled.extend(group[:take])
+        # Distribute remainder to first types
+        idx = 0
+        while len(subsampled) < max_samples:
+            for t, group in by_type.items():
+                if len(subsampled) >= max_samples:
+                    break
+                existing = sum(1 for s in subsampled if s.task_type == t)
+                if existing < len(group):
+                    # Find next not-yet-included sample of this type
+                    for s in group[existing:]:
+                        if s not in subsampled:
+                            subsampled.append(s)
+                            break
+                idx += 1
+        samples = subsampled[:max_samples]
+        print(f"  --max-samples={max_samples}: stratified subsample of {len(samples)} samples")
 
     # Count task types and families
     task_type_counts: dict[str, int] = {}
@@ -626,6 +657,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-new-tokens", type=int, default=384)
     p.add_argument("--pytest-timeout", type=float, default=10.0)
     p.add_argument(
+        "--max-samples", type=int, default=None,
+        help="Limit evaluation to first N samples (for feasibility). "
+             "Default: evaluate all samples.",
+    )
+    p.add_argument(
         "--run-canary", action="store_true", default=True,
         help="Run canary tests (default: always run).",
     )
@@ -653,6 +689,7 @@ def main() -> int:
             max_new_tokens=args.max_new_tokens,
             pytest_timeout_s=args.pytest_timeout,
             skip_canary=args.skip_canary,
+            max_samples=args.max_samples,
         )
         return 0
     except Exception:
