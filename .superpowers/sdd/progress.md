@@ -13,7 +13,7 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 - Task 4: Run Import + Verify + Source Audit — COMPLETE (commit c9bb78a; pad-then-verify re-run: 714/964 verified, 433 new families, LIKELY_FEASIBLE) [v2.1 A2 compliant]
 - Task 5: Cross-Split Semantic Dedup Audit — COMPLETE (v2.1 redo; 714 samples, 50 quarantined families, unresolved=0, PASS)
 - Task 6: Build Family Registry — COMPLETE (v2.1 redo; 807 families, 374 P2, 50 quarantine, 409 new-available)
-- Task 7: Frozen v3 Candidate Reservation — NEEDS_REWORK (was COMPLETE 2483968; re-run on new source pool)
+- Task 7: Frozen v3 Candidate Reservation — COMPLETE (v2.1 redo; source_pool=348, 120 candidates reserved, 10/10 tests pass)
 - Task 8: Build Frozen v3 Samples + Verify + Freeze — NEEDS_REWORK (was COMPLETE 0e60b3a; re-run with new candidates; reviewer cancelled)
 - Task 9: P3 Validation + Train Family Partition (pairwise disjoint + P2 replay whitelist) — PENDING
 - Task 10: Canonical Verified Sample Pool — PENDING
