@@ -231,17 +231,17 @@ class TestImporterP3:
 # ---------------------------------------------------------------------------
 
 class TestVerifierP3:
-    """6 verifier tests per the task brief."""
+    """9 verifier tests per the task brief (6 original + 3 Amendment A2)."""
 
     # --- Test 6 ---
     def test_verified_sample_passes_all_checks(self, tmp_path: Path) -> None:
         """Sample with valid code, public>=2, hidden>=3 -> written to
         verified/<split>.jsonl with verified=true (P3 constraint #7)."""
         sample = _make_sample()
-        verified, rejected, warnings_count = verify_split([sample])
+        verified, rejected, padding_rejected_count = verify_split([sample])
         assert len(verified) == 1
         assert len(rejected) == 0
-        assert warnings_count == 0  # hidden>=3 -> no warning
+        assert padding_rejected_count == 0  # no padding failures
         assert verified[0].verified is True
         # Real verification results from verify_sample
         assert verified[0].verification.syntax_ok is True
@@ -261,7 +261,8 @@ class TestVerifierP3:
         """public_tests with only 1 assert -> rejected with reason
         mentioning 'public assertions' (P3 constraint #7).
 
-        public>=2 is a HARD rejection (unchanged)."""
+        public>=2 is a HARD rejection (unchanged).  Padding does NOT run
+        because the public check fails first."""
         sample = _make_sample(
             public_tests="assert add(1, 2) == 3",  # 1 assert only
         )
@@ -272,33 +273,33 @@ class TestVerifierP3:
         assert warning == ""  # no warning recorded (hard reject)
 
     # --- Test 8 ---
-    def test_low_hidden_count_warning_not_reject(self, tmp_path: Path) -> None:
-        """hidden_tests with only 2 asserts -> NOT rejected; sample still
-        lands in verified/ and a warning is recorded in the manifest.
+    def test_low_hidden_count_padded_passes(self, tmp_path: Path) -> None:
+        """hidden_tests with only 2 asserts -> padded to >=3 -> passes
+        verification (P3 plan v2.1 Amendment A2).
 
-        Per the user-approved fix: ``hidden >= 3`` is now a WARNING, not
-        a hard rejection.  Hard enforcement happens at Frozen v3 build
-        time (Task 8).  ``public >= 2`` remains a HARD rejection.
+        Per Amendment A2: hidden>=3 is now HARD (after padding).  Samples
+        with fewer hidden asserts are padded BEFORE the hard check; if
+        padding succeeds, the sample passes.  ``public >= 2`` remains a
+        HARD rejection.
         """
         sample = _make_sample(
             hidden_tests="assert add(-1, 1) == 0\n\nassert add(2, 3) == 5",
-            # 2 asserts only -- below the warning threshold of 3
+            # 2 asserts only -- padding will bring it to >=3
         )
         passed, reason, warning = check_sample(sample)
-        # Sample PASSES verification (no hard rejection).
+        # Sample PASSES verification (padding succeeded, hard check passes).
         assert passed is True
         assert reason == ""
-        # Warning is recorded describing the low hidden count.
-        assert warning != ""
-        assert "hidden assertions" in warning
-        assert "2" in warning
+        assert warning == ""  # no warnings (no soft checks remain)
+        # Sample's hidden_tests was mutated to the padded version.
+        assert sample.hidden_tests.count("assert ") >= 3
 
-        # End-to-end: sample goes to verified/, NOT rejected/, and the
-        # manifest records a non-zero warnings count.
-        verified, rejected, warnings_count = verify_split([sample])
+        # End-to-end: sample goes to verified/, NOT rejected/, and
+        # padding_rejected_count is 0 (padding succeeded).
+        verified, rejected, padding_rejected_count = verify_split([sample])
         assert len(verified) == 1
         assert len(rejected) == 0
-        assert warnings_count == 1
+        assert padding_rejected_count == 0
         assert verified[0].verified is True
 
         # Write to verified/ and confirm it lands there (not rejected/).
@@ -363,9 +364,9 @@ class TestVerifierP3:
         verified_count, rejected_count, rejected_sha256, verified_at,
         and a warnings summary filled in (P3 task brief Part B #3).
 
-        The warnings field is informational -- it counts how many
-        verified samples have hidden_assertion_count < 3 (the hard
-        enforcement of hidden >= 3 happens at Frozen v3 build time).
+        Per v2.1 Amendment A2, the warnings field now records
+        ``padding_rejected_count`` (samples rejected because padding
+        failed) instead of the old ``low_hidden_count`` soft-warning count.
         """
         manifest_path = tmp_path / "manifest.test.json"
         initial = build_manifest(
@@ -384,7 +385,7 @@ class TestVerifierP3:
         write_manifest(initial, manifest_path)
 
         verified_at = datetime.now(timezone.utc).isoformat()
-        warnings_summary = {"low_hidden_count": 0}
+        warnings_summary = {"padding_rejected_count": 0}
         updated = update_manifest_with_verified(
             manifest_path,
             verified_sha256="deadbeef",
@@ -399,7 +400,7 @@ class TestVerifierP3:
         assert updated["rejected_count"] == 0
         assert updated["rejected_sha256"] == ""
         assert updated["verified_at"] == verified_at
-        assert updated["warnings"] == {"low_hidden_count": 0}
+        assert updated["warnings"] == {"padding_rejected_count": 0}
 
         # Persisted to disk
         with manifest_path.open("r", encoding="utf-8") as fh:
@@ -408,4 +409,54 @@ class TestVerifierP3:
         assert persisted["verified_count"] == 1
         assert persisted["rejected_count"] == 0
         assert persisted["verified_at"] == verified_at
-        assert persisted["warnings"] == {"low_hidden_count": 0}
+        assert persisted["warnings"] == {"padding_rejected_count": 0}
+
+    # --- Test 12 (new, Amendment A2) ---
+    def test_one_hidden_assert_padded_passes(self) -> None:
+        """Sample with 1 hidden assert -> padded to >=3 -> passes the
+        hard hidden>=3 check (P3 plan v2.1 Amendment A2).
+
+        Padding succeeds for the simple ``add(a, b)`` function, so the
+        sample reaches verify_sample and passes.
+        """
+        sample = _make_sample(
+            hidden_tests="assert add(-1, 1) == 0\n",  # 1 assert only
+        )
+        passed, reason, _warning = check_sample(sample)
+        assert passed is True
+        assert reason == ""
+        # Padding brought hidden_tests to >=3 asserts.
+        assert sample.hidden_tests.count("assert ") >= 3
+
+    # --- Test 13 (new, Amendment A2) ---
+    def test_padding_failure_rejected(self) -> None:
+        """Sample with malformed target_code -> padding fails -> HARD
+        rejected with the padding failure reason (P3 plan v2.1 Amendment A2).
+        """
+        sample = _make_sample(
+            target_code="def add(a, b\n    return a + b\n",  # SyntaxError
+            hidden_tests="assert add(1, 2) == 3\n",  # 1 assert only
+        )
+        passed, reason, _warning = check_sample(sample)
+        assert passed is False
+        assert reason == "hidden_padding_failed_syntax_error"
+
+        # End-to-end: sample goes to rejected/, padding_rejected_count=1.
+        verified, rejected, padding_rejected_count = verify_split([sample])
+        assert len(verified) == 0
+        assert len(rejected) == 1
+        assert padding_rejected_count == 1
+        assert rejected[0][1] == "hidden_padding_failed_syntax_error"
+
+    # --- Test 14 (new, Amendment A2) ---
+    def test_padded_sample_has_3_hidden_asserts(self) -> None:
+        """After padding, sample's hidden_tests has >=3 asserts (P3 plan
+        v2.1 Amendment A2)."""
+        sample = _make_sample(
+            hidden_tests="assert add(-1, 1) == 0\n",  # 1 assert only
+        )
+        assert sample.hidden_tests.count("assert ") == 1
+        passed, _reason, _warning = check_sample(sample)
+        assert passed is True
+        # The padded sample (mutated in place) has >=3 hidden asserts.
+        assert sample.hidden_tests.count("assert ") >= 3

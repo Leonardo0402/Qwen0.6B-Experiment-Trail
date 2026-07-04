@@ -37,7 +37,6 @@ from scripts.build_frozen_v3_samples import (  # noqa: E402
     compute_sha_lock,
     extract_bug_type,
     make_canary,
-    pad_hidden_tests,
     post_process_variant_type,
     update_registry,
     verify_family,
@@ -48,6 +47,7 @@ from scripts.build_frozen_v3_samples import (  # noqa: E402
     write_test_raw_jsonl,
 )
 from src.family_registry import FamilyEntry, FamilyRegistry  # noqa: E402
+from src.hidden_test_padding import pad_hidden_tests  # noqa: E402
 from src.schemas import Sample, Verification  # noqa: E402
 from src.validators import verify_sample  # noqa: E402
 

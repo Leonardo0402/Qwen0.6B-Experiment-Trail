@@ -11,22 +11,28 @@ Sample, and writes:
 The verifier also updates ``<output-dir>/manifest.<split>.json`` with the
 verified/rejected counts and SHA-256 digests.
 
-Per the P3 task brief, the verifier performs these checks per sample:
+Per the P3 plan v2.1 Amendment A2, the verifier performs these checks per
+sample:
 
 1. Hard check: ``public_tests.count("assert ") >= 2`` (samples failing
    this go to ``rejected/``).
-2. Soft check (WARNING only): ``hidden_tests.count("assert ") >= 3``.
-   Samples with fewer hidden asserts still go to ``verified/`` but a
-   warning is recorded in the manifest.  The hard ``hidden >= 3``
-   enforcement happens at Frozen v3 build time (Task 8), not here.
-3. For ``static_repair`` / ``execution_repair`` samples: call
+2. Pad-then-verify (HARD): call :func:`pad_hidden_tests` with
+   ``target_count=3`` BEFORE the hidden assertion count check.  If
+   padding fails, the sample is HARD rejected with the padding failure
+   reason.  If padding succeeds, the padded sample is used for all
+   subsequent checks (verify_sample runs on the padded sample).
+3. Hard check: ``hidden_tests.count("assert ") >= 3`` AFTER padding.
+   Padding should have brought the count to >=3; if still <3, the
+   sample is HARD rejected with ``"hidden assertions insufficient after
+   padding"``.
+4. For ``static_repair`` / ``execution_repair`` samples: call
    :func:`src.validators.verify_broken_is_broken` and require True
    (broken_code must fail at least one test).
-4. For ``execution_repair`` samples: ``execution_feedback`` must be
+5. For ``execution_repair`` samples: ``execution_feedback`` must be
    non-empty AND contain a failure marker (case-insensitive:
    any of ``Error``, ``assert``, ``Traceback``, ``FAILED``,
    ``Exception``, ``fail``).
-5. Real verification: call :func:`src.validators.verify_sample` and
+6. Real verification: call :func:`src.validators.verify_sample` and
    require ``is_accepted=True`` (syntax_ok AND pytest_ok AND NOT timeout).
 
 Samples that pass ALL hard checks + real verification go to
@@ -35,9 +41,10 @@ Samples that pass ALL hard checks + real verification go to
 ``rejected/<split>.jsonl`` with ``verified=False`` and a
 ``rejection_reason`` field.
 
-The manifest is updated with a ``warnings`` summary recording how many
-verified samples have ``hidden_assertion_count < 3`` (informational
-only; not a rejection).
+The manifest is updated with a ``warnings`` summary recording
+``padding_rejected_count`` -- the number of samples rejected because
+padding failed (informational only; these samples are already counted in
+``rejected_count``).
 
 The verifier does NOT download datasets -- that is the importer's job.
 
@@ -68,6 +75,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+from src.hidden_test_padding import pad_hidden_tests  # noqa: E402
 from src.schemas import Sample  # noqa: E402
 from src.validators import verify_broken_is_broken, verify_sample  # noqa: E402
 
@@ -75,13 +83,12 @@ from src.validators import verify_broken_is_broken, verify_sample  # noqa: E402
 # Constants
 # ---------------------------------------------------------------------------
 
-# Minimum assertion counts (P3 task brief constraints #7).
-# _MIN_PUBLIC_ASSERTS is a HARD rejection (samples failing this go to
-# rejected/).  _MIN_HIDDEN_ASSERTS is a SOFT warning only -- samples with
-# fewer hidden asserts still pass verification; the hard enforcement
-# happens at Frozen v3 build time (Task 8).
+# Minimum assertion counts (P3 plan v2.1 Amendment A2).
+# Both _MIN_PUBLIC_ASSERTS and _MIN_HIDDEN_ASSERTS are HARD rejections.
+# Samples failing the hidden threshold are rejected AFTER padding fails
+# to bring the count to >=3.
 _MIN_PUBLIC_ASSERTS = 2
-_MIN_HIDDEN_ASSERTS = 3  # warning threshold, NOT a hard reject
+_MIN_HIDDEN_ASSERTS = 3  # HARD reject (after padding)
 
 # Failure markers used to validate execution_feedback for execution_repair
 # samples (case-insensitive substring match).  Per task brief constraint #9.
@@ -134,10 +141,20 @@ def check_sample(sample: Sample) -> tuple[bool, str, str]:
     (passed, reason, warning)
         *passed* is True when the sample passes ALL hard checks.  *reason*
         is the empty string on success, or a short human-readable reason
-        on failure.  *warning* is the empty string when there is no
-        warning, or a short description of a soft-check violation (e.g.
-        low hidden assertion count).  Samples with a warning still pass
-        verification; the warning is recorded separately in the manifest.
+        on failure.  *warning* is always the empty string (no soft
+        checks remain after the v2.1 Amendment A2 change); it is kept in
+        the signature for backward compatibility with callers that
+        destructure a 3-tuple.
+
+    Pad-then-verify flow (v2.1 Amendment A2):
+        Before the hidden assertion count check, ``pad_hidden_tests`` is
+        called with ``target_count=3``.  If padding fails, the sample is
+        HARD rejected with the padding failure reason.  If padding
+        succeeds, the padded ``hidden_tests`` replaces the original for
+        all subsequent checks (verify_sample runs on the padded sample).
+        After padding, ``hidden_tests.count("assert ") < 3`` is a HARD
+        reject (defensive -- padding should have brought the count to
+        >=3; if still <3, padding under-delivered).
     """
     # ------------------------------------------------------------------
     # Hard check 1: public assertions >= 2
@@ -149,18 +166,29 @@ def check_sample(sample: Sample) -> tuple[bool, str, str]:
         ), ""
 
     # ------------------------------------------------------------------
-    # Soft check (WARNING only): hidden assertions >= 3.
-    # The hard enforcement of hidden >= 3 happens at Frozen v3 build
-    # time (Task 8).  Here we only record a warning so the sample
-    # still goes to verified/ when all other checks pass.
+    # Pad-then-verify (v2.1 Amendment A2): pad hidden tests BEFORE the
+    # hard hidden>=3 check.  If padding fails, HARD reject with the
+    # padding failure reason.  If padding succeeds, mutate the sample's
+    # hidden_tests in place so verify_sample (and the count check below)
+    # see the padded tests.
+    # ------------------------------------------------------------------
+    padded, pad_reason = pad_hidden_tests(sample, target_count=_MIN_HIDDEN_ASSERTS)
+    if pad_reason is not None:
+        return False, pad_reason, ""
+    # Mutate the sample's hidden_tests to the padded version so the
+    # padded tests flow through to verification and the verified JSONL.
+    sample.hidden_tests = padded.hidden_tests
+
+    # ------------------------------------------------------------------
+    # Hard check 2: hidden assertions >= 3 (HARD after padding).
+    # Padding should have brought the count to >=3; if still <3, reject.
     # ------------------------------------------------------------------
     n_hidden = count_asserts(sample.hidden_tests)
-    warning = ""
     if n_hidden < _MIN_HIDDEN_ASSERTS:
-        warning = (
+        return False, (
             f"hidden assertions {n_hidden} < {_MIN_HIDDEN_ASSERTS} "
-            "(enforced at Frozen v3 build time)"
-        )
+            "after padding"
+        ), ""
 
     # ------------------------------------------------------------------
     # Hard check 3 (repair only): verify_broken_is_broken
@@ -200,7 +228,7 @@ def check_sample(sample: Sample) -> tuple[bool, str, str]:
         )
         return False, reason, ""
 
-    return True, "", warning
+    return True, "", ""
 
 
 # ---------------------------------------------------------------------------
@@ -297,31 +325,36 @@ def update_manifest_with_verified(
 def verify_split(
     samples: list[Sample],
 ) -> tuple[list[Sample], list[tuple[Sample, str]], int]:
-    """Verify all *samples*; return (verified, rejected, warnings_count).
+    """Verify all *samples*; return (verified, rejected, padding_rejected_count).
 
     Verified samples have ``verified=True`` and ``verification`` updated to
-    the real results from :func:`verify_sample`.  Rejected samples keep
-    ``verified=False`` (will be re-stated in the rejection writer) and are
-    paired with a short reason string.  *warnings_count* is the number of
-    verified samples that triggered a soft-check warning (e.g. low hidden
-    assertion count); these samples still pass verification -- the warning
-    is informational only.
+    the real results from :func:`verify_sample` (run on the padded sample
+    when padding succeeds).  Rejected samples keep ``verified=False``
+    (will be re-stated in the rejection writer) and are paired with a
+    short reason string.  *padding_rejected_count* is the number of
+    samples rejected because :func:`pad_hidden_tests` returned a
+    non-None rejection reason; these samples are already included in
+    the *rejected* list (this count is informational only).
     """
     verified: list[Sample] = []
     rejected: list[tuple[Sample, str]] = []
-    warnings_count = 0
+    padding_rejected_count = 0
     for sample in samples:
-        passed, reason, warning = check_sample(sample)
+        passed, reason, _warning = check_sample(sample)
         if passed:
             sample.verified = True
             # verification was already updated inside check_sample.
             verified.append(sample)
-            if warning:
-                warnings_count += 1
         else:
             sample.verified = False
             rejected.append((sample, reason))
-    return verified, rejected, warnings_count
+            if reason in (
+                "hidden_padding_failed_syntax_error",
+                "hidden_padding_failed_no_functions",
+                "hidden_padding_insufficient",
+            ):
+                padding_rejected_count += 1
+    return verified, rejected, padding_rejected_count
 
 
 # ---------------------------------------------------------------------------
@@ -380,7 +413,7 @@ def main() -> int:
         f"from {normalized_path}"
     )
 
-    verified, rejected, warnings_count = verify_split(samples)
+    verified, rejected, padding_rejected_count = verify_split(samples)
 
     verified_path = out_dir / "verified" / f"{split}.jsonl"
     rejected_path = out_dir / "rejected" / f"{split}.jsonl"
@@ -403,7 +436,7 @@ def main() -> int:
             rejected_count=len(rejected),
             rejected_sha256=rejected_sha,
             verified_at=verified_at,
-            warnings={"low_hidden_count": warnings_count},
+            warnings={"padding_rejected_count": padding_rejected_count},
         )
     else:
         print(
@@ -414,7 +447,7 @@ def main() -> int:
 
     print(
         f"  n_in={len(samples)}  verified={len(verified)}  "
-        f"rejected={len(rejected)}  warnings={warnings_count}"
+        f"rejected={len(rejected)}  padding_rejected={padding_rejected_count}"
     )
     if verified:
         print(f"  verified -> {verified_path}")
@@ -430,11 +463,10 @@ def main() -> int:
         print("  Rejection reasons:")
         for reason, count in sorted(hist.items(), key=lambda kv: -kv[1])[:10]:
             print(f"    [{count}] {reason}")
-    if warnings_count:
+    if padding_rejected_count:
         print(
-            f"  warnings: {warnings_count} verified samples have "
-            f"hidden_assertion_count < {_MIN_HIDDEN_ASSERTS} "
-            "(enforced at Frozen v3 build time)"
+            f"  padding_rejected: {padding_rejected_count} samples rejected "
+            f"because pad_hidden_tests failed"
         )
 
     # Exit code: 1 = all rejected, 2 = partial rejection, 0 = all verified.
