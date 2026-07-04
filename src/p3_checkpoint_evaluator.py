@@ -15,7 +15,13 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.metrics import EvalOutcome, pass_at_1, repair_success_rate
+from src.metrics import (
+    METRICS_SCHEMA_VERSION,
+    EvalOutcome,
+    normalize_baseline_key,
+    pass_at_1,
+    repair_success_rate,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +288,10 @@ class CheckpointEvaluator:
     ) -> tuple[bool, list[str]]:
         """Check code_generation_drop_vs_p2_final_max_pct.
 
+        Baseline keys are normalized via ``normalize_baseline_key`` so legacy
+        ``codegen_pass1`` is compared against ``pass_at_1`` under a single
+        canonical key (Issue #10 Fix 4).
+
         Parameters
         ----------
         metrics : dict
@@ -289,29 +299,44 @@ class CheckpointEvaluator:
         baseline : dict
             ``historical_held_out_metrics`` from
             ``reports/p3/p3-baseline-lock.json`` (Stage3-v3-Antiforget entry,
-            must contain ``codegen_pass1``).
+            may contain legacy ``codegen_pass1`` and optional
+            ``schema_version``).
 
         Returns
         -------
         tuple
-            (passed, violations) — violations is empty when passed.
+            (passed, violations) — ``passed`` is True when no hard violation
+            (drop_pct) occurs. ``violations`` may still contain schema_version
+            mismatch warnings (which do NOT cause FAIL by themselves).
         """
         max_drop_pct = self._hard_constraint[
             "code_generation_drop_vs_p2_final_max_pct"
         ]
-        p2_codegen = baseline.get("codegen_pass1", 0.0)
+        normalized_baseline = normalize_baseline_key(baseline)
+        p2_codegen = normalized_baseline.get("pass_at_1", 0.0)
         current_codegen = metrics.get("pass_at_1", 0.0)
         drop_pct = (p2_codegen - current_codegen) * 100.0
 
-        violations: list[str] = []
+        hard_violations: list[str] = []
         if drop_pct > max_drop_pct:
-            violations.append(
+            hard_violations.append(
                 f"code_generation_pass_at_1 dropped {drop_pct:.2f}pp vs P2 "
                 f"final ({p2_codegen:.4f} -> {current_codegen:.4f}), max "
                 f"allowed {max_drop_pct}pp"
             )
 
-        return (len(violations) == 0, violations)
+        # Schema version mismatch check (warning only — does NOT FAIL).
+        # Issue #10 Fix 4: recorded to violations but never causes FAIL.
+        warnings: list[str] = []
+        baseline_schema = baseline.get("schema_version")
+        if baseline_schema is not None and baseline_schema != METRICS_SCHEMA_VERSION:
+            warnings.append(
+                f"schema_version mismatch: baseline={baseline_schema} vs "
+                f"metrics={METRICS_SCHEMA_VERSION} (warning only, not FAIL)"
+            )
+
+        all_violations = hard_violations + warnings
+        return (len(hard_violations) == 0, all_violations)
 
     # ------------------------------------------------------------------
     # Best checkpoint selection
@@ -362,6 +387,9 @@ class CheckpointEvaluator:
         # We interpret "probe_patience consecutive drops" as probe_patience
         # probes where each is strictly lower than the previous (by more
         # than probe_min_delta). This requires at least probe_patience probes.
+        # When full_validation_confirm is True, a stop is only confirmed when
+        # the full validation history ALSO shows a drop (latest < previous -
+        # probe_min_delta). Issue #10 Fix 3.
         if len(probe_history) >= probe_patience and probe_patience >= 2:
             recent = probe_history[-probe_patience:]
             all_dropping = all(
@@ -371,18 +399,27 @@ class CheckpointEvaluator:
             )
             if all_dropping:
                 if full_validation_confirm:
-                    # Require a confirming full validation to stop
-                    if full_history:
+                    # Require confirming full validation drops to stop
+                    if len(full_history) < 2:
+                        return (
+                            False,
+                            "probe drops detected, awaiting 2 full "
+                            "validations to confirm",
+                        )
+                    if (
+                        full_history[-1].composite_value
+                        < full_history[-2].composite_value - probe_min_delta
+                    ):
                         return (
                             True,
                             "probe_patience consecutive drops confirmed by "
-                            "full validation",
+                            "full validation drop",
                         )
                     else:
                         return (
                             False,
-                            "probe_patience drops detected, awaiting full "
-                            "validation confirm",
+                            "probe drops detected but full validation did "
+                            "not confirm drop (latest vs prev)",
                         )
                 else:
                     return (

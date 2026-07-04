@@ -12,6 +12,40 @@ from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
+# Metrics schema version + baseline key normalization (Issue #10 Fix 4)
+# ---------------------------------------------------------------------------
+
+METRICS_SCHEMA_VERSION = "1.0.0"
+
+BASELINE_TO_METRICS_KEY_MAP = {"codegen_pass1": "pass_at_1"}
+
+
+def normalize_baseline_key(baseline: dict) -> dict:
+    """Return a copy of ``baseline`` with legacy keys renamed to metrics keys.
+
+    Currently renames ``codegen_pass1`` -> ``pass_at_1`` per
+    ``BASELINE_TO_METRICS_KEY_MAP``. Other keys are preserved. The input
+    dict is not modified.
+
+    Parameters
+    ----------
+    baseline : dict
+        ``historical_held_out_metrics`` from the P3 baseline-lock JSON,
+        which may contain legacy keys like ``codegen_pass1``.
+
+    Returns
+    -------
+    dict
+        New dict with legacy keys renamed to the canonical metrics keys.
+    """
+    normalized = dict(baseline)
+    for old_key, new_key in BASELINE_TO_METRICS_KEY_MAP.items():
+        if old_key in normalized:
+            normalized[new_key] = normalized.pop(old_key)
+    return normalized
+
+
+# ---------------------------------------------------------------------------
 # Per-sample outcome record
 # ---------------------------------------------------------------------------
 

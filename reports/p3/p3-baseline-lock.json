@@ -5,6 +5,7 @@
   "frozen_eval_v2_manifest": "data/p2-curriculum/frozen-eval-v2/manifest.json",
   "frozen_eval_v2_sha256": "748ea3a467876ef62c17d65006b4950477956a76a29379c0ad2ff0c71d897df3",
   "created_at": "2026-07-04T08:30:00+00:00",
+  "schema_version": "1.0.0",
   "models": [
     {
       "model_name": "Base Qwen3-0.6B",

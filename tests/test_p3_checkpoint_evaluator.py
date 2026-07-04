@@ -32,6 +32,10 @@ from src.p3_checkpoint_evaluator import (  # noqa: E402
     ProbeResult,
     check_bf16_support,
 )
+from src.metrics import (  # noqa: E402
+    METRICS_SCHEMA_VERSION,
+    normalize_baseline_key,
+)
 
 BALANCED_CONFIG_PATH = _ROOT / "configs" / "p3" / "balanced-generalist.yaml"
 REPAIR_CONFIG_PATH = _ROOT / "configs" / "p3" / "repair-specialist.yaml"
@@ -456,9 +460,10 @@ class TestEarlyStop:
         assert "awaiting" in reason.lower() or "confirm" in reason.lower()
 
         # Case 2: with full_validation_confirm=True AND a confirming full_history
-        # -> should stop
+        # (full_history[-1] < full_history[-2] - probe_min_delta) -> should stop
         full_history = [
-            _make_full_result(composite_value=0.45, epoch=1),
+            _make_full_result(composite_value=0.50, epoch=1),
+            _make_full_result(composite_value=0.45, epoch=2),  # drop 0.05 > 0.005
         ]
         should_stop, reason = evaluator.check_early_stop(
             probe_history=probe_history, full_history=full_history,
@@ -533,3 +538,137 @@ class TestHardConstraint:
         passed, violations = evaluator.check_hard_constraint(metrics, baseline)
         assert passed is True
         assert len(violations) == 0
+
+
+# ---------------------------------------------------------------------------
+# 10. Fix 3: Tightened check_early_stop trigger 2 (Issue #10)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckEarlyStopFix3:
+    """Tests for tightened trigger 2: full validation must also drop."""
+
+    def _make_dropping_probes(self) -> list[ProbeResult]:
+        """4 consecutive probe drops (each < prev - 0.005)."""
+        return [
+            _make_probe_result(composite_value=0.50, epoch=0.25),
+            _make_probe_result(composite_value=0.49, epoch=0.50),  # drop 0.01
+            _make_probe_result(composite_value=0.48, epoch=0.75),  # drop 0.01
+            _make_probe_result(composite_value=0.47, epoch=1.00),  # drop 0.01
+        ]
+
+    def test_check_early_stop_probe_drops_no_full_history_returns_false(self) -> None:
+        """probe drops + full_history=[] -> False (awaiting 2 full validations)."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        should_stop, reason = evaluator.check_early_stop(
+            probe_history=self._make_dropping_probes(),
+            full_history=[],
+            nan_inf_detected=False,
+        )
+        assert should_stop is False
+        assert "awaiting" in reason.lower() or "2 full" in reason.lower()
+
+    def test_check_early_stop_probe_drops_one_full_returns_false(self) -> None:
+        """probe drops + full_history has only 1 item -> False."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        full_history = [_make_full_result(composite_value=0.50, epoch=1)]
+        should_stop, reason = evaluator.check_early_stop(
+            probe_history=self._make_dropping_probes(),
+            full_history=full_history,
+            nan_inf_detected=False,
+        )
+        assert should_stop is False
+        assert "awaiting" in reason.lower() or "2 full" in reason.lower()
+
+    def test_check_early_stop_probe_drops_full_also_drops_returns_true(self) -> None:
+        """probe drops + full_history[-1] < [-2] - probe_min_delta -> True."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        full_history = [
+            _make_full_result(composite_value=0.50, epoch=1),
+            _make_full_result(composite_value=0.45, epoch=2),  # drop 0.05 > 0.005
+        ]
+        should_stop, reason = evaluator.check_early_stop(
+            probe_history=self._make_dropping_probes(),
+            full_history=full_history,
+            nan_inf_detected=False,
+        )
+        assert should_stop is True
+        assert "confirmed" in reason.lower() or "probe" in reason.lower()
+
+    def test_check_early_stop_probe_drops_full_does_not_drop_returns_false(self) -> None:
+        """probe drops + full_history[-1] >= [-2] - probe_min_delta -> False."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        full_history = [
+            _make_full_result(composite_value=0.45, epoch=1),
+            _make_full_result(composite_value=0.50, epoch=2),  # increase, no drop
+        ]
+        should_stop, reason = evaluator.check_early_stop(
+            probe_history=self._make_dropping_probes(),
+            full_history=full_history,
+            nan_inf_detected=False,
+        )
+        assert should_stop is False
+        assert "did not confirm" in reason.lower() or "not confirm" in reason.lower()
+
+    def test_check_early_stop_nan_inf_immediate_stop(self) -> None:
+        """NaN/Inf -> immediate stop (unchanged behavior)."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        should_stop, reason = evaluator.check_early_stop(
+            probe_history=[], full_history=[], nan_inf_detected=True
+        )
+        assert should_stop is True
+        assert "nan" in reason.lower() or "inf" in reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# 11. Fix 4: Metrics Schema unification (Issue #10)
+# ---------------------------------------------------------------------------
+
+
+class TestMetricsSchemaFix4:
+    def test_normalize_baseline_key_renames_codegen_pass1(self) -> None:
+        baseline = {"codegen_pass1": 0.5, "other": "x"}
+        normalized = normalize_baseline_key(baseline)
+        # codegen_pass1 renamed to pass_at_1
+        assert "codegen_pass1" not in normalized
+        assert normalized["pass_at_1"] == 0.5
+        # Other fields preserved
+        assert normalized["other"] == "x"
+        # Original dict not mutated
+        assert baseline == {"codegen_pass1": 0.5, "other": "x"}
+
+    def test_metrics_schema_version_constant(self) -> None:
+        assert METRICS_SCHEMA_VERSION == "1.0.0"
+
+    def test_check_hard_constraint_uses_normalized_key(self) -> None:
+        """baseline uses codegen_pass1, metrics uses pass_at_1 - unified comparison."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        # baseline codegen_pass1=0.5, current pass_at_1=0.4
+        # drop = (0.5 - 0.4) * 100 = 10pp > 3.0pp max -> FAIL
+        baseline = {"codegen_pass1": 0.5}
+        metrics = {"pass_at_1": 0.4}
+        passed, violations = evaluator.check_hard_constraint(metrics, baseline)
+        assert passed is False
+        assert len(violations) >= 1
+        assert any(
+            "dropped" in v.lower() or "drop" in v.lower() for v in violations
+        )
+
+    def test_check_hard_constraint_schema_version_mismatch_warning(self) -> None:
+        """schema_version mismatch recorded as warning (not FAIL by itself)."""
+        cfg = _make_evaluator_config()
+        evaluator = CheckpointEvaluator(cfg, total_train_samples=626)
+        # baseline has schema_version="0.0.9" (mismatch), no drop_pct violation
+        baseline = {"codegen_pass1": 0.5, "schema_version": "0.0.9"}
+        metrics = {"pass_at_1": 0.5}
+        passed, violations = evaluator.check_hard_constraint(metrics, baseline)
+        # passed is True because only schema_version mismatch (warning only)
+        assert passed is True
+        # But violations list contains schema_version warning
+        assert any("schema_version" in v.lower() for v in violations)
