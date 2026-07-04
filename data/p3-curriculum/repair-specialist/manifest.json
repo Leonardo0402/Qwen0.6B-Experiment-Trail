@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-04T16:02:27.052502+00:00",
+  "generator": "build_repair_specialist.py",
+  "candidate_type": "repair_specialist",
+  "seed": 42,
+  "target_ratios": {
+    "code": 0.15,
+    "boundary": 0.15,
+    "static_repair": 0.3,
+    "execution_repair": 0.4
+  },
+  "actual_ratios": {
+    "code": 0.1501,
+    "boundary": 0.1501,
+    "static_repair": 0.3002,
+    "execution_repair": 0.3996
+  },
+  "ratio_tolerance_pp": 3,
+  "ratio_within_tolerance": true,
+  "train": {
+    "count": 493,
+    "variant_distribution": {
+      "code": 74,
+      "boundary": 74,
+      "static_repair": 148,
+      "execution_repair": 197
+    },
+    "family_count": 232,
+    "sha256": "fc089f6377e60af7bf7faa22ebecdab4582e569d20af07d6064275262da3f042"
+  },
+  "validation": {
+    "count": 90,
+    "family_count": 90,
+    "sha256": "1f1d38c1a11b4cac2e8e18a8be5ed5dc6e3d20b08f622dfa5358a4f056230985"
+  },
+  "families": {
+    "train_family_count": 232,
+    "validation_family_count": 90,
+    "total_family_count": 322,
+    "train_validation_disjoint": true
+  },
+  "pool_source": {
+    "path": "data/p3-curriculum/canonical-pool.jsonl",
+    "total_pool_samples": 782,
+    "samples_selected": 493,
+    "samples_rejected": 289
+  },
+  "deviations": {
+    "verified_normalization": {
+      "description": "P2-replay-derived samples in canonical pool have verified=False with all-False verification subfields; normalized to verified=True via model_copy to satisfy hard gate 8. Upstream Task 10 issue.",
+      "samples_normalized": 419,
+      "verification_subfields_preserved": true,
+      "upstream_task": "Task 10 (canonical pool includes unverified P2 replay variants)",
+      "review_status": "Task 11 review APPROVED_WITH_NOTES -- to be evaluated at Task 14 Readiness Gate"
+    }
+  }
+}
