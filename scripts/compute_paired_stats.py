@@ -1,24 +1,23 @@
 """P3: Paired statistics for P2 model comparison.
 
-Issue #1 P3 requirements:
+Issue #6 P1 requirements:
 - Use identical sample_id across Base, Stage2, Continual Stage3-v2,
-  Independent Stage3, Anti-forgetting Stage3-v3 (and Stage1 if available).
+  Independent Stage3, Anti-forgetting Stage3-v3 on Full-576.
 - Output per-sample win/loss/unchanged.
 - Output per-family net gain/loss.
 - McNemar test or paired bootstrap CI.
 - Per bug_type repair success rate.
 
-Inputs (all must use the FIXED stratified-120 subset):
-  evaluations/p2/base.json
-  evaluations/p2/stage1-code.json  (optional, not in Issue comparison)
-  evaluations/p2/stage2-boundary.json
-  evaluations/p2/stage3-repair.json  (Continual Stage3-v2)
-  evaluations/p2/independent-stage3.json  (P1)
-  evaluations/p2/stage3-v3-antiforget.json  (P2)
+Inputs (all must use the Full-576 frozen-eval-v2):
+  evaluations/p2/full576-base.json
+  evaluations/p2/full576-stage2-boundary.json
+  evaluations/p2/full576-stage3-repair.json  (Continual Stage3-v2)
+  evaluations/p2/full576-independent-stage3.json  (P1)
+  evaluations/p2/full576-stage3-v3-antiforget.json  (P2)
 
 Outputs:
-  reports/p2/paired-stats.json
-  reports/p2/paired-stats.md (summary)
+  reports/p2/full576-paired-stats.json
+  reports/p2/full576-paired-stats.md (summary)
 """
 from __future__ import annotations
 
@@ -34,11 +33,11 @@ _OUT_DIR = _ROOT / "reports" / "p2"
 
 # Canonical comparison order per Issue #1 P3
 MODELS: list[tuple[str, str]] = [
-    ("base", "Base"),
-    ("stage2-boundary", "Stage2-v2"),
-    ("stage3-repair", "Stage3-v2-Continual"),
-    ("independent-stage3", "Stage3-Independent"),  # P1
-    ("stage3-v3-antiforget", "Stage3-v3-Antiforget"),  # P2
+    ("full576-base", "Base"),
+    ("full576-stage2-boundary", "Stage2-v2"),
+    ("full576-stage3-repair", "Stage3-v2-Continual"),
+    ("full576-independent-stage3", "Stage3-Independent"),
+    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
 ]
 
 
@@ -268,9 +267,9 @@ def main() -> int:
     # Also include Base vs each later model for direct comparison
     for k in keys[2:]:
         pairs.append({
-            "pair": ["base", k],
-            "sample_compare": per_sample_compare(docs["base"], docs[k]),
-            "family_compare": per_family_compare(docs["base"], docs[k]),
+            "pair": ["full576-base", k],
+            "sample_compare": per_sample_compare(docs["full576-base"], docs[k]),
+            "family_compare": per_family_compare(docs["full576-base"], docs[k]),
         })
 
     # Per-model bug_type repair stats
@@ -283,12 +282,12 @@ def main() -> int:
         "per_model_bug_type_repair": bug_stats,
     }
 
-    out_json = _OUT_DIR / "paired-stats.json"
+    out_json = _OUT_DIR / "full576-paired-stats.json"
     out_json.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nSaved JSON: {out_json}")
 
     # Markdown summary
-    md_lines = ["# P3: Paired Statistics Summary", ""]
+    md_lines = ["# Full-576 Paired Statistics Summary", ""]
     md_lines.append(f"- Models compared: {', '.join(docs)}")
     md_lines.append(f"- Common sample IDs: {len(common)}")
     md_lines.append("")
@@ -335,7 +334,7 @@ def main() -> int:
                 row += f" {s['passed']}/{s['total']} ({s['pass_rate']*100:.1f}%) |"
         md_lines.append(row)
     md_lines.append("")
-    out_md = _OUT_DIR / "paired-stats.md"
+    out_md = _OUT_DIR / "full576-paired-stats.md"
     out_md.write_text("\n".join(md_lines), encoding="utf-8")
     print(f"Saved Markdown: {out_md}")
     return 0

@@ -1,0 +1,7 @@
+pytest
+pytest-timeout
+hypothesis
+pyyaml
+pydantic
+ruff
+mypy
