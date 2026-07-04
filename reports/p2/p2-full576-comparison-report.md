@@ -1,6 +1,6 @@
 # P2 Full-576 Comparison Report
 
-Generated: 2026-07-04T02:27:22.748143+00:00
+Generated: 2026-07-04T05:44:30.087076+00:00
 
 ## Evaluation Setup
 
@@ -10,9 +10,18 @@ Generated: 2026-07-04T02:27:22.748143+00:00
 - Task types: code_generation (140), static_repair (218), execution_repair (218)
 - Common sample count (paired-stats): 576
 
+## Router Methodology
+
+- Policy version: `v1`
+- Policy artifact: `reports\p2\router-policy-v1.json`
+- Selection subset: 45 families / 342 samples (used to fit routing maps)
+- Eval subset: 30 families / 234 samples (held out, used to evaluate the frozen policy)
+- Eval subset size (paired-stats n): 234
+- Selection ∩ Eval: empty (family-disjoint, verified)
+
 ## Overall Metrics
 
-| Model | Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |
+| Model | CodeGen Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Base | 16.4% | 99.7% | 42.4% | 45.5% | 100.0% | 0.2% | 0.0% |
 | Stage2-v2 | 14.3% | 98.8% | 53.7% | 51.7% | 99.8% | 1.7% | 0.0% |
@@ -93,27 +102,29 @@ Generated: 2026-07-04T02:27:22.748143+00:00
 
 | Model/Router | Type | Overall | Family | CodeGen | StaticRepair | ExecRepair | Lift vs Best |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Base | single_model | 36.1% | 0.0% | 16.4% | 50.0% | 34.9% | -0.1233 |
-| Stage2-v2 | single_model | 44.1% | 0.0% | 14.3% | 55.5% | 51.8% | -0.0434 |
-| Stage3-v2-Continual | single_model | 41.7% | 1.3% | 11.4% | 52.3% | 50.5% | -0.0677 |
-| Stage3-Independent | single_model | 48.4% | 2.7% | 15.0% | 57.8% | 60.6% | +0.0000 |
-| Stage3-v3-Antiforget | single_model | 44.4% | 2.7% | 15.7% | 52.3% | 55.0% | -0.0399 |
-| Best Single | best_single | 48.4% | 2.7% | 15.0% | 57.8% | 60.6% | +0.0000 |
-| Oracle Router | router | 61.6% | 2.7% | 24.3% | 73.9% | 73.4% | +0.1319 |
-| Metadata Router | router | 48.8% | 1.3% | 16.4% | 57.8% | 60.6% | +0.0035 |
-| Deployable Router | router | 48.8% | 1.3% | 16.4% | 57.8% | 60.6% | +0.0035 |
+| Base | single_model | 36.3% | 0.0% | 15.5% | 46.6% | 39.8% | -0.1325 |
+| Stage2-v2 | single_model | 50.0% | 0.0% | 15.5% | 60.2% | 62.5% | +0.0043 |
+| Stage3-v2-Continual | single_model | 45.3% | 0.0% | 10.3% | 56.8% | 56.8% | -0.0427 |
+| Stage3-Independent | single_model | 49.6% | 3.3% | 15.5% | 61.4% | 60.2% | +0.0000 |
+| Stage3-v3-Antiforget | single_model | 46.6% | 3.3% | 17.2% | 55.7% | 56.8% | -0.0299 |
+| Best Single | best_single | 49.6% | 3.3% | 15.5% | 61.4% | 60.2% | +0.0000 |
+| Oracle Router | router | 64.5% | 3.3% | 25.9% | 80.7% | 73.9% | +0.1496 |
+| Metadata Router | router | 49.6% | 3.3% | 15.5% | 61.4% | 60.2% | +0.0000 |
+| Deployable Router | router | 49.6% | 3.3% | 15.5% | 61.4% | 60.2% | +0.0000 |
+
+_Note: Router metrics above are computed on the 234-sample eval subset (held-out, family-disjoint from the 342-sample selection subset where the routing maps were frozen). Best Single / Metadata / Deployable routers use the frozen policy (v1); Oracle is recomputed on eval as an upper bound._
 
 ## P3 Decision Gate
 
 **Verdict: SIGNAL**
 
-Oracle lift (13.2pp) >= 5pp (routing potential exists), but Deployable Router lift (0.3pp) or significance (McNemar p=0.7905, CI=[-0.0087, +0.0156]) does not meet the GO threshold — observable signals alone cannot capture the potential.
+Oracle lift (15.0pp) >= 5pp (routing potential exists), but Deployable Router lift (0.0pp) or significance (McNemar p=1.0000, CI=[-0.0256, +0.0256]) does not meet the GO threshold — observable signals alone cannot capture the potential.
 
 ### Gate Criteria
 
 | Criterion | Value | Threshold | Met |
 |-----------|-------|-----------|-----|
-| Oracle lift | 13.2pp | >= 5.0pp | YES |
-| Deployable lift | 0.3pp | >= 5.0pp | NO |
-| McNemar p | 0.7905 | < 0.05 | NO |
-| 95% CI | [-0.0087, +0.0156] | lower > 0 | NO |
+| Oracle lift | 15.0pp | >= 5.0pp | YES |
+| Deployable lift | 0.0pp | >= 5.0pp | NO |
+| McNemar p | 1.0000 | < 0.05 | NO |
+| 95% CI | [-0.0256, +0.0256] | lower > 0 | NO |
