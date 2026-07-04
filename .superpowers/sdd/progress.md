@@ -38,13 +38,28 @@ Started: 2026-07-03
 4. compute_router_analysis.py → router-analysis.json/md (P3 Decision Gate)
 5. generate_full576_report.py → p2-full576-comparison-report.md
 
-### Manual steps after pipeline completes (P4.2):
-6. Verify P3 Decision Gate verdict (GO / NO-GO / SIGNAL)
-7. Verify report content
-8. Commit generated files: 5 eval JSONs + 6 report files
-9. Push + create PR + merge to main
+### Pipeline COMPLETED (2026-07-04 ~11:12):
+- All 5 eval files generated ✅
+- Post-eval pipeline ran successfully ✅ (compare + paired_stats + router_analysis + report)
+- P3 Decision Gate verdict: **SIGNAL** ✅
+  - Oracle lift: 13.2pp (routing potential exists)
+  - Deployable lift: 0.3pp (observable signals insufficient)
+  - McNemar p: 0.7905 | 95% CI: [-0.0087, +0.0156]
 
-### Git state:
-- Branch: `feat/p2.2-ci-router-validation` (upstream: origin/feat/p2.2-ci-router-validation)
-- HEAD: 537276e (chore: add final whole-branch review diff package)
-- Working tree: clean
+### Full-576 Pass@1 Results:
+1. Base: 16.4%
+2. Stage3-v3-Antiforget: 15.7%
+3. Stage3-Independent: 15.0%
+4. Stage2-v2: 14.3%
+5. Stage3-v2-Continual: 11.4%
+
+### Git delivery:
+- Local commit: f81a571 (12 files, 94827 insertions) ✅
+- Push: BLOCKED — proxy at 127.0.0.1:7897 not running ❌
+- PR + merge: pending push
+
+### To complete:
+1. Start proxy (Clash/V2Ray at port 7897)
+2. `git push`
+3. Create PR: `gh pr create --title "P2 Full-576 Evaluation + Router Analysis (P3: SIGNAL)" --body "..."`
+4. Merge to main
