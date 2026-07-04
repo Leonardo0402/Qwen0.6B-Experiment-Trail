@@ -18,7 +18,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_101",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_102": {
       "dataset_version": "mbpp-v1",
@@ -58,7 +60,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_105",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_106": {
       "dataset_version": "mbpp-v1",
@@ -68,7 +72,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_106",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_107": {
       "dataset_version": "mbpp-v1",
@@ -138,7 +144,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_112",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_114": {
       "dataset_version": "mbpp-v1",
@@ -148,7 +156,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_114",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_115": {
       "dataset_version": "mbpp-v1",
@@ -178,7 +188,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_117",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_118": {
       "dataset_version": "mbpp-v1",
@@ -248,7 +260,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_124",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_125": {
       "dataset_version": "mbpp-v1",
@@ -268,7 +282,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_126",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_127": {
       "dataset_version": "mbpp-v1",
@@ -388,7 +404,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_137",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_138": {
       "dataset_version": "mbpp-v1",
@@ -398,7 +416,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_138",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_139": {
       "dataset_version": "mbpp-v1",
@@ -508,7 +528,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_148",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_149": {
       "dataset_version": "mbpp-v1",
@@ -528,7 +550,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_15",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_150": {
       "dataset_version": "mbpp-v1",
@@ -538,7 +562,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_150",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_151": {
       "dataset_version": "mbpp-v1",
@@ -558,7 +584,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_152",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_153": {
       "dataset_version": "mbpp-v1",
@@ -578,7 +606,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_154",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_155": {
       "dataset_version": "mbpp-v1",
@@ -598,7 +628,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_156",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_157": {
       "dataset_version": "mbpp-v1",
@@ -618,7 +650,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_158",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_159": {
       "dataset_version": "mbpp-v1",
@@ -728,7 +762,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_168",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_169": {
       "dataset_version": "mbpp-v1",
@@ -748,7 +784,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_17",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_170": {
       "dataset_version": "mbpp-v1",
@@ -808,7 +846,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_175",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_176": {
       "dataset_version": "mbpp-v1",
@@ -818,7 +858,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_176",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_177": {
       "dataset_version": "mbpp-v1",
@@ -838,7 +880,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_178",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_179": {
       "dataset_version": "mbpp-v1",
@@ -868,7 +912,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_181",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_182": {
       "dataset_version": "mbpp-v1",
@@ -878,7 +924,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_182",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_183": {
       "dataset_version": "mbpp-v1",
@@ -918,7 +966,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_186",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_187": {
       "dataset_version": "mbpp-v1",
@@ -978,7 +1028,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_192",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_193": {
       "dataset_version": "mbpp-v1",
@@ -1118,7 +1170,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_205",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_206": {
       "dataset_version": "mbpp-v1",
@@ -1160,7 +1214,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_209",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_21": {
       "dataset_version": "mbpp-v1",
@@ -1190,7 +1246,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_211",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_212": {
       "dataset_version": "mbpp-v1",
@@ -1314,7 +1372,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_222",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_223": {
       "dataset_version": "mbpp-v1",
@@ -1366,7 +1426,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_227",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_228": {
       "dataset_version": "mbpp-v1",
@@ -1388,7 +1450,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_229",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_23": {
       "dataset_version": "mbpp-v1",
@@ -1408,7 +1472,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_230",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_231": {
       "dataset_version": "mbpp-v1",
@@ -1448,7 +1514,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_234",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_235": {
       "dataset_version": "mbpp-v1",
@@ -1458,7 +1526,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_235",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_236": {
       "dataset_version": "mbpp-v1",
@@ -1488,7 +1558,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_238",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_239": {
       "dataset_version": "mbpp-v1",
@@ -1518,7 +1590,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_240",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_241": {
       "dataset_version": "mbpp-v1",
@@ -1538,7 +1612,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_242",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_243": {
       "dataset_version": "mbpp-v1",
@@ -1578,7 +1654,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_246",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_247": {
       "dataset_version": "mbpp-v1",
@@ -1610,7 +1688,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_249",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_25": {
       "dataset_version": "mbpp-v1",
@@ -1620,7 +1700,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_25",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_250": {
       "dataset_version": "mbpp-v1",
@@ -1650,7 +1732,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_252",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_253": {
       "dataset_version": "mbpp-v1",
@@ -1660,7 +1744,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_253",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_254": {
       "dataset_version": "mbpp-v1",
@@ -1670,7 +1756,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_254",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_255": {
       "dataset_version": "mbpp-v1",
@@ -1690,7 +1778,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_256",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_257": {
       "dataset_version": "mbpp-v1",
@@ -1760,7 +1850,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_262",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_263": {
       "dataset_version": "mbpp-v1",
@@ -1830,7 +1922,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_269",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_27": {
       "dataset_version": "mbpp-v1",
@@ -1850,7 +1944,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_270",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_271": {
       "dataset_version": "mbpp-v1",
@@ -1872,7 +1968,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_272",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_273": {
       "dataset_version": "mbpp-v1",
@@ -1984,7 +2082,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_282",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_283": {
       "dataset_version": "mbpp-v1",
@@ -2044,7 +2144,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_288",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_289": {
       "dataset_version": "mbpp-v1",
@@ -2064,7 +2166,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_29",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_290": {
       "dataset_version": "mbpp-v1",
@@ -2124,7 +2228,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_295",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_296": {
       "dataset_version": "mbpp-v1",
@@ -2144,7 +2250,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_297",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_298": {
       "dataset_version": "mbpp-v1",
@@ -2204,7 +2312,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_302",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_303": {
       "dataset_version": "mbpp-v1",
@@ -2244,7 +2354,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_306",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_307": {
       "dataset_version": "mbpp-v1",
@@ -2284,7 +2396,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_31",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_310": {
       "dataset_version": "mbpp-v1",
@@ -2364,7 +2478,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_317",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_318": {
       "dataset_version": "mbpp-v1",
@@ -2384,7 +2500,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_319",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_32": {
       "dataset_version": "mbpp-v1",
@@ -2414,7 +2532,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_321",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_322": {
       "dataset_version": "mbpp-v1",
@@ -2444,7 +2564,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_324",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_325": {
       "dataset_version": "mbpp-v1",
@@ -2486,7 +2608,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_328",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_329": {
       "dataset_version": "mbpp-v1",
@@ -2496,7 +2620,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_329",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_33": {
       "dataset_version": "mbpp-v1",
@@ -2506,7 +2632,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_33",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_330": {
       "dataset_version": "mbpp-v1",
@@ -2516,7 +2644,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_330",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_331": {
       "dataset_version": "mbpp-v1",
@@ -2636,7 +2766,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_341",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_342": {
       "dataset_version": "mbpp-v1",
@@ -2656,7 +2788,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_343",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_344": {
       "dataset_version": "mbpp-v1",
@@ -2706,7 +2840,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_348",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_349": {
       "dataset_version": "mbpp-v1",
@@ -2818,7 +2954,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_358",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_359": {
       "dataset_version": "mbpp-v1",
@@ -2880,7 +3018,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_363",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_364": {
       "dataset_version": "mbpp-v1",
@@ -3040,7 +3180,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_379",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_38": {
       "dataset_version": "mbpp-v1",
@@ -3070,7 +3212,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_381",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_382": {
       "dataset_version": "mbpp-v1",
@@ -3080,7 +3224,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_382",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_383": {
       "dataset_version": "mbpp-v1",
@@ -3120,7 +3266,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_386",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_387": {
       "dataset_version": "mbpp-v1",
@@ -3130,7 +3278,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_387",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_388": {
       "dataset_version": "mbpp-v1",
@@ -3160,7 +3310,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_39",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_390": {
       "dataset_version": "mbpp-v1",
@@ -3170,7 +3322,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_390",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_391": {
       "dataset_version": "mbpp-v1",
@@ -3180,7 +3334,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_391",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_392": {
       "dataset_version": "mbpp-v1",
@@ -3200,7 +3356,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_393",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_394": {
       "dataset_version": "mbpp-v1",
@@ -3290,7 +3448,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_401",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_402": {
       "dataset_version": "mbpp-v1",
@@ -3340,7 +3500,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_406",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_407": {
       "dataset_version": "mbpp-v1",
@@ -3350,7 +3512,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_407",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_408": {
       "dataset_version": "mbpp-v1",
@@ -3400,7 +3564,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_411",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_412": {
       "dataset_version": "mbpp-v1",
@@ -3410,7 +3576,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_412",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_413": {
       "dataset_version": "mbpp-v1",
@@ -3440,7 +3608,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_415",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_416": {
       "dataset_version": "mbpp-v1",
@@ -3480,7 +3650,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_419",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_42": {
       "dataset_version": "mbpp-v1",
@@ -3514,7 +3686,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_421",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_422": {
       "dataset_version": "mbpp-v1",
@@ -3668,7 +3842,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_435",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_436": {
       "dataset_version": "mbpp-v1",
@@ -3728,7 +3904,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_440",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_441": {
       "dataset_version": "mbpp-v1",
@@ -3748,7 +3926,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_442",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_443": {
       "dataset_version": "mbpp-v1",
@@ -3768,7 +3948,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_444",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_445": {
       "dataset_version": "mbpp-v1",
@@ -3778,7 +3960,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_445",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_446": {
       "dataset_version": "mbpp-v1",
@@ -3788,7 +3972,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_446",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_447": {
       "dataset_version": "mbpp-v1",
@@ -3808,7 +3994,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_448",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_449": {
       "dataset_version": "mbpp-v1",
@@ -3848,7 +4036,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_451",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_452": {
       "dataset_version": "mbpp-v1",
@@ -3868,7 +4058,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_453",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_454": {
       "dataset_version": "mbpp-v1",
@@ -3888,7 +4080,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_455",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_456": {
       "dataset_version": "mbpp-v1",
@@ -3908,7 +4102,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_457",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_458": {
       "dataset_version": "mbpp-v1",
@@ -4000,7 +4196,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_466",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_467": {
       "dataset_version": "mbpp-v1",
@@ -4010,7 +4208,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_467",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_468": {
       "dataset_version": "mbpp-v1",
@@ -4050,7 +4250,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_470",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_471": {
       "dataset_version": "mbpp-v1",
@@ -4222,7 +4424,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_486",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_487": {
       "dataset_version": "mbpp-v1",
@@ -4314,7 +4518,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_494",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_495": {
       "dataset_version": "mbpp-v1",
@@ -4404,7 +4610,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_502",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_503": {
       "dataset_version": "mbpp-v1",
@@ -4444,7 +4652,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_506",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_507": {
       "dataset_version": "mbpp-v1",
@@ -4454,7 +4664,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_507",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_508": {
       "dataset_version": "mbpp-v1",
@@ -5490,7 +5702,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_60",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_600": {
       "dataset_version": "mbpp-v1",
@@ -5619,7 +5833,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_61",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_610": {
       "dataset_version": "mbpp-v1",
@@ -5881,7 +6097,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_63",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_630": {
       "dataset_version": "mbpp-v1",
@@ -6013,7 +6231,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_64",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_640": {
       "dataset_version": "mbpp-v1",
@@ -6143,7 +6363,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_65",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_650": {
       "dataset_version": "mbpp-v1",
@@ -6795,7 +7017,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_70",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_700": {
       "dataset_version": "mbpp-v1",
@@ -7449,7 +7673,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_75",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_750": {
       "dataset_version": "mbpp-v1",
@@ -7842,7 +8068,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_78",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_780": {
       "dataset_version": "mbpp-v1",
@@ -8104,7 +8332,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_80",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_800": {
       "dataset_version": "mbpp-v1",
@@ -9284,7 +9514,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_89",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_890": {
       "dataset_version": "mbpp-v1",
@@ -9808,7 +10040,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_93",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_930": {
       "dataset_version": "mbpp-v1",
@@ -9939,7 +10173,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_94",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_940": {
       "dataset_version": "mbpp-v1",
@@ -10200,7 +10436,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_96",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_960": {
       "dataset_version": "mbpp-v1",
@@ -10332,7 +10570,9 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_97",
-      "usage": []
+      "usage": [
+        "frozen_v3_candidate"
+      ]
     },
     "mbpp_fam_970": {
       "dataset_version": "mbpp-v1",
@@ -10415,11 +10655,11 @@
       "usage": []
     }
   },
-  "generated_at": "2026-07-04T11:28:02.447360+00:00",
+  "generated_at": "2026-07-04T11:52:14.718216+00:00",
   "generator": "build_family_registry.py",
   "schema_version": 1,
   "total_families": 958,
-  "total_new_available": 556,
+  "total_new_available": 436,
   "total_p2_used": 374,
   "total_quarantined": 58
 }
