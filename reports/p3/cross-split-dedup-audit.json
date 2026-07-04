@@ -1,0 +1,365 @@
+{
+  "total_samples_checked": 955,
+  "splits_checked": [
+    "train",
+    "test",
+    "validation"
+  ],
+  "checks_performed": [
+    "instruction_hash",
+    "code_hash",
+    "test_hash",
+    "func_signature",
+    "ast_structural",
+    "ngram_3"
+  ],
+  "exact_duplicates": {
+    "count": 6,
+    "pairs": [
+      {
+        "sample_a": "mbpp_217",
+        "split_a": "test",
+        "sample_b": "mbpp_602",
+        "split_b": "train",
+        "method": "instruction_hash"
+      },
+      {
+        "sample_a": "mbpp_248",
+        "split_a": "test",
+        "sample_b": "mbpp_704",
+        "split_b": "train",
+        "method": "instruction_hash"
+      },
+      {
+        "sample_a": "mbpp_216",
+        "split_a": "test",
+        "sample_b": "mbpp_872",
+        "split_b": "train",
+        "method": "instruction_hash"
+      },
+      {
+        "sample_a": "mbpp_625",
+        "split_a": "train",
+        "sample_b": "mbpp_591",
+        "split_b": "validation",
+        "method": "code_hash"
+      },
+      {
+        "sample_a": "mbpp_699",
+        "split_a": "train",
+        "sample_b": "mbpp_595",
+        "split_b": "validation",
+        "method": "code_hash"
+      },
+      {
+        "sample_a": "mbpp_248",
+        "split_a": "test",
+        "sample_b": "mbpp_704",
+        "split_b": "train",
+        "method": "code_hash"
+      }
+    ]
+  },
+  "high_similarity": {
+    "count": 38,
+    "pairs": [
+      {
+        "sample_a": "mbpp_625",
+        "sample_b": "mbpp_591",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_629",
+        "sample_b": "mbpp_554",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_271",
+        "sample_b": "mbpp_634",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_359",
+        "sample_b": "mbpp_636",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_359",
+        "sample_b": "mbpp_840",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_359",
+        "sample_b": "mbpp_880",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_479",
+        "sample_b": "mbpp_657",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_699",
+        "sample_b": "mbpp_595",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_248",
+        "sample_b": "mbpp_704",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_705",
+        "sample_b": "mbpp_569",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_224",
+        "sample_b": "mbpp_707",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_719",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_879",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_930",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_208",
+        "sample_b": "mbpp_759",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_770",
+        "sample_b": "mbpp_549",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_42",
+        "sample_b": "mbpp_777",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_831",
+        "sample_b": "mbpp_564",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_836",
+        "sample_b": "mbpp_559",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_420",
+        "sample_b": "mbpp_837",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_487",
+        "sample_b": "mbpp_839",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_228",
+        "sample_b": "mbpp_884",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_273",
+        "sample_b": "mbpp_888",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_460",
+        "sample_b": "mbpp_893",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_427",
+        "sample_b": "mbpp_928",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_90",
+        "sample_b": "mbpp_947",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_79",
+        "sample_b": "mbpp_964",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_349",
+        "sample_b": "mbpp_967",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_327",
+        "sample_b": "mbpp_521",
+        "method": "func_signature",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_625",
+        "sample_b": "mbpp_591",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_699",
+        "sample_b": "mbpp_595",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_248",
+        "sample_b": "mbpp_704",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_719",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_879",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_43",
+        "sample_b": "mbpp_930",
+        "method": "ast_structural",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_217",
+        "sample_b": "mbpp_602",
+        "method": "ngram_3",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_248",
+        "sample_b": "mbpp_704",
+        "method": "ngram_3",
+        "score": 1.0
+      },
+      {
+        "sample_a": "mbpp_216",
+        "sample_b": "mbpp_872",
+        "method": "ngram_3",
+        "score": 1.0
+      }
+    ]
+  },
+  "quarantined_families": {
+    "count": 58,
+    "families": [
+      "mbpp_fam_208",
+      "mbpp_fam_216",
+      "mbpp_fam_217",
+      "mbpp_fam_224",
+      "mbpp_fam_228",
+      "mbpp_fam_248",
+      "mbpp_fam_271",
+      "mbpp_fam_273",
+      "mbpp_fam_327",
+      "mbpp_fam_349",
+      "mbpp_fam_359",
+      "mbpp_fam_42",
+      "mbpp_fam_420",
+      "mbpp_fam_427",
+      "mbpp_fam_43",
+      "mbpp_fam_460",
+      "mbpp_fam_479",
+      "mbpp_fam_487",
+      "mbpp_fam_521",
+      "mbpp_fam_549",
+      "mbpp_fam_554",
+      "mbpp_fam_559",
+      "mbpp_fam_564",
+      "mbpp_fam_569",
+      "mbpp_fam_591",
+      "mbpp_fam_595",
+      "mbpp_fam_602",
+      "mbpp_fam_625",
+      "mbpp_fam_629",
+      "mbpp_fam_634",
+      "mbpp_fam_636",
+      "mbpp_fam_657",
+      "mbpp_fam_699",
+      "mbpp_fam_704",
+      "mbpp_fam_705",
+      "mbpp_fam_707",
+      "mbpp_fam_719",
+      "mbpp_fam_759",
+      "mbpp_fam_770",
+      "mbpp_fam_777",
+      "mbpp_fam_79",
+      "mbpp_fam_831",
+      "mbpp_fam_836",
+      "mbpp_fam_837",
+      "mbpp_fam_839",
+      "mbpp_fam_840",
+      "mbpp_fam_872",
+      "mbpp_fam_879",
+      "mbpp_fam_880",
+      "mbpp_fam_884",
+      "mbpp_fam_888",
+      "mbpp_fam_893",
+      "mbpp_fam_90",
+      "mbpp_fam_928",
+      "mbpp_fam_930",
+      "mbpp_fam_947",
+      "mbpp_fam_964",
+      "mbpp_fam_967"
+    ]
+  },
+  "unresolved": {
+    "count": 0,
+    "note": "All high-similarity pairs auto-quarantined per P3 plan (unconfirmed → quarantine)"
+  },
+  "conclusion": "PASS",
+  "generated_at": "2026-07-04T11:05:21.788820+00:00"
+}
