@@ -1,12 +1,15 @@
 """scripts/p3_readiness_gate.py -- P3 Readiness Gate Checker (Task 14, SESSION END).
 
-Executes 9 PASS checks (with SKIP allowed for the GPU smoke on CPU-only
-environments) and produces:
+Executes 11 PASS checks (Check 6 split into 6a CPU smoke mandatory + 6b GPU
+smoke deferrable; Check 10 train sample capacity) and produces:
   - a stdout summary table
   - reports/p3/p3-training-readiness-report.md (human-readable report)
 
-Verdict: GO_FOR_P3_TRAINING if all 9 checks PASS (SKIP counts as PASS with
-documentation). FIX_FIRST if any check FAILS.
+Three-state verdict (Issue #10 Fix 2+5+6):
+  - GO_FOR_P3_TRAINING: all mandatory checks PASS AND train capacity >= 2300
+  - GO_FOR_P3_PILOT_ONLY: all mandatory checks PASS but capacity < 2300
+        (Pilot only; results must NOT be reported as formal capability)
+  - FIX_FIRST: any mandatory check FAILS
 
 NO actual training is launched. This is the LAST task of the P3.0-P3.4
 session.
@@ -68,6 +71,11 @@ P3_TEST_FILES = [
 
 # max_seq_length from configs/p3/*.yaml
 MAX_SEQ_LENGTH = 384
+
+# Train sample capacity thresholds (A7 spec).
+# total >= MIN -> FULL training; 0 < total < MIN -> PILOT_ONLY; total == 0 -> FAIL.
+MIN_TRAIN_SAMPLES_FOR_FULL = 2300
+MAX_TRAIN_SAMPLES_FOR_FULL = 3100
 
 # Expected SHA lock from Task 8 (referenced in task-14-brief.md)
 EXPECTED_SHA_LOCK = "a27f36bf5558fbaeff4ee98c906d8e2ecba25794a93adb4d535585d733d8fd09"
@@ -322,10 +330,51 @@ def check5_canary_all_fail() -> Tuple[bool, dict]:
 
 
 # ---------------------------------------------------------------------------
-# Check 6: GPU smoke
+# Check 6a: CPU smoke (mandatory, never SKIPs)
 # ---------------------------------------------------------------------------
 
-def check6_gpu_smoke() -> Tuple[bool, dict]:
+def check6a_cpu_smoke() -> Tuple[bool, dict]:
+    """Lightweight CPU smoke check. MANDATORY -- never SKIPs.
+
+    Verifies the Python interpreter is healthy and core libraries are
+    importable. Runs a tiny CPU compute (sum + optional numpy 10x10 matmul).
+    FAIL on any exception; otherwise PASS.
+    """
+    try:
+        # Core stdlib library must be importable
+        import json  # noqa: F401 -- import smoke
+        # Light CPU compute
+        result = sum(range(10000))
+        assert result == 49995000, f"unexpected sum: {result}"
+
+        # Optional: numpy 10x10 matmul (does NOT fail if numpy absent)
+        numpy_available = False
+        try:
+            import numpy as np  # noqa: WPS433 -- lazy import intentional
+            arr = np.arange(100).reshape(10, 10)
+            _ = arr @ arr  # 10x10 matmul
+            numpy_available = True
+        except ImportError:
+            pass
+
+        return True, {
+            "skipped": False,
+            "smoke_passed": True,
+            "sum_result": result,
+            "numpy_available": numpy_available,
+        }
+    except Exception as e:  # pragma: no cover -- defensive
+        return False, {
+            "skipped": False,
+            "error": f"CPU smoke failed: {type(e).__name__}: {e}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Check 6b: GPU smoke (deferrable -- SKIP allowed when no CUDA)
+# ---------------------------------------------------------------------------
+
+def check6b_gpu_smoke() -> Tuple[bool, dict]:
     """Lightweight GPU smoke check. SKIP if torch/CUDA unavailable.
 
     The brief explicitly forbids loading the full Qwen3-0.6B model here.
@@ -478,6 +527,55 @@ def check9_baseline_lock_present() -> Tuple[bool, dict]:
 
 
 # ---------------------------------------------------------------------------
+# Check 10: Train sample capacity vs 2300-3100 threshold (Fix 2)
+# ---------------------------------------------------------------------------
+
+def check10_train_capacity(
+    balanced_path: Path = BALANCED_TRAIN_PATH,
+    repair_path: Path = REPAIR_TRAIN_PATH,
+) -> Tuple[bool, dict]:
+    """Train capacity vs MIN/MAX threshold (Issue #10 Fix 2).
+
+    - total == 0  -> FAIL (no train data, hard failure)
+    - 0 < total < MIN -> PASS with verdict_impact=PILOT_ONLY
+    - total >= MIN -> PASS with verdict_impact=FULL
+
+    Returns dict with verdict_impact consumed by compute_verdict to choose
+    between GO_FOR_P3_TRAINING and GO_FOR_P3_PILOT_ONLY.
+    """
+    def _count(p: Path) -> int:
+        if not p.exists():
+            return 0
+        n = 0
+        with p.open(encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip():
+                    n += 1
+        return n
+
+    balanced_train = _count(balanced_path)
+    repair_train = _count(repair_path)
+    total = balanced_train + repair_train
+
+    base = {
+        "balanced_train": balanced_train,
+        "repair_train": repair_train,
+        "total": total,
+        "min_threshold": MIN_TRAIN_SAMPLES_FOR_FULL,
+        "max_threshold": MAX_TRAIN_SAMPLES_FOR_FULL,
+    }
+
+    if total == 0:
+        base["verdict_impact"] = "FAIL"
+        return False, base
+    if total < MIN_TRAIN_SAMPLES_FOR_FULL:
+        base["verdict_impact"] = "PILOT_ONLY"
+        return True, base
+    base["verdict_impact"] = "FULL"
+    return True, base
+
+
+# ---------------------------------------------------------------------------
 # Verdict + report rendering
 # ---------------------------------------------------------------------------
 
@@ -487,18 +585,39 @@ CHECK_NAMES = [
     ("check3_assistant_retention", "Assistant retention = 100%"),
     ("check4_silent_truncation_zero", "Silent truncation = 0"),
     ("check5_canary_all_fail", "Canary all fail"),
-    ("check6_gpu_smoke", "GPU smoke"),
+    ("check6a_cpu_smoke", "CPU smoke (mandatory)"),
+    ("check6b_gpu_smoke", "GPU smoke (deferrable)"),
     ("check7_output_dirs_dont_exist", "Output dirs don't exist"),
     ("check8_cpu_ci_green", "CPU CI green"),
     ("check9_baseline_lock_present", "P3 baseline lock present"),
+    ("check10_train_capacity", "Train sample capacity (2300-3100)"),
 ]
 
 
 def compute_verdict(results: list[Tuple[bool, dict]]) -> str:
-    """GO_FOR_P3_TRAINING if all PASS (SKIP counts as PASS). FIX_FIRST otherwise."""
-    for passed, _ in results:
+    """Three-state verdict (Issue #10 Fix 6).
+
+    - GO_FOR_P3_TRAINING: every check PASS AND no capacity PILOT_ONLY warning
+    - GO_FOR_P3_PILOT_ONLY: every check PASS but capacity below 2300
+    - FIX_FIRST: any check FAIL
+
+    SKIP on Check 6b (GPU smoke) is the only allowed SKIP and counts as PASS.
+    Capacity warning is detected via ``details.get("verdict_impact") == "PILOT_ONLY"``
+    emitted by check10_train_capacity.
+    """
+    has_fail = False
+    capacity_warning = False
+
+    for passed, details in results:
         if not passed:
-            return "FIX_FIRST"
+            has_fail = True
+        if details.get("verdict_impact") == "PILOT_ONLY":
+            capacity_warning = True
+
+    if has_fail:
+        return "FIX_FIRST"
+    if capacity_warning:
+        return "GO_FOR_P3_PILOT_ONLY"
     return "GO_FOR_P3_TRAINING"
 
 
@@ -528,10 +647,22 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
         )
     if name == "check5_canary_all_fail":
         return f"{details.get('all_failed')}/{details.get('canary_count')} verified=False"
-    if name == "check6_gpu_smoke":
+    if name == "check6a_cpu_smoke":
+        if passed:
+            return (
+                f"smoke=ok numpy={details.get('numpy_available')} "
+                f"sum={details.get('sum_result')}"
+            )
+        return f"error={details.get('error', 'unknown')}"
+    if name == "check6b_gpu_smoke":
         if details.get("skipped"):
             return f"SKIP: {details.get('reason', '')}"
-        return f"bf16={details.get('bf16_supported')} smoke={details.get('smoke_passed')}"
+        if passed:
+            return (
+                f"bf16={details.get('bf16_supported')} smoke={details.get('smoke_passed')} "
+                f"device={details.get('device')}"
+            )
+        return f"error={details.get('error', 'unknown')}"
     if name == "check7_output_dirs_dont_exist":
         if passed:
             return f"{len(details.get('checked', []))} paths checked, none exist"
@@ -542,6 +673,14 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
         if passed:
             return f"{len(details.get('models', []))}/3 models, all fields present"
         return f"missing={details}"
+    if name == "check10_train_capacity":
+        impact = details.get("verdict_impact", "?")
+        return (
+            f"{details.get('balanced_train', 0)}+{details.get('repair_train', 0)}="
+            f"{details.get('total', 0)} "
+            f"(min={details.get('min_threshold', 0)}, "
+            f"impact={impact})"
+        )
     return json.dumps(details, ensure_ascii=False)[:80]
 
 
@@ -566,7 +705,7 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
     lines.append("")
     lines.append(f"## Verdict: {verdict}")
     lines.append("")
-    lines.append("## 9 PASS Checks")
+    lines.append("## 11 PASS Checks")
     lines.append("")
     lines.append("| # | Check | Status | Details |")
     lines.append("|---|---|---|---|")
@@ -634,7 +773,7 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
     lines.append("")
     lines.append("#### B.2.5 BF16 实际硬件验证")
     lines.append("**约定**：trainer 启动时调用 `check_bf16_support()` 并记录输出到日志/报告。")
-    lines.append("**处置**：本次 Readiness Gate Check 6 已调用 `check_bf16_support()`。当前环境为 CPU-only (`torch 2.4.1+cpu`, `cuda.is_available()==False`)，返回 `BF16 not supported, falling back to FP16`。Check 6 SKIP，但 BF16 检查函数本身工作正常。trainer 在 CUDA 环境下启动时必须再次调用并记录输出。")
+    lines.append("**处置**：本次 Readiness Gate Check 6b 已调用 `check_bf16_support()`。当前环境为 CPU-only (`torch 2.4.1+cpu`, `cuda.is_available()==False`)，返回 `BF16 not supported, falling back to FP16`。Check 6b SKIP，但 BF16 检查函数本身工作正常。trainer 在 CUDA 环境下启动时必须再次调用并记录输出。Check 6a CPU smoke PASS（不依赖 CUDA）。")
     lines.append("")
     lines.append("#### B.2.6 Probe 样本 `variant_type` 分布 ≥ 19/bucket")
     lines.append("**约定**：Tier 2 probe 每个变体类型桶至少 19 条样本（probe_size=75, 4 桶，base=18+1=19 for first 3 buckets，last bucket=18 — borderline）。")
@@ -654,15 +793,46 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
     lines.append("## Conclusion")
     lines.append("")
     if verdict == "GO_FOR_P3_TRAINING":
-        lines.append("**GO_FOR_P3_TRAINING** — 9 项检查全部通过（含 SKIP 计入 PASS）。训练可在以下已记录风险下启动：")
+        lines.append("**GO_FOR_P3_TRAINING** — 11 项检查全部通过（含 SKIP 计入 PASS）且 Check 10 verdict_impact=FULL（train 容量 >= 2300）。训练可在以下已记录风险下启动：")
         lines.append("")
-        lines.append("- **R1 (B.1)**: 857/1119 train 样本 `verified=True && verification all False` 自相矛盾。训练管道不读 `verified` 字段，不影响损失/收敛；仅元数据失真。建议训练后回填（(2) 方案）。")
+        lines.append("- **R1 (B.1)**: 历史 verified normalization 偏差（Task 11/12）。Fix 1 已回填 verification 子字段，当前 0 条样本处于 `verified=True && verification 不一致` 状态。")
         lines.append("- **R2 (B.2.5)**: 当前环境 CPU-only，BF16 实际硬件验证未执行。trainer 在 CUDA 环境启动时必须调用 `check_bf16_support()` 并记录输出。")
         lines.append("- **R3 (B.2.3)**: `should_run_tier3` 严格 int 契约要求 trainer 在调用前对 epoch 做 `int(round(epoch))`。")
         lines.append("- **R4 (B.2.7)**: best checkpoint 实质等价于 best code_generation_pass_at_1（validation 集仅含 code 样本）。hard_constraint 已限制 code_gen 退化，但 repair 提升不会直接反映在 best checkpoint 选择上。")
-        lines.append("- **R5**: P3 train 样本量 626/493 远低于 A7 规定的 2300-3100 区间（pool 仅有 782 条，已记录在 Task 10 review）。训练效果可能弱于满量训练，但不阻塞启动。")
+        lines.append("- **R5**: Check 10 已将 train 容量硬编码为 verdict 决策因子——当前 verdict=GO_FOR_P3_TRAINING 表示 `total >= MIN_TRAIN_SAMPLES_FOR_FULL (2300)`。若容量降至 2300 以下，verdict 自动降级为 GO_FOR_P3_PILOT_ONLY。")
         lines.append("")
         lines.append("训练启动前须由用户明确批准 GO，并确认上述 5 项风险。")
+    elif verdict == "GO_FOR_P3_PILOT_ONLY":
+        lines.append("**GO_FOR_P3_PILOT_ONLY** — 11 项必跑检查全部通过（含 Check 6b GPU smoke SKIP），但 Check 10 verdict_impact=PILOT_ONLY（train 容量 < 2300）。")
+        lines.append("")
+        lines.append("数据量低于 2300 阈值，仅允许 PILOT ONLY 训练；不得将 Pilot 结果作为正式能力结论。Pilot 用途：验证训练管道、配置正确性、收敛趋势；不可作为模型能力声明。")
+        lines.append("")
+        lines.append("**PILOT ONLY 训练约束**：")
+        lines.append("- 仅可用于验证训练管道是否端到端可运行（数据加载、loss 下降、checkpoint 保存/reload、3-tier evaluator 调用链）。")
+        lines.append("- 不得在论文、README、对外报告、能力声明中引用 Pilot 训练的指标数字（pass_at_1、composite_score 等）。")
+        lines.append("- Pilot 完成后须扩充数据池至 >= 2300 条并重新运行 Readiness Gate，获得 GO_FOR_P3_TRAINING 后方可启动正式训练。")
+        lines.append("")
+        lines.append("**当前数据状态**：")
+        balanced_n = repair_n = total_n = 0
+        for i, (name, _) in enumerate(CHECK_NAMES, 1):
+            _, det = results[i - 1]
+            if name == "check10_train_capacity":
+                balanced_n = det.get("balanced_train", 0)
+                repair_n = det.get("repair_train", 0)
+                total_n = det.get("total", 0)
+                break
+        lines.append(f"- balanced-generalist train.jsonl: {balanced_n} samples")
+        lines.append(f"- repair-specialist train.jsonl: {repair_n} samples")
+        lines.append(f"- **总计 {total_n} samples** << MIN_TRAIN_SAMPLES_FOR_FULL ({MIN_TRAIN_SAMPLES_FOR_FULL})")
+        lines.append("")
+        lines.append("**已记录风险（与 GO_FOR_P3_TRAINING 相同，但加 PILOT 约束）**：")
+        lines.append("- **R1 (B.1)**: 历史 verified normalization 偏差；Fix 1 已回填，当前 0 条不一致。")
+        lines.append("- **R2 (B.2.5)**: 当前环境 CPU-only；trainer 在 CUDA 环境启动时必须调用 `check_bf16_support()` 并记录。")
+        lines.append("- **R3 (B.2.3)**: `should_run_tier3` 严格 int 契约。")
+        lines.append("- **R4 (B.2.7)**: best checkpoint 等价于 best code_generation_pass_at_1。")
+        lines.append("- **R5**: 容量不足触发 PILOT_ONLY——Pilot 结果不可作为模型能力声明。")
+        lines.append("")
+        lines.append("PILOT 训练启动前须由用户明确批准，并确认上述 5 项风险与 PILOT 约束。")
     else:
         lines.append("**FIX_FIRST** — 至少一项检查 FAIL。必须先修复后再启动训练：")
         lines.append("")
@@ -672,7 +842,7 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
                 short = _format_details_short(name, passed, details)
                 lines.append(f"- **Check {i} ({label})**: {short}")
         lines.append("")
-        lines.append("修复后重新运行 `python scripts/p3_readiness_gate.py` 直到 verdict 变为 GO_FOR_P3_TRAINING。")
+        lines.append("修复后重新运行 `python scripts/p3_readiness_gate.py` 直到 verdict 变为 GO_FOR_P3_TRAINING 或 GO_FOR_P3_PILOT_ONLY。")
     lines.append("")
     lines.append("## Session End")
     lines.append("")
@@ -686,26 +856,29 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    """Run all 9 checks, print summary, write report. Returns 0/1 exit code."""
+    """Run all 11 checks, print summary, write report. Returns 0/1 exit code."""
     check_fns = [
         check1_frozen_v3_sha_locked,
         check2_pairwise_disjoint,
         check3_assistant_retention,
         check4_silent_truncation_zero,
         check5_canary_all_fail,
-        check6_gpu_smoke,
+        check6a_cpu_smoke,
+        check6b_gpu_smoke,
         check7_output_dirs_dont_exist,
         check8_cpu_ci_green,
         check9_baseline_lock_present,
+        check10_train_capacity,
     ]
     results: list[Tuple[bool, dict]] = []
+    total_checks = len(CHECK_NAMES)
     print("=" * 78)
-    print("P3 Readiness Gate — 9 PASS Checks (SESSION END)")
+    print(f"P3 Readiness Gate — {total_checks} PASS Checks (SESSION END)")
     print("=" * 78)
     print()
     for i, (name, label) in enumerate(CHECK_NAMES, 1):
         fn = check_fns[i - 1]
-        print(f"[{i}/9] {label} ...", flush=True)
+        print(f"[{i}/{total_checks}] {label} ...", flush=True)
         try:
             passed, details = fn()
         except Exception as e:  # pragma: no cover -- defensive
@@ -739,8 +912,9 @@ def main() -> int:
     print(f"Report written: {REPORT_PATH}")
     print()
 
-    # Exit code: 0 for GO (or SKIP-only), 1 for FIX_FIRST
-    return 0 if verdict == "GO_FOR_P3_TRAINING" else 1
+    # Exit code: 0 for GO (TRAINING or PILOT_ONLY, both allow next step under user approval);
+    # 1 for FIX_FIRST.
+    return 0 if verdict in ("GO_FOR_P3_TRAINING", "GO_FOR_P3_PILOT_ONLY") else 1
 
 
 if __name__ == "__main__":
