@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-04T09:00:26.274949+00:00",
+  "generated_at": "2026-07-04T10:43:59.205377+00:00",
   "source": "google-research-datasets/mbpp",
   "source_revision": "main",
   "splits": {
@@ -13,9 +13,9 @@
       "missing_task_ids": [],
       "duplicate_task_ids": [],
       "normalized_sha256": "5632d58a6e71079d792402aee8b287678e5a3b9c1ba5b14a902f86ed10b39884",
-      "verified_sha256": "",
-      "verified_count": 0,
-      "rejected_count": 374,
+      "verified_sha256": "e9468dfb42655e752108db882e5feefaeb080b7530d4753192f4352442435dd1",
+      "verified_count": 371,
+      "rejected_count": 3,
       "benchmark_contaminated": false,
       "dataset_fingerprint": "5cdc16311fd8e220",
       "source_revision": "main"
@@ -30,9 +30,9 @@
       "missing_task_ids": [],
       "duplicate_task_ids": [],
       "normalized_sha256": "bb21489a46c925f712296610a0fb916423ed10845ad307a8c382792628d00d4d",
-      "verified_sha256": "",
-      "verified_count": 0,
-      "rejected_count": 500,
+      "verified_sha256": "e1fa1eef4159cf7897be0699ae9ff6eaeac0c2200c40c62a42f0bc98b94a2fa0",
+      "verified_count": 494,
+      "rejected_count": 6,
       "benchmark_contaminated": true,
       "dataset_fingerprint": "44206dd27b0bf01d",
       "source_revision": "main"
@@ -47,9 +47,9 @@
       "missing_task_ids": [],
       "duplicate_task_ids": [],
       "normalized_sha256": "b938fc0f9c09c1058b3eb35dcb010530efedf61578df4065d536111f12b4bc01",
-      "verified_sha256": "",
-      "verified_count": 0,
-      "rejected_count": 90,
+      "verified_sha256": "2ebd3a6fda125ef8f64fe55e944687467bf438585f58eaaffe774e859b6446cc",
+      "verified_count": 90,
+      "rejected_count": 0,
       "benchmark_contaminated": false,
       "dataset_fingerprint": "8f9deacfc72ae133",
       "source_revision": "main"
@@ -61,9 +61,9 @@
     "test_validation": []
   },
   "total_samples": 964,
-  "total_verified": 0,
-  "total_rejected": 964,
-  "new_families_available": 0,
-  "conclusion": "INFEASIBLE",
-  "feasibility_notes": "test verified_count=0 < 240 (180 train + 60 val minimum). new_families_available=0. Stop and escalate per P3 plan."
+  "total_verified": 955,
+  "total_rejected": 9,
+  "new_families_available": 584,
+  "conclusion": "LIKELY_FEASIBLE",
+  "feasibility_notes": "test verified_count=494 >= 240 (180 train + 60 val minimum). new_families_available=584 (test 494 + validation 90)."
 }

@@ -14,7 +14,7 @@ Verifier (6)
 ------------
 6.  test_verified_sample_passes_all_checks
 7.  test_rejected_low_public_count
-8.  test_rejected_low_hidden_count
+8.  test_low_hidden_count_warning_not_reject
 9.  test_repair_sample_verify_broken_is_broken
 10. test_execution_repair_feedback_check
 11. test_manifest_updated_with_verified_fields
@@ -238,9 +238,10 @@ class TestVerifierP3:
         """Sample with valid code, public>=2, hidden>=3 -> written to
         verified/<split>.jsonl with verified=true (P3 constraint #7)."""
         sample = _make_sample()
-        verified, rejected = verify_split([sample])
+        verified, rejected, warnings_count = verify_split([sample])
         assert len(verified) == 1
         assert len(rejected) == 0
+        assert warnings_count == 0  # hidden>=3 -> no warning
         assert verified[0].verified is True
         # Real verification results from verify_sample
         assert verified[0].verification.syntax_ok is True
@@ -258,27 +259,62 @@ class TestVerifierP3:
     # --- Test 7 ---
     def test_rejected_low_public_count(self) -> None:
         """public_tests with only 1 assert -> rejected with reason
-        mentioning 'public assertions' (P3 constraint #7)."""
+        mentioning 'public assertions' (P3 constraint #7).
+
+        public>=2 is a HARD rejection (unchanged)."""
         sample = _make_sample(
             public_tests="assert add(1, 2) == 3",  # 1 assert only
         )
-        passed, reason = check_sample(sample)
+        passed, reason, warning = check_sample(sample)
         assert passed is False
         assert "public assertions" in reason
         assert "1" in reason
+        assert warning == ""  # no warning recorded (hard reject)
 
     # --- Test 8 ---
-    def test_rejected_low_hidden_count(self) -> None:
-        """hidden_tests with only 2 asserts -> rejected with reason
-        mentioning 'hidden assertions' (P3 constraint #7)."""
+    def test_low_hidden_count_warning_not_reject(self, tmp_path: Path) -> None:
+        """hidden_tests with only 2 asserts -> NOT rejected; sample still
+        lands in verified/ and a warning is recorded in the manifest.
+
+        Per the user-approved fix: ``hidden >= 3`` is now a WARNING, not
+        a hard rejection.  Hard enforcement happens at Frozen v3 build
+        time (Task 8).  ``public >= 2`` remains a HARD rejection.
+        """
         sample = _make_sample(
             hidden_tests="assert add(-1, 1) == 0\n\nassert add(2, 3) == 5",
-            # 2 asserts only -- below the minimum of 3
+            # 2 asserts only -- below the warning threshold of 3
         )
-        passed, reason = check_sample(sample)
-        assert passed is False
-        assert "hidden assertions" in reason
-        assert "2" in reason
+        passed, reason, warning = check_sample(sample)
+        # Sample PASSES verification (no hard rejection).
+        assert passed is True
+        assert reason == ""
+        # Warning is recorded describing the low hidden count.
+        assert warning != ""
+        assert "hidden assertions" in warning
+        assert "2" in warning
+
+        # End-to-end: sample goes to verified/, NOT rejected/, and the
+        # manifest records a non-zero warnings count.
+        verified, rejected, warnings_count = verify_split([sample])
+        assert len(verified) == 1
+        assert len(rejected) == 0
+        assert warnings_count == 1
+        assert verified[0].verified is True
+
+        # Write to verified/ and confirm it lands there (not rejected/).
+        verified_path = tmp_path / "verified" / "test.jsonl"
+        write_verified_jsonl(verified, verified_path)
+        assert verified_path.exists()
+        lines = [ln for ln in verified_path.read_text(encoding="utf-8")
+                 .splitlines() if ln.strip()]
+        assert len(lines) == 1
+        record = json.loads(lines[0])
+        assert record["verified"] is True
+        assert "rejection_reason" not in record
+
+        # Rejected/ must NOT be created (no rejected samples).
+        rejected_path = tmp_path / "rejected" / "test.jsonl"
+        assert not rejected_path.exists()
 
     # --- Test 9 ---
     def test_repair_sample_verify_broken_is_broken(self) -> None:
@@ -293,7 +329,7 @@ class TestVerifierP3:
             task_type="static_repair",
             broken_code=correct_code,  # passes -- NOT actually broken
         )
-        passed, reason = check_sample(sample)
+        passed, reason, _warning = check_sample(sample)
         assert passed is False
         assert "broken_code passes all tests" in reason
 
@@ -316,7 +352,7 @@ class TestVerifierP3:
             broken_code="def add(a, b):\n    return a - b\n",  # genuinely broken
             execution_feedback="all good -- program completed",  # no marker
         )
-        passed, reason = check_sample(sample)
+        passed, reason, _warning = check_sample(sample)
         assert passed is False
         assert "execution_feedback" in reason
         assert "failure marker" in reason
@@ -324,8 +360,13 @@ class TestVerifierP3:
     # --- Test 11 ---
     def test_manifest_updated_with_verified_fields(self, tmp_path: Path) -> None:
         """After verification, manifest.<split>.json has verified_sha256,
-        verified_count, rejected_count, rejected_sha256, verified_at
-        filled in (P3 task brief Part B #3)."""
+        verified_count, rejected_count, rejected_sha256, verified_at,
+        and a warnings summary filled in (P3 task brief Part B #3).
+
+        The warnings field is informational -- it counts how many
+        verified samples have hidden_assertion_count < 3 (the hard
+        enforcement of hidden >= 3 happens at Frozen v3 build time).
+        """
         manifest_path = tmp_path / "manifest.test.json"
         initial = build_manifest(
             source=_SOURCE_REPO,
@@ -343,6 +384,7 @@ class TestVerifierP3:
         write_manifest(initial, manifest_path)
 
         verified_at = datetime.now(timezone.utc).isoformat()
+        warnings_summary = {"low_hidden_count": 0}
         updated = update_manifest_with_verified(
             manifest_path,
             verified_sha256="deadbeef",
@@ -350,12 +392,14 @@ class TestVerifierP3:
             rejected_count=0,
             rejected_sha256="",
             verified_at=verified_at,
+            warnings=warnings_summary,
         )
         assert updated["verified_sha256"] == "deadbeef"
         assert updated["verified_count"] == 1
         assert updated["rejected_count"] == 0
         assert updated["rejected_sha256"] == ""
         assert updated["verified_at"] == verified_at
+        assert updated["warnings"] == {"low_hidden_count": 0}
 
         # Persisted to disk
         with manifest_path.open("r", encoding="utf-8") as fh:
@@ -364,3 +408,4 @@ class TestVerifierP3:
         assert persisted["verified_count"] == 1
         assert persisted["rejected_count"] == 0
         assert persisted["verified_at"] == verified_at
+        assert persisted["warnings"] == {"low_hidden_count": 0}

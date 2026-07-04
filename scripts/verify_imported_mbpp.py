@@ -13,8 +13,12 @@ verified/rejected counts and SHA-256 digests.
 
 Per the P3 task brief, the verifier performs these checks per sample:
 
-1. Hard check: ``public_tests.count("assert ") >= 2``
-2. Hard check: ``hidden_tests.count("assert ") >= 3``
+1. Hard check: ``public_tests.count("assert ") >= 2`` (samples failing
+   this go to ``rejected/``).
+2. Soft check (WARNING only): ``hidden_tests.count("assert ") >= 3``.
+   Samples with fewer hidden asserts still go to ``verified/`` but a
+   warning is recorded in the manifest.  The hard ``hidden >= 3``
+   enforcement happens at Frozen v3 build time (Task 8), not here.
 3. For ``static_repair`` / ``execution_repair`` samples: call
    :func:`src.validators.verify_broken_is_broken` and require True
    (broken_code must fail at least one test).
@@ -25,10 +29,15 @@ Per the P3 task brief, the verifier performs these checks per sample:
 5. Real verification: call :func:`src.validators.verify_sample` and
    require ``is_accepted=True`` (syntax_ok AND pytest_ok AND NOT timeout).
 
-Samples that pass ALL checks go to ``verified/<split>.jsonl`` with
-``verified=True`` and the real ``verification`` results.  Samples that
-fail ANY check go to ``rejected/<split>.jsonl`` with ``verified=False``
-and a ``rejection_reason`` field.
+Samples that pass ALL hard checks + real verification go to
+``verified/<split>.jsonl`` with ``verified=True`` and the real
+``verification`` results.  Samples that fail ANY hard check go to
+``rejected/<split>.jsonl`` with ``verified=False`` and a
+``rejection_reason`` field.
+
+The manifest is updated with a ``warnings`` summary recording how many
+verified samples have ``hidden_assertion_count < 3`` (informational
+only; not a rejection).
 
 The verifier does NOT download datasets -- that is the importer's job.
 
@@ -67,8 +76,12 @@ from src.validators import verify_broken_is_broken, verify_sample  # noqa: E402
 # ---------------------------------------------------------------------------
 
 # Minimum assertion counts (P3 task brief constraints #7).
+# _MIN_PUBLIC_ASSERTS is a HARD rejection (samples failing this go to
+# rejected/).  _MIN_HIDDEN_ASSERTS is a SOFT warning only -- samples with
+# fewer hidden asserts still pass verification; the hard enforcement
+# happens at Frozen v3 build time (Task 8).
 _MIN_PUBLIC_ASSERTS = 2
-_MIN_HIDDEN_ASSERTS = 3
+_MIN_HIDDEN_ASSERTS = 3  # warning threshold, NOT a hard reject
 
 # Failure markers used to validate execution_feedback for execution_repair
 # samples (case-insensitive substring match).  Per task brief constraint #9.
@@ -113,15 +126,18 @@ def has_failure_marker(feedback: str) -> bool:
     return any(marker in lower for marker in _FAILURE_MARKERS)
 
 
-def check_sample(sample: Sample) -> tuple[bool, str]:
+def check_sample(sample: Sample) -> tuple[bool, str, str]:
     """Run all hard checks + real verification on *sample*.
 
     Returns
     -------
-    (passed, reason)
-        *passed* is True when the sample passes ALL checks.  *reason* is
-        the empty string on success, or a short human-readable reason on
-        failure.
+    (passed, reason, warning)
+        *passed* is True when the sample passes ALL hard checks.  *reason*
+        is the empty string on success, or a short human-readable reason
+        on failure.  *warning* is the empty string when there is no
+        warning, or a short description of a soft-check violation (e.g.
+        low hidden assertion count).  Samples with a warning still pass
+        verification; the warning is recorded separately in the manifest.
     """
     # ------------------------------------------------------------------
     # Hard check 1: public assertions >= 2
@@ -130,15 +146,20 @@ def check_sample(sample: Sample) -> tuple[bool, str]:
     if n_public < _MIN_PUBLIC_ASSERTS:
         return False, (
             f"public assertions {n_public} < {_MIN_PUBLIC_ASSERTS}"
-        )
+        ), ""
 
     # ------------------------------------------------------------------
-    # Hard check 2: hidden assertions >= 3
+    # Soft check (WARNING only): hidden assertions >= 3.
+    # The hard enforcement of hidden >= 3 happens at Frozen v3 build
+    # time (Task 8).  Here we only record a warning so the sample
+    # still goes to verified/ when all other checks pass.
     # ------------------------------------------------------------------
     n_hidden = count_asserts(sample.hidden_tests)
+    warning = ""
     if n_hidden < _MIN_HIDDEN_ASSERTS:
-        return False, (
-            f"hidden assertions {n_hidden} < {_MIN_HIDDEN_ASSERTS}"
+        warning = (
+            f"hidden assertions {n_hidden} < {_MIN_HIDDEN_ASSERTS} "
+            "(enforced at Frozen v3 build time)"
         )
 
     # ------------------------------------------------------------------
@@ -148,13 +169,13 @@ def check_sample(sample: Sample) -> tuple[bool, str]:
         broken = (sample.broken_code or "").strip()
         if not broken:
             # Schema should have rejected this earlier; defensive.
-            return False, "repair sample missing broken_code"
+            return False, "repair sample missing broken_code", ""
         try:
             is_broken = verify_broken_is_broken(sample)
         except ValueError as exc:
-            return False, f"verify_broken_is_broken raised: {exc}"
+            return False, f"verify_broken_is_broken raised: {exc}", ""
         if not is_broken:
-            return False, "broken_code passes all tests"
+            return False, "broken_code passes all tests", ""
 
     # ------------------------------------------------------------------
     # Hard check 4 (execution_repair only): execution_feedback failure marker
@@ -162,9 +183,9 @@ def check_sample(sample: Sample) -> tuple[bool, str]:
     if sample.task_type == _TASK_EXECUTION_REPAIR:
         feedback = sample.execution_feedback or ""
         if not feedback.strip():
-            return False, "execution_feedback is empty"
+            return False, "execution_feedback is empty", ""
         if not has_failure_marker(feedback):
-            return False, "execution_feedback lacks failure marker"
+            return False, "execution_feedback lacks failure marker", ""
 
     # ------------------------------------------------------------------
     # Real verification: compile + pytest + ruff
@@ -177,9 +198,9 @@ def check_sample(sample: Sample) -> tuple[bool, str]:
         reason = "; ".join(sv.messages[:3]) if sv.messages else (
             "verification failed (syntax/pytest/timeout)"
         )
-        return False, reason
+        return False, reason, ""
 
-    return True, ""
+    return True, "", warning
 
 
 # ---------------------------------------------------------------------------
@@ -244,11 +265,16 @@ def update_manifest_with_verified(
     rejected_count: int,
     rejected_sha256: str,
     verified_at: str,
+    warnings: dict,
 ) -> dict:
     """Update an existing per-split manifest with verifier-filled fields.
 
     Reads the manifest at *manifest_path*, fills in the verifier fields,
     writes it back, and returns the updated dict.
+
+    *warnings* is a summary dict recording how many verified samples had
+    soft-check violations (e.g. ``{"low_hidden_count": <int>}``).  It is
+    informational only -- samples with warnings still pass verification.
     """
     with manifest_path.open("r", encoding="utf-8") as fh:
         manifest = json.load(fh)
@@ -257,6 +283,7 @@ def update_manifest_with_verified(
     manifest["rejected_count"] = rejected_count
     manifest["rejected_sha256"] = rejected_sha256
     manifest["verified_at"] = verified_at
+    manifest["warnings"] = warnings
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     with manifest_path.open("w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2, ensure_ascii=False)
@@ -269,26 +296,32 @@ def update_manifest_with_verified(
 
 def verify_split(
     samples: list[Sample],
-) -> tuple[list[Sample], list[tuple[Sample, str]]]:
-    """Verify all *samples*; return (verified, rejected) lists.
+) -> tuple[list[Sample], list[tuple[Sample, str]], int]:
+    """Verify all *samples*; return (verified, rejected, warnings_count).
 
     Verified samples have ``verified=True`` and ``verification`` updated to
     the real results from :func:`verify_sample`.  Rejected samples keep
     ``verified=False`` (will be re-stated in the rejection writer) and are
-    paired with a short reason string.
+    paired with a short reason string.  *warnings_count* is the number of
+    verified samples that triggered a soft-check warning (e.g. low hidden
+    assertion count); these samples still pass verification -- the warning
+    is informational only.
     """
     verified: list[Sample] = []
     rejected: list[tuple[Sample, str]] = []
+    warnings_count = 0
     for sample in samples:
-        passed, reason = check_sample(sample)
+        passed, reason, warning = check_sample(sample)
         if passed:
             sample.verified = True
             # verification was already updated inside check_sample.
             verified.append(sample)
+            if warning:
+                warnings_count += 1
         else:
             sample.verified = False
             rejected.append((sample, reason))
-    return verified, rejected
+    return verified, rejected, warnings_count
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +380,7 @@ def main() -> int:
         f"from {normalized_path}"
     )
 
-    verified, rejected = verify_split(samples)
+    verified, rejected, warnings_count = verify_split(samples)
 
     verified_path = out_dir / "verified" / f"{split}.jsonl"
     rejected_path = out_dir / "rejected" / f"{split}.jsonl"
@@ -370,6 +403,7 @@ def main() -> int:
             rejected_count=len(rejected),
             rejected_sha256=rejected_sha,
             verified_at=verified_at,
+            warnings={"low_hidden_count": warnings_count},
         )
     else:
         print(
@@ -380,7 +414,7 @@ def main() -> int:
 
     print(
         f"  n_in={len(samples)}  verified={len(verified)}  "
-        f"rejected={len(rejected)}"
+        f"rejected={len(rejected)}  warnings={warnings_count}"
     )
     if verified:
         print(f"  verified -> {verified_path}")
@@ -396,6 +430,12 @@ def main() -> int:
         print("  Rejection reasons:")
         for reason, count in sorted(hist.items(), key=lambda kv: -kv[1])[:10]:
             print(f"    [{count}] {reason}")
+    if warnings_count:
+        print(
+            f"  warnings: {warnings_count} verified samples have "
+            f"hidden_assertion_count < {_MIN_HIDDEN_ASSERTS} "
+            "(enforced at Frozen v3 build time)"
+        )
 
     # Exit code: 1 = all rejected, 2 = partial rejection, 0 = all verified.
     if not verified:
