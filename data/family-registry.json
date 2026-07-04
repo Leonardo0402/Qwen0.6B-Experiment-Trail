@@ -18,10 +18,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_101",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_102": {
       "dataset_version": "mbpp-v1",
@@ -43,16 +40,6 @@
       "source_task_id": "mbpp_103",
       "usage": []
     },
-    "mbpp_fam_104": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_104"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_104",
-      "usage": []
-    },
     "mbpp_fam_105": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -61,10 +48,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_105",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_106": {
       "dataset_version": "mbpp-v1",
@@ -74,10 +58,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_106",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_107": {
       "dataset_version": "mbpp-v1",
@@ -129,16 +110,6 @@
       "source_task_id": "mbpp_110",
       "usage": []
     },
-    "mbpp_fam_111": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_111"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_111",
-      "usage": []
-    },
     "mbpp_fam_112": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -147,49 +118,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_112",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_114": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_114"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_114",
-      "usage": []
-    },
-    "mbpp_fam_115": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_115"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_115",
-      "usage": []
-    },
-    "mbpp_fam_116": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_116"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_116",
-      "usage": []
-    },
-    "mbpp_fam_117": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_117"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_117",
       "usage": []
     },
     "mbpp_fam_118": {
@@ -212,26 +140,6 @@
       "source_task_id": "mbpp_119",
       "usage": []
     },
-    "mbpp_fam_12": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_12"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_12",
-      "usage": []
-    },
-    "mbpp_fam_120": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_120"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_120",
-      "usage": []
-    },
     "mbpp_fam_122": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -240,26 +148,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_122",
-      "usage": []
-    },
-    "mbpp_fam_123": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_123"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_123",
-      "usage": []
-    },
-    "mbpp_fam_124": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_124"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_124",
       "usage": []
     },
     "mbpp_fam_125": {
@@ -280,10 +168,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_126",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_127": {
       "dataset_version": "mbpp-v1",
@@ -303,16 +188,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_128",
-      "usage": []
-    },
-    "mbpp_fam_129": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_129"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_129",
       "usage": []
     },
     "mbpp_fam_13": {
@@ -343,16 +218,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_131",
-      "usage": []
-    },
-    "mbpp_fam_132": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_132"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_132",
       "usage": []
     },
     "mbpp_fam_133": {
@@ -403,10 +268,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_137",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_138": {
       "dataset_version": "mbpp-v1",
@@ -416,10 +278,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_138",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_139": {
       "dataset_version": "mbpp-v1",
@@ -441,16 +300,6 @@
       "source_task_id": "mbpp_14",
       "usage": []
     },
-    "mbpp_fam_140": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_140"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_140",
-      "usage": []
-    },
     "mbpp_fam_141": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -469,16 +318,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_142",
-      "usage": []
-    },
-    "mbpp_fam_143": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_143"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_143",
       "usage": []
     },
     "mbpp_fam_144": {
@@ -521,16 +360,6 @@
       "source_task_id": "mbpp_147",
       "usage": []
     },
-    "mbpp_fam_148": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_148"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_148",
-      "usage": []
-    },
     "mbpp_fam_149": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -549,10 +378,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_15",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_150": {
       "dataset_version": "mbpp-v1",
@@ -562,29 +388,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_150",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_151": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_151"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_151",
-      "usage": []
-    },
-    "mbpp_fam_152": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_152"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_152",
       "usage": []
     },
     "mbpp_fam_153": {
@@ -605,10 +408,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_154",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_155": {
       "dataset_version": "mbpp-v1",
@@ -618,16 +418,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_155",
-      "usage": []
-    },
-    "mbpp_fam_156": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_156"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_156",
       "usage": []
     },
     "mbpp_fam_157": {
@@ -648,10 +438,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_158",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_159": {
       "dataset_version": "mbpp-v1",
@@ -671,16 +458,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_16",
-      "usage": []
-    },
-    "mbpp_fam_160": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_160"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_160",
       "usage": []
     },
     "mbpp_fam_161": {
@@ -713,16 +490,6 @@
       "source_task_id": "mbpp_163",
       "usage": []
     },
-    "mbpp_fam_164": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_164"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_164",
-      "usage": []
-    },
     "mbpp_fam_165": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -743,16 +510,6 @@
       "source_task_id": "mbpp_166",
       "usage": []
     },
-    "mbpp_fam_167": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_167"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_167",
-      "usage": []
-    },
     "mbpp_fam_168": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -761,19 +518,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_168",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_169": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_169"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_169",
       "usage": []
     },
     "mbpp_fam_17": {
@@ -784,10 +528,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_17",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_170": {
       "dataset_version": "mbpp-v1",
@@ -829,16 +570,6 @@
       "source_task_id": "mbpp_173",
       "usage": []
     },
-    "mbpp_fam_174": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_174"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_174",
-      "usage": []
-    },
     "mbpp_fam_175": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -847,10 +578,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_175",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_176": {
       "dataset_version": "mbpp-v1",
@@ -860,10 +588,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_176",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_177": {
       "dataset_version": "mbpp-v1",
@@ -883,10 +608,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_178",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_179": {
       "dataset_version": "mbpp-v1",
@@ -898,26 +620,6 @@
       "source_task_id": "mbpp_179",
       "usage": []
     },
-    "mbpp_fam_18": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_18"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_18",
-      "usage": []
-    },
-    "mbpp_fam_181": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_181"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_181",
-      "usage": []
-    },
     "mbpp_fam_182": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -926,10 +628,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_182",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_183": {
       "dataset_version": "mbpp-v1",
@@ -969,10 +668,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_186",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_187": {
       "dataset_version": "mbpp-v1",
@@ -1032,19 +728,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_192",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_193": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_193"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_193",
       "usage": []
     },
     "mbpp_fam_194": {
@@ -1067,26 +750,6 @@
       "source_task_id": "mbpp_195",
       "usage": []
     },
-    "mbpp_fam_196": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_196"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_196",
-      "usage": []
-    },
-    "mbpp_fam_197": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_197"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_197",
-      "usage": []
-    },
     "mbpp_fam_198": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1105,16 +768,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_199",
-      "usage": []
-    },
-    "mbpp_fam_20": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_20"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_20",
       "usage": []
     },
     "mbpp_fam_200": {
@@ -1167,26 +820,6 @@
       "source_task_id": "mbpp_204",
       "usage": []
     },
-    "mbpp_fam_205": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_205"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_205",
-      "usage": []
-    },
-    "mbpp_fam_206": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_206"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_206",
-      "usage": []
-    },
     "mbpp_fam_207": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1217,19 +850,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_209",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_21": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_21"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_21",
       "usage": []
     },
     "mbpp_fam_210": {
@@ -1242,16 +862,6 @@
       "source_task_id": "mbpp_210",
       "usage": []
     },
-    "mbpp_fam_211": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_211"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_211",
-      "usage": []
-    },
     "mbpp_fam_212": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1260,16 +870,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_212",
-      "usage": []
-    },
-    "mbpp_fam_213": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_213"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_213",
       "usage": []
     },
     "mbpp_fam_214": {
@@ -1366,16 +966,6 @@
       "source_task_id": "mbpp_221",
       "usage": []
     },
-    "mbpp_fam_222": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_222"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_222",
-      "usage": []
-    },
     "mbpp_fam_223": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1385,18 +975,6 @@
       "source_split": "test",
       "source_task_id": "mbpp_223",
       "usage": []
-    },
-    "mbpp_fam_224": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_224"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_224",
-      "usage": [
-        "quarantine"
-      ]
     },
     "mbpp_fam_225": {
       "dataset_version": "mbpp-v1",
@@ -1426,10 +1004,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_227",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_228": {
       "dataset_version": "mbpp-v1",
@@ -1451,19 +1026,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_229",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_23": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_23"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_23",
       "usage": []
     },
     "mbpp_fam_230": {
@@ -1474,10 +1036,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_230",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_231": {
       "dataset_version": "mbpp-v1",
@@ -1517,10 +1076,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_234",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_235": {
       "dataset_version": "mbpp-v1",
@@ -1530,10 +1086,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_235",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_236": {
       "dataset_version": "mbpp-v1",
@@ -1545,16 +1098,6 @@
       "source_task_id": "mbpp_236",
       "usage": []
     },
-    "mbpp_fam_237": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_237"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_237",
-      "usage": []
-    },
     "mbpp_fam_238": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1563,10 +1106,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_238",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_239": {
       "dataset_version": "mbpp-v1",
@@ -1578,16 +1118,6 @@
       "source_task_id": "mbpp_239",
       "usage": []
     },
-    "mbpp_fam_24": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_24"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_24",
-      "usage": []
-    },
     "mbpp_fam_240": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1596,19 +1126,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_240",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_241": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_241"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_241",
       "usage": []
     },
     "mbpp_fam_242": {
@@ -1619,19 +1136,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_242",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_243": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_243"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_243",
       "usage": []
     },
     "mbpp_fam_244": {
@@ -1652,16 +1156,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_245",
-      "usage": []
-    },
-    "mbpp_fam_246": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_246"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_246",
       "usage": []
     },
     "mbpp_fam_247": {
@@ -1694,10 +1188,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_249",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_25": {
       "dataset_version": "mbpp-v1",
@@ -1707,10 +1198,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_25",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_250": {
       "dataset_version": "mbpp-v1",
@@ -1740,10 +1228,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_252",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_253": {
       "dataset_version": "mbpp-v1",
@@ -1753,10 +1238,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_253",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_254": {
       "dataset_version": "mbpp-v1",
@@ -1766,29 +1248,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_254",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_255": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_255"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_255",
-      "usage": []
-    },
-    "mbpp_fam_256": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_256"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_256",
       "usage": []
     },
     "mbpp_fam_257": {
@@ -1811,16 +1270,6 @@
       "source_task_id": "mbpp_258",
       "usage": []
     },
-    "mbpp_fam_259": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_259"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_259",
-      "usage": []
-    },
     "mbpp_fam_26": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1841,16 +1290,6 @@
       "source_task_id": "mbpp_260",
       "usage": []
     },
-    "mbpp_fam_261": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_261"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_261",
-      "usage": []
-    },
     "mbpp_fam_262": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1859,39 +1298,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_262",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_263": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_263"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_263",
-      "usage": []
-    },
-    "mbpp_fam_264": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_264"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_264",
-      "usage": []
-    },
-    "mbpp_fam_265": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_265"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_265",
       "usage": []
     },
     "mbpp_fam_266": {
@@ -1924,16 +1330,6 @@
       "source_task_id": "mbpp_268",
       "usage": []
     },
-    "mbpp_fam_269": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_269"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_269",
-      "usage": []
-    },
     "mbpp_fam_27": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -1952,10 +1348,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_270",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_271": {
       "dataset_version": "mbpp-v1",
@@ -1968,38 +1361,6 @@
       "usage": [
         "quarantine"
       ]
-    },
-    "mbpp_fam_272": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_272"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_272",
-      "usage": []
-    },
-    "mbpp_fam_273": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_273"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_273",
-      "usage": [
-        "quarantine"
-      ]
-    },
-    "mbpp_fam_274": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_274"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_274",
-      "usage": []
     },
     "mbpp_fam_275": {
       "dataset_version": "mbpp-v1",
@@ -2019,26 +1380,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_276",
-      "usage": []
-    },
-    "mbpp_fam_277": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_277"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_277",
-      "usage": []
-    },
-    "mbpp_fam_278": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_278"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_278",
       "usage": []
     },
     "mbpp_fam_279": {
@@ -2089,19 +1430,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_282",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_283": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_283"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_283",
       "usage": []
     },
     "mbpp_fam_284": {
@@ -2152,10 +1480,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_288",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_289": {
       "dataset_version": "mbpp-v1",
@@ -2175,19 +1500,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_29",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_290": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_290"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_290",
       "usage": []
     },
     "mbpp_fam_291": {
@@ -2220,16 +1532,6 @@
       "source_task_id": "mbpp_293",
       "usage": []
     },
-    "mbpp_fam_294": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_294"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_294",
-      "usage": []
-    },
     "mbpp_fam_295": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2238,10 +1540,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_295",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_296": {
       "dataset_version": "mbpp-v1",
@@ -2261,10 +1560,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_297",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_298": {
       "dataset_version": "mbpp-v1",
@@ -2274,26 +1570,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_298",
-      "usage": []
-    },
-    "mbpp_fam_299": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_299"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_299",
-      "usage": []
-    },
-    "mbpp_fam_30": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_30"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_30",
       "usage": []
     },
     "mbpp_fam_300": {
@@ -2306,16 +1582,6 @@
       "source_task_id": "mbpp_300",
       "usage": []
     },
-    "mbpp_fam_301": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_301"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_301",
-      "usage": []
-    },
     "mbpp_fam_302": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2324,10 +1590,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_302",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_303": {
       "dataset_version": "mbpp-v1",
@@ -2359,26 +1622,6 @@
       "source_task_id": "mbpp_305",
       "usage": []
     },
-    "mbpp_fam_306": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_306"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_306",
-      "usage": []
-    },
-    "mbpp_fam_307": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_307"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_307",
-      "usage": []
-    },
     "mbpp_fam_308": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2407,10 +1650,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_31",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_310": {
       "dataset_version": "mbpp-v1",
@@ -2490,19 +1730,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_317",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_318": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_318"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_318",
       "usage": []
     },
     "mbpp_fam_319": {
@@ -2513,19 +1740,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_319",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_32": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_32"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_32",
       "usage": []
     },
     "mbpp_fam_320": {
@@ -2546,10 +1760,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_321",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_322": {
       "dataset_version": "mbpp-v1",
@@ -2559,26 +1770,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_322",
-      "usage": []
-    },
-    "mbpp_fam_323": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_323"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_323",
-      "usage": []
-    },
-    "mbpp_fam_324": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_324"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_324",
       "usage": []
     },
     "mbpp_fam_325": {
@@ -2621,10 +1812,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_328",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_329": {
       "dataset_version": "mbpp-v1",
@@ -2634,19 +1822,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_329",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_33": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_33"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_33",
       "usage": []
     },
     "mbpp_fam_330": {
@@ -2657,10 +1832,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_330",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_331": {
       "dataset_version": "mbpp-v1",
@@ -2680,16 +1852,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_332",
-      "usage": []
-    },
-    "mbpp_fam_333": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_333"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_333",
       "usage": []
     },
     "mbpp_fam_334": {
@@ -2732,16 +1894,6 @@
       "source_task_id": "mbpp_337",
       "usage": []
     },
-    "mbpp_fam_338": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_338"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_338",
-      "usage": []
-    },
     "mbpp_fam_339": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2772,26 +1924,6 @@
       "source_task_id": "mbpp_340",
       "usage": []
     },
-    "mbpp_fam_341": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_341"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_341",
-      "usage": []
-    },
-    "mbpp_fam_342": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_342"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_342",
-      "usage": []
-    },
     "mbpp_fam_343": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2800,10 +1932,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_343",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_344": {
       "dataset_version": "mbpp-v1",
@@ -2843,16 +1972,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_347",
-      "usage": []
-    },
-    "mbpp_fam_348": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_348"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_348",
       "usage": []
     },
     "mbpp_fam_349": {
@@ -2927,16 +2046,6 @@
       "source_task_id": "mbpp_354",
       "usage": []
     },
-    "mbpp_fam_355": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_355"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_355",
-      "usage": []
-    },
     "mbpp_fam_356": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2947,16 +2056,6 @@
       "source_task_id": "mbpp_356",
       "usage": []
     },
-    "mbpp_fam_357": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_357"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_357",
-      "usage": []
-    },
     "mbpp_fam_358": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -2965,10 +2064,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_358",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_359": {
       "dataset_version": "mbpp-v1",
@@ -2990,16 +2086,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_36",
-      "usage": []
-    },
-    "mbpp_fam_360": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_360"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_360",
       "usage": []
     },
     "mbpp_fam_361": {
@@ -3030,49 +2116,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_363",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_364": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_364"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_364",
-      "usage": []
-    },
-    "mbpp_fam_365": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_365"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_365",
-      "usage": []
-    },
-    "mbpp_fam_366": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_366"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_366",
-      "usage": []
-    },
-    "mbpp_fam_368": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_368"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_368",
       "usage": []
     },
     "mbpp_fam_369": {
@@ -3093,16 +2136,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_37",
-      "usage": []
-    },
-    "mbpp_fam_370": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_370"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_370",
       "usage": []
     },
     "mbpp_fam_371": {
@@ -3155,16 +2188,6 @@
       "source_task_id": "mbpp_375",
       "usage": []
     },
-    "mbpp_fam_376": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_376"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_376",
-      "usage": []
-    },
     "mbpp_fam_377": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -3193,10 +2216,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_379",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_38": {
       "dataset_version": "mbpp-v1",
@@ -3208,26 +2228,6 @@
       "source_task_id": "mbpp_38",
       "usage": []
     },
-    "mbpp_fam_380": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_380"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_380",
-      "usage": []
-    },
-    "mbpp_fam_381": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_381"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_381",
-      "usage": []
-    },
     "mbpp_fam_382": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -3236,10 +2236,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_382",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_383": {
       "dataset_version": "mbpp-v1",
@@ -3279,10 +2276,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_386",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_387": {
       "dataset_version": "mbpp-v1",
@@ -3292,10 +2286,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_387",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_388": {
       "dataset_version": "mbpp-v1",
@@ -3325,10 +2316,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_39",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_390": {
       "dataset_version": "mbpp-v1",
@@ -3338,10 +2326,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_390",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_391": {
       "dataset_version": "mbpp-v1",
@@ -3351,10 +2336,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_391",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_392": {
       "dataset_version": "mbpp-v1",
@@ -3364,26 +2346,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_392",
-      "usage": []
-    },
-    "mbpp_fam_393": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_393"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_393",
-      "usage": []
-    },
-    "mbpp_fam_394": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_394"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_394",
       "usage": []
     },
     "mbpp_fam_395": {
@@ -3424,46 +2386,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_398",
-      "usage": []
-    },
-    "mbpp_fam_399": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_399"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_399",
-      "usage": []
-    },
-    "mbpp_fam_40": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_40"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_40",
-      "usage": []
-    },
-    "mbpp_fam_400": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_400"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_400",
-      "usage": []
-    },
-    "mbpp_fam_401": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_401"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_401",
       "usage": []
     },
     "mbpp_fam_402": {
@@ -3514,10 +2436,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_406",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_407": {
       "dataset_version": "mbpp-v1",
@@ -3527,10 +2446,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_407",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_408": {
       "dataset_version": "mbpp-v1",
@@ -3540,16 +2456,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_408",
-      "usage": []
-    },
-    "mbpp_fam_409": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_409"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_409",
       "usage": []
     },
     "mbpp_fam_41": {
@@ -3562,16 +2468,6 @@
       "source_task_id": "mbpp_41",
       "usage": []
     },
-    "mbpp_fam_410": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_410"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_410",
-      "usage": []
-    },
     "mbpp_fam_411": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -3580,10 +2476,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_411",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_412": {
       "dataset_version": "mbpp-v1",
@@ -3593,10 +2486,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_412",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_413": {
       "dataset_version": "mbpp-v1",
@@ -3626,10 +2516,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_415",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_416": {
       "dataset_version": "mbpp-v1",
@@ -3639,16 +2526,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_416",
-      "usage": []
-    },
-    "mbpp_fam_417": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_417"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_417",
       "usage": []
     },
     "mbpp_fam_418": {
@@ -3669,10 +2546,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_419",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_42": {
       "dataset_version": "mbpp-v1",
@@ -3698,16 +2572,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_421": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_421"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_421",
-      "usage": []
-    },
     "mbpp_fam_422": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -3726,16 +2590,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_423",
-      "usage": []
-    },
-    "mbpp_fam_424": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_424"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_424",
       "usage": []
     },
     "mbpp_fam_425": {
@@ -3778,16 +2632,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_428",
-      "usage": []
-    },
-    "mbpp_fam_429": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_429"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_429",
       "usage": []
     },
     "mbpp_fam_43": {
@@ -3860,10 +2704,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_435",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_436": {
       "dataset_version": "mbpp-v1",
@@ -3923,10 +2764,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_440",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_441": {
       "dataset_version": "mbpp-v1",
@@ -3946,10 +2784,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_442",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_443": {
       "dataset_version": "mbpp-v1",
@@ -3969,19 +2804,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_444",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
-    },
-    "mbpp_fam_445": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_445"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_445",
       "usage": []
     },
     "mbpp_fam_446": {
@@ -3992,10 +2814,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_446",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_447": {
       "dataset_version": "mbpp-v1",
@@ -4007,16 +2826,6 @@
       "source_task_id": "mbpp_447",
       "usage": []
     },
-    "mbpp_fam_448": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_448"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_448",
-      "usage": []
-    },
     "mbpp_fam_449": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4025,16 +2834,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_449",
-      "usage": []
-    },
-    "mbpp_fam_45": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_45"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_45",
       "usage": []
     },
     "mbpp_fam_450": {
@@ -4055,10 +2854,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_451",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_452": {
       "dataset_version": "mbpp-v1",
@@ -4078,10 +2874,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_453",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_454": {
       "dataset_version": "mbpp-v1",
@@ -4101,10 +2894,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_455",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_456": {
       "dataset_version": "mbpp-v1",
@@ -4124,10 +2914,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_457",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_458": {
       "dataset_version": "mbpp-v1",
@@ -4148,18 +2935,6 @@
       "source_split": "test",
       "source_task_id": "mbpp_459",
       "usage": []
-    },
-    "mbpp_fam_460": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_460"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_460",
-      "usage": [
-        "quarantine"
-      ]
     },
     "mbpp_fam_461": {
       "dataset_version": "mbpp-v1",
@@ -4191,56 +2966,6 @@
       "source_task_id": "mbpp_463",
       "usage": []
     },
-    "mbpp_fam_464": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_464"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_464",
-      "usage": []
-    },
-    "mbpp_fam_465": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_465"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_465",
-      "usage": []
-    },
-    "mbpp_fam_466": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_466"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_466",
-      "usage": []
-    },
-    "mbpp_fam_467": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_467"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_467",
-      "usage": []
-    },
-    "mbpp_fam_468": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_468"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_468",
-      "usage": []
-    },
     "mbpp_fam_469": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4259,16 +2984,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_47",
-      "usage": []
-    },
-    "mbpp_fam_470": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_470"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_470",
       "usage": []
     },
     "mbpp_fam_471": {
@@ -4309,16 +3024,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_474",
-      "usage": []
-    },
-    "mbpp_fam_475": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_475"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_475",
       "usage": []
     },
     "mbpp_fam_476": {
@@ -4423,26 +3128,6 @@
       "source_task_id": "mbpp_484",
       "usage": []
     },
-    "mbpp_fam_485": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_485"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_485",
-      "usage": []
-    },
-    "mbpp_fam_486": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_486"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_486",
-      "usage": []
-    },
     "mbpp_fam_487": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4485,16 +3170,6 @@
       "source_task_id": "mbpp_49",
       "usage": []
     },
-    "mbpp_fam_490": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_490"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_490",
-      "usage": []
-    },
     "mbpp_fam_491": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4513,26 +3188,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_492",
-      "usage": []
-    },
-    "mbpp_fam_493": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_493"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_493",
-      "usage": []
-    },
-    "mbpp_fam_494": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_494"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_494",
       "usage": []
     },
     "mbpp_fam_495": {
@@ -4585,16 +3240,6 @@
       "source_task_id": "mbpp_499",
       "usage": []
     },
-    "mbpp_fam_50": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_50"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_50",
-      "usage": []
-    },
     "mbpp_fam_500": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4605,16 +3250,6 @@
       "source_task_id": "mbpp_500",
       "usage": []
     },
-    "mbpp_fam_501": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_501"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_501",
-      "usage": []
-    },
     "mbpp_fam_502": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4623,10 +3258,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_502",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_503": {
       "dataset_version": "mbpp-v1",
@@ -4666,10 +3298,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_506",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_507": {
       "dataset_version": "mbpp-v1",
@@ -4679,10 +3308,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_507",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_508": {
       "dataset_version": "mbpp-v1",
@@ -4734,16 +3360,6 @@
       "source_task_id": "mbpp_511",
       "usage": []
     },
-    "mbpp_fam_512": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_512"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_512",
-      "usage": []
-    },
     "mbpp_fam_513": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4752,16 +3368,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_513",
-      "usage": []
-    },
-    "mbpp_fam_514": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_514"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_514",
       "usage": []
     },
     "mbpp_fam_515": {
@@ -4822,16 +3428,6 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_52",
-      "usage": []
-    },
-    "mbpp_fam_520": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_520"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_520",
       "usage": []
     },
     "mbpp_fam_521": {
@@ -4906,26 +3502,6 @@
       "source_task_id": "mbpp_527",
       "usage": []
     },
-    "mbpp_fam_528": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_528"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_528",
-      "usage": []
-    },
-    "mbpp_fam_529": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_529"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_529",
-      "usage": []
-    },
     "mbpp_fam_53": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -4964,16 +3540,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_532",
-      "usage": []
-    },
-    "mbpp_fam_533": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_533"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_533",
       "usage": []
     },
     "mbpp_fam_534": {
@@ -5056,16 +3622,6 @@
       "source_task_id": "mbpp_540",
       "usage": []
     },
-    "mbpp_fam_541": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_541"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_541",
-      "usage": []
-    },
     "mbpp_fam_542": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5084,26 +3640,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_543",
-      "usage": []
-    },
-    "mbpp_fam_544": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_544"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_544",
-      "usage": []
-    },
-    "mbpp_fam_545": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_545"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_545",
       "usage": []
     },
     "mbpp_fam_546": {
@@ -5188,16 +3724,6 @@
       "source_task_id": "mbpp_552",
       "usage": []
     },
-    "mbpp_fam_553": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_553"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_553",
-      "usage": []
-    },
     "mbpp_fam_554": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5262,46 +3788,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_56": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_56"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_56",
-      "usage": []
-    },
-    "mbpp_fam_560": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_560"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_560",
-      "usage": []
-    },
-    "mbpp_fam_561": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_561"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_561",
-      "usage": []
-    },
-    "mbpp_fam_562": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_562"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_562",
-      "usage": []
-    },
     "mbpp_fam_563": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5353,28 +3839,6 @@
       "source_split": "validation",
       "source_task_id": "mbpp_567",
       "usage": []
-    },
-    "mbpp_fam_568": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_568"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_568",
-      "usage": []
-    },
-    "mbpp_fam_569": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_569"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_569",
-      "usage": [
-        "quarantine"
-      ]
     },
     "mbpp_fam_57": {
       "dataset_version": "mbpp-v1",
@@ -5476,16 +3940,6 @@
       "source_task_id": "mbpp_578",
       "usage": []
     },
-    "mbpp_fam_579": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_579"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_579",
-      "usage": []
-    },
     "mbpp_fam_58": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5496,16 +3950,6 @@
       "source_task_id": "mbpp_58",
       "usage": []
     },
-    "mbpp_fam_580": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_580"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_580",
-      "usage": []
-    },
     "mbpp_fam_581": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5514,16 +3958,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_581",
-      "usage": []
-    },
-    "mbpp_fam_582": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_582"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_582",
       "usage": []
     },
     "mbpp_fam_583": {
@@ -5544,16 +3978,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_584",
-      "usage": []
-    },
-    "mbpp_fam_585": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_585"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_585",
       "usage": []
     },
     "mbpp_fam_586": {
@@ -5584,16 +4008,6 @@
       ],
       "source_split": "validation",
       "source_task_id": "mbpp_588",
-      "usage": []
-    },
-    "mbpp_fam_589": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_589"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_589",
       "usage": []
     },
     "mbpp_fam_59": {
@@ -5628,16 +4042,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_592": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_592"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_592",
-      "usage": []
-    },
     "mbpp_fam_593": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -5669,16 +4073,6 @@
       "usage": [
         "quarantine"
       ]
-    },
-    "mbpp_fam_596": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_596"
-      ],
-      "source_split": "validation",
-      "source_task_id": "mbpp_596",
-      "usage": []
     },
     "mbpp_fam_597": {
       "dataset_version": "mbpp-v1",
@@ -5718,10 +4112,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_60",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_600": {
       "dataset_version": "mbpp-v1",
@@ -5850,10 +4241,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_61",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_610": {
       "dataset_version": "mbpp-v1",
@@ -6107,16 +4495,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_63": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_63"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_63",
-      "usage": []
-    },
     "mbpp_fam_630": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -6238,16 +4616,6 @@
       "usage": [
         "p2_frozen_v2"
       ]
-    },
-    "mbpp_fam_64": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_64"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_64",
-      "usage": []
     },
     "mbpp_fam_640": {
       "dataset_version": "mbpp-v1",
@@ -6377,10 +4745,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_65",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_650": {
       "dataset_version": "mbpp-v1",
@@ -6632,16 +4997,6 @@
       "usage": [
         "p2_train"
       ]
-    },
-    "mbpp_fam_67": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_67"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_67",
-      "usage": []
     },
     "mbpp_fam_670": {
       "dataset_version": "mbpp-v1",
@@ -7024,16 +5379,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_70": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_70"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_70",
-      "usage": []
-    },
     "mbpp_fam_700": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -7104,8 +5449,7 @@
       "source_split": "train",
       "source_task_id": "mbpp_705",
       "usage": [
-        "p2_validation",
-        "quarantine"
+        "p2_validation"
       ]
     },
     "mbpp_fam_706": {
@@ -7129,8 +5473,7 @@
       "source_split": "train",
       "source_task_id": "mbpp_707",
       "usage": [
-        "p2_frozen_v2",
-        "quarantine"
+        "p2_frozen_v2"
       ]
     },
     "mbpp_fam_708": {
@@ -7678,16 +6021,6 @@
         "p2_train"
       ]
     },
-    "mbpp_fam_75": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_75"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_75",
-      "usage": []
-    },
     "mbpp_fam_750": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -8079,10 +6412,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_78",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_780": {
       "dataset_version": "mbpp-v1",
@@ -8344,10 +6674,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_80",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_800": {
       "dataset_version": "mbpp-v1",
@@ -8468,16 +6795,6 @@
       "usage": [
         "p2_train"
       ]
-    },
-    "mbpp_fam_81": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_81"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_81",
-      "usage": []
     },
     "mbpp_fam_810": {
       "dataset_version": "mbpp-v1",
@@ -8863,16 +7180,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_84": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_84"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_84",
-      "usage": []
-    },
     "mbpp_fam_840": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -9254,16 +7561,6 @@
         "p2_validation"
       ]
     },
-    "mbpp_fam_87": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_87"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_87",
-      "usage": []
-    },
     "mbpp_fam_870": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -9386,16 +7683,6 @@
         "quarantine"
       ]
     },
-    "mbpp_fam_88": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_88"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_88",
-      "usage": []
-    },
     "mbpp_fam_880": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -9503,8 +7790,7 @@
       "source_split": "train",
       "source_task_id": "mbpp_888",
       "usage": [
-        "p2_train",
-        "quarantine"
+        "p2_train"
       ]
     },
     "mbpp_fam_889": {
@@ -9527,10 +7813,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_89",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_890": {
       "dataset_version": "mbpp-v1",
@@ -9577,8 +7860,7 @@
       "source_split": "train",
       "source_task_id": "mbpp_893",
       "usage": [
-        "p2_train",
-        "quarantine"
+        "p2_train"
       ]
     },
     "mbpp_fam_894": {
@@ -10054,10 +8336,7 @@
       ],
       "source_split": "test",
       "source_task_id": "mbpp_93",
-      "usage": [
-        "frozen_v3_candidate",
-        "frozen_v3"
-      ]
+      "usage": []
     },
     "mbpp_fam_930": {
       "dataset_version": "mbpp-v1",
@@ -10180,16 +8459,6 @@
         "p2_train"
       ]
     },
-    "mbpp_fam_94": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_94"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_94",
-      "usage": []
-    },
     "mbpp_fam_940": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -10311,16 +8580,6 @@
         "p2_train"
       ]
     },
-    "mbpp_fam_95": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_95"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_95",
-      "usage": []
-    },
     "mbpp_fam_950": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -10440,16 +8699,6 @@
       "usage": [
         "p2_train"
       ]
-    },
-    "mbpp_fam_96": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_96"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_96",
-      "usage": []
     },
     "mbpp_fam_960": {
       "dataset_version": "mbpp-v1",
@@ -10573,16 +8822,6 @@
         "p2_frozen_v2"
       ]
     },
-    "mbpp_fam_97": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_97"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_97",
-      "usage": []
-    },
     "mbpp_fam_970": {
       "dataset_version": "mbpp-v1",
       "first_commit": "515c955",
@@ -10643,16 +8882,6 @@
         "p2_frozen_v2"
       ]
     },
-    "mbpp_fam_98": {
-      "dataset_version": "mbpp-v1",
-      "first_commit": "3dce2ce",
-      "sample_ids": [
-        "mbpp_98"
-      ],
-      "source_split": "test",
-      "source_task_id": "mbpp_98",
-      "usage": []
-    },
     "mbpp_fam_99": {
       "dataset_version": "mbpp-v1",
       "first_commit": "3dce2ce",
@@ -10664,11 +8893,11 @@
       "usage": []
     }
   },
-  "generated_at": "2026-07-04T12:51:24.415152+00:00",
+  "generated_at": "2026-07-04T14:15:48.825976+00:00",
   "generator": "build_family_registry.py",
   "schema_version": 1,
-  "total_families": 958,
-  "total_new_available": 473,
+  "total_families": 807,
+  "total_new_available": 409,
   "total_p2_used": 374,
-  "total_quarantined": 58
+  "total_quarantined": 50
 }
