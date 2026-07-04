@@ -1,4 +1,11 @@
 {
+  "policy_version": "v1",
+  "policy_path": "reports\\p2\\router-policy-v1.json",
+  "selection_family_count": 45,
+  "eval_family_count": 30,
+  "selection_sample_count": 342,
+  "eval_sample_count": 234,
+  "eval_subset_size": 234,
   "models_loaded": [
     "full576-base",
     "full576-stage2-boundary",
@@ -7,75 +14,76 @@
     "full576-stage3-v3-antiforget"
   ],
   "models_skipped": [],
-  "common_sample_count": 576,
+  "common_sample_count": 234,
   "best_single": {
     "model": "Stage3-Independent",
     "model_key": "full576-independent-stage3",
-    "overall_pass": 0.484375,
-    "family_pass": 0.02666666666666667,
+    "source": "frozen_policy_v1",
+    "overall_pass": 0.49572649572649574,
+    "family_pass": 0.03333333333333333,
     "per_task_type": {
       "code_generation": {
-        "total": 140,
-        "passed": 21,
-        "pass_rate": 0.15
+        "total": 58,
+        "passed": 9,
+        "pass_rate": 0.15517241379310345
       },
       "execution_repair": {
-        "total": 218,
-        "passed": 132,
-        "pass_rate": 0.6055045871559633
+        "total": 88,
+        "passed": 53,
+        "pass_rate": 0.6022727272727273
       },
       "static_repair": {
-        "total": 218,
-        "passed": 126,
-        "pass_rate": 0.5779816513761468
+        "total": 88,
+        "passed": 54,
+        "pass_rate": 0.6136363636363636
       }
     },
-    "n_samples": 576
+    "n_samples": 234
   },
   "oracle_router": {
-    "overall_pass": 0.6163194444444444,
-    "family_pass": 0.02666666666666667,
+    "overall_pass": 0.6452991452991453,
+    "family_pass": 0.03333333333333333,
     "per_task_type": {
       "code_generation": {
-        "total": 140,
-        "passed": 34,
-        "pass_rate": 0.24285714285714285
+        "total": 58,
+        "passed": 15,
+        "pass_rate": 0.25862068965517243
       },
       "execution_repair": {
-        "total": 218,
-        "passed": 160,
-        "pass_rate": 0.7339449541284404
+        "total": 88,
+        "passed": 65,
+        "pass_rate": 0.7386363636363636
       },
       "static_repair": {
-        "total": 218,
-        "passed": 161,
-        "pass_rate": 0.7385321100917431
+        "total": 88,
+        "passed": 71,
+        "pass_rate": 0.8068181818181818
       }
     },
-    "n_samples": 576,
-    "lift_vs_best_single": 0.13194444444444442
+    "n_samples": 234,
+    "lift_vs_best_single": 0.1495726495726496
   },
   "metadata_router": {
-    "overall_pass": 0.4878472222222222,
-    "family_pass": 0.013333333333333334,
+    "overall_pass": 0.49572649572649574,
+    "family_pass": 0.03333333333333333,
     "per_task_type": {
       "code_generation": {
-        "total": 140,
-        "passed": 23,
-        "pass_rate": 0.16428571428571428
+        "total": 58,
+        "passed": 9,
+        "pass_rate": 0.15517241379310345
       },
       "execution_repair": {
-        "total": 218,
-        "passed": 132,
-        "pass_rate": 0.6055045871559633
+        "total": 88,
+        "passed": 53,
+        "pass_rate": 0.6022727272727273
       },
       "static_repair": {
-        "total": 218,
-        "passed": 126,
-        "pass_rate": 0.5779816513761468
+        "total": 88,
+        "passed": 54,
+        "pass_rate": 0.6136363636363636
       }
     },
-    "n_samples": 576,
+    "n_samples": 234,
     "routing_map": {
       "code_generation": "Base",
       "static_repair": "Stage3-Independent",
@@ -86,46 +94,31 @@
       "static_repair": "full576-independent-stage3",
       "execution_repair": "full576-independent-stage3"
     },
-    "routing_rates": {
-      "code_generation": {
-        "model": "Base",
-        "model_key": "full576-base",
-        "pass_rate": 0.16428571428571428
-      },
-      "static_repair": {
-        "model": "Stage3-Independent",
-        "model_key": "full576-independent-stage3",
-        "pass_rate": 0.5779816513761468
-      },
-      "execution_repair": {
-        "model": "Stage3-Independent",
-        "model_key": "full576-independent-stage3",
-        "pass_rate": 0.6055045871559633
-      }
-    },
-    "lift_vs_best_single": 0.00347222222222221
+    "source": "frozen_policy_v1",
+    "selection_pass_rate": 0.4824561403508772,
+    "lift_vs_best_single": 0.0
   },
   "deployable_router": {
-    "overall_pass": 0.4878472222222222,
-    "family_pass": 0.013333333333333334,
+    "overall_pass": 0.49572649572649574,
+    "family_pass": 0.03333333333333333,
     "per_task_type": {
       "code_generation": {
-        "total": 140,
-        "passed": 23,
-        "pass_rate": 0.16428571428571428
+        "total": 58,
+        "passed": 9,
+        "pass_rate": 0.15517241379310345
       },
       "execution_repair": {
-        "total": 218,
-        "passed": 132,
-        "pass_rate": 0.6055045871559633
+        "total": 88,
+        "passed": 53,
+        "pass_rate": 0.6022727272727273
       },
       "static_repair": {
-        "total": 218,
-        "passed": 126,
-        "pass_rate": 0.5779816513761468
+        "total": 88,
+        "passed": 54,
+        "pass_rate": 0.6136363636363636
       }
     },
-    "n_samples": 576,
+    "n_samples": 234,
     "routing_rules": [
       {
         "signal": "no broken_code, no execution_feedback",
@@ -148,144 +141,146 @@
     ],
     "routing_map": {
       "code_generation": "Base",
-      "static_repair": "Stage3-Independent",
-      "execution_repair": "Stage3-Independent"
+      "execution_repair": "Stage3-Independent",
+      "static_repair": "Stage3-Independent"
     },
     "routing_map_keys": {
       "code_generation": "full576-base",
-      "static_repair": "full576-independent-stage3",
-      "execution_repair": "full576-independent-stage3"
+      "execution_repair": "full576-independent-stage3",
+      "static_repair": "full576-independent-stage3"
     },
-    "lift_vs_best_single": 0.00347222222222221
+    "source": "frozen_policy_v1",
+    "selection_pass_rate": 0.4824561403508772,
+    "lift_vs_best_single": 0.0
   },
   "decision_gate": {
     "verdict": "SIGNAL",
-    "reason": "Oracle lift (13.2pp) >= 5pp (routing potential exists), but Deployable Router lift (0.3pp) or significance (McNemar p=0.7905, CI=[-0.0087, +0.0156]) does not meet the GO threshold — observable signals alone cannot capture the potential.",
+    "reason": "Oracle lift (15.0pp) >= 5pp (routing potential exists), but Deployable Router lift (0.0pp) or significance (McNemar p=1.0000, CI=[-0.0256, +0.0256]) does not meet the GO threshold — observable signals alone cannot capture the potential.",
     "criteria": {
       "lift_threshold_pp": 5.0,
-      "oracle_lift": 0.13194444444444442,
+      "oracle_lift": 0.1495726495726496,
       "oracle_meaningful": true,
-      "deployable_lift": 0.00347222222222221,
+      "deployable_lift": 0.0,
       "deployable_meaningful": false,
-      "deployable_mcnemar_p": 0.79052734375,
+      "deployable_mcnemar_p": 1.0,
       "deployable_ci_95": [
-        -0.008680555555555556,
-        0.015625
+        -0.02564102564102564,
+        0.02564102564102564
       ],
       "deployable_ci_significant": false,
       "deployable_significant": false,
-      "deployable_mcnemar_b": 6,
-      "deployable_mcnemar_c": 8,
-      "n_common": 576
+      "deployable_mcnemar_b": 4,
+      "deployable_mcnemar_c": 4,
+      "n_common": 234
     }
   },
   "comparison_table": [
     {
       "name": "Base",
       "type": "single_model",
-      "overall_pass": 0.3611111111111111,
+      "overall_pass": 0.36324786324786323,
       "family_pass": 0.0,
-      "code_generation_pass": 0.16428571428571428,
-      "static_repair_pass": 0.5,
-      "execution_repair_pass": 0.3486238532110092,
-      "lift_vs_best_single": -0.1232638888888889
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.4659090909090909,
+      "execution_repair_pass": 0.3977272727272727,
+      "lift_vs_best_single": -0.1324786324786325
     },
     {
       "name": "Stage2-v2",
       "type": "single_model",
-      "overall_pass": 0.4409722222222222,
+      "overall_pass": 0.5,
       "family_pass": 0.0,
-      "code_generation_pass": 0.14285714285714285,
-      "static_repair_pass": 0.555045871559633,
-      "execution_repair_pass": 0.518348623853211,
-      "lift_vs_best_single": -0.04340277777777779
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.6022727272727273,
+      "execution_repair_pass": 0.625,
+      "lift_vs_best_single": 0.004273504273504258
     },
     {
       "name": "Stage3-v2-Continual",
       "type": "single_model",
-      "overall_pass": 0.4166666666666667,
-      "family_pass": 0.013333333333333334,
-      "code_generation_pass": 0.11428571428571428,
-      "static_repair_pass": 0.5229357798165137,
-      "execution_repair_pass": 0.5045871559633027,
-      "lift_vs_best_single": -0.06770833333333331
+      "overall_pass": 0.452991452991453,
+      "family_pass": 0.0,
+      "code_generation_pass": 0.10344827586206896,
+      "static_repair_pass": 0.5681818181818182,
+      "execution_repair_pass": 0.5681818181818182,
+      "lift_vs_best_single": -0.04273504273504275
     },
     {
       "name": "Stage3-Independent",
       "type": "single_model",
-      "overall_pass": 0.484375,
-      "family_pass": 0.02666666666666667,
-      "code_generation_pass": 0.15,
-      "static_repair_pass": 0.5779816513761468,
-      "execution_repair_pass": 0.6055045871559633,
+      "overall_pass": 0.49572649572649574,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.6136363636363636,
+      "execution_repair_pass": 0.6022727272727273,
       "lift_vs_best_single": 0.0
     },
     {
       "name": "Stage3-v3-Antiforget",
       "type": "single_model",
-      "overall_pass": 0.4444444444444444,
-      "family_pass": 0.02666666666666667,
-      "code_generation_pass": 0.15714285714285714,
-      "static_repair_pass": 0.5229357798165137,
-      "execution_repair_pass": 0.5504587155963303,
-      "lift_vs_best_single": -0.03993055555555558
+      "overall_pass": 0.4658119658119658,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.1724137931034483,
+      "static_repair_pass": 0.5568181818181818,
+      "execution_repair_pass": 0.5681818181818182,
+      "lift_vs_best_single": -0.02991452991452992
     },
     {
       "name": "Best Single",
       "type": "best_single",
-      "overall_pass": 0.484375,
-      "family_pass": 0.02666666666666667,
-      "code_generation_pass": 0.15,
-      "static_repair_pass": 0.5779816513761468,
-      "execution_repair_pass": 0.6055045871559633,
+      "overall_pass": 0.49572649572649574,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.6136363636363636,
+      "execution_repair_pass": 0.6022727272727273,
       "lift_vs_best_single": 0.0
     },
     {
       "name": "Oracle Router",
       "type": "router",
-      "overall_pass": 0.6163194444444444,
-      "family_pass": 0.02666666666666667,
-      "code_generation_pass": 0.24285714285714285,
-      "static_repair_pass": 0.7385321100917431,
-      "execution_repair_pass": 0.7339449541284404,
-      "lift_vs_best_single": 0.13194444444444442
+      "overall_pass": 0.6452991452991453,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.25862068965517243,
+      "static_repair_pass": 0.8068181818181818,
+      "execution_repair_pass": 0.7386363636363636,
+      "lift_vs_best_single": 0.1495726495726496
     },
     {
       "name": "Metadata Router",
       "type": "router",
-      "overall_pass": 0.4878472222222222,
-      "family_pass": 0.013333333333333334,
-      "code_generation_pass": 0.16428571428571428,
-      "static_repair_pass": 0.5779816513761468,
-      "execution_repair_pass": 0.6055045871559633,
-      "lift_vs_best_single": 0.00347222222222221
+      "overall_pass": 0.49572649572649574,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.6136363636363636,
+      "execution_repair_pass": 0.6022727272727273,
+      "lift_vs_best_single": 0.0
     },
     {
       "name": "Deployable Router",
       "type": "router",
-      "overall_pass": 0.4878472222222222,
-      "family_pass": 0.013333333333333334,
-      "code_generation_pass": 0.16428571428571428,
-      "static_repair_pass": 0.5779816513761468,
-      "execution_repair_pass": 0.6055045871559633,
-      "lift_vs_best_single": 0.00347222222222221
+      "overall_pass": 0.49572649572649574,
+      "family_pass": 0.03333333333333333,
+      "code_generation_pass": 0.15517241379310345,
+      "static_repair_pass": 0.6136363636363636,
+      "execution_repair_pass": 0.6022727272727273,
+      "lift_vs_best_single": 0.0
     }
   ],
   "bug_type_distribution": {
-    "(none)": 140,
-    "aggregation_error": 28,
-    "branch_deletion": 70,
-    "condition_error": 62,
-    "index_error": 16,
-    "initialization_error": 38,
-    "off_by_one": 48,
-    "return_value_error": 138,
-    "type_error": 36
+    "(none)": 58,
+    "aggregation_error": 10,
+    "branch_deletion": 32,
+    "condition_error": 30,
+    "index_error": 2,
+    "initialization_error": 18,
+    "off_by_one": 14,
+    "return_value_error": 54,
+    "type_error": 16
   },
   "notes": [
-    "Routing maps determined on full eval set (train-on-test). Future: split into validation (determine routing) and eval (apply).",
-    "Deployable Router uses only observable signals (broken_code, execution_feedback) inferred from task_type. Does not use hidden tests or gold bug_type.",
-    "Oracle Router is an upper bound (any model passes -> router passes).",
-    "Common sample IDs = intersection across all loaded models (fair comparison)."
+    "Router policy (Best Single, Metadata, Deployable) loaded from frozen artifact router-policy-v1.json, fit on a held-out selection subset (45 families) using split_router_selection.py.",
+    "This script applies that frozen policy to the eval subset (30 families, family-disjoint from selection). No selection-eval leakage.",
+    "Oracle Router is recomputed on the eval subset (upper bound, not 'trained' on selection).",
+    "Deployable Router uses only observable signals (broken_code, execution_feedback) inferred from task_type. Does not use hidden tests or gold bug_type."
   ]
 }
