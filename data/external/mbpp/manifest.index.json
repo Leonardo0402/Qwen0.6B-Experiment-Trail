@@ -1,0 +1,26 @@
+{
+  "source": "google-research-datasets/mbpp",
+  "splits": [
+    "test",
+    "train",
+    "validation"
+  ],
+  "updated_at": "2026-07-04T08:58:39.372265+00:00",
+  "splits_detail": {
+    "validation": {
+      "sample_count": 90,
+      "normalized_sha256": "b938fc0f9c09c1058b3eb35dcb010530efedf61578df4065d536111f12b4bc01",
+      "manifest": "manifest.validation.json"
+    },
+    "test": {
+      "sample_count": 500,
+      "normalized_sha256": "bb21489a46c925f712296610a0fb916423ed10845ad307a8c382792628d00d4d",
+      "manifest": "manifest.test.json"
+    },
+    "train": {
+      "sample_count": 374,
+      "normalized_sha256": "5632d58a6e71079d792402aee8b287678e5a3b9c1ba5b14a902f86ed10b39884",
+      "manifest": "manifest.train.json"
+    }
+  }
+}
