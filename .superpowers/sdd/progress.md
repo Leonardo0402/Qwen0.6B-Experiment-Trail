@@ -25,11 +25,26 @@ Started: 2026-07-03
 - **#5 Dead else branch**: `compute_router_analysis.py:299-304` unreachable else in apply_decision_gate (cosmetic)
 - **#6 Stale comment**: `compute_paired_stats.py` "Issue #1" → "Issue #6" (cosmetic)
 
-## Remaining Work (data-dependent)
+## Remaining Work (data-dependent, automated)
 
-1. Wait for Full-576 evaluations to complete (5 models, ~2h each)
-2. Run compute_paired_stats.py + compare_p2_evals.py
-3. Run compute_router_analysis.py (P3 Decision Gate)
-4. Run generate_full576_report.py
-5. Commit generated reports
-6. Push + PR + merge to main
+### Automation pipeline (running, verified correct):
+- **Job 1** (`job-0670342adf0543e8bdc5dd371b4d2ca9`): Base Full-576 eval — in progress (~48%, 278/576)
+- **Job 2** (`job-47f22e3d087442a6a608bb407ad7b0b7`): waits for Base → runs 4 remaining models sequentially
+- **Job 3** (`job-cd2801f011ba4b6a9799b40ed1767fec`): waits for all 5 eval files → runs 4 analysis scripts → emits `POST_EVAL_PIPELINE_DONE_MARKER`
+
+### Steps 2-4 are automated by Job 3:
+2. compare_p2_evals.py → full576-comparison.json
+3. compute_paired_stats.py → full576-paired-stats.json/md
+4. compute_router_analysis.py → router-analysis.json/md (P3 Decision Gate)
+5. generate_full576_report.py → p2-full576-comparison-report.md
+
+### Manual steps after pipeline completes (P4.2):
+6. Verify P3 Decision Gate verdict (GO / NO-GO / SIGNAL)
+7. Verify report content
+8. Commit generated files: 5 eval JSONs + 6 report files
+9. Push + create PR + merge to main
+
+### Git state:
+- Branch: `feat/p2.2-ci-router-validation` (upstream: origin/feat/p2.2-ci-router-validation)
+- HEAD: 537276e (chore: add final whole-branch review diff package)
+- Working tree: clean

@@ -1,0 +1,291 @@
+{
+  "models_loaded": [
+    "full576-base",
+    "full576-stage2-boundary",
+    "full576-stage3-repair",
+    "full576-independent-stage3",
+    "full576-stage3-v3-antiforget"
+  ],
+  "models_skipped": [],
+  "common_sample_count": 576,
+  "best_single": {
+    "model": "Stage3-Independent",
+    "model_key": "full576-independent-stage3",
+    "overall_pass": 0.484375,
+    "family_pass": 0.02666666666666667,
+    "per_task_type": {
+      "code_generation": {
+        "total": 140,
+        "passed": 21,
+        "pass_rate": 0.15
+      },
+      "execution_repair": {
+        "total": 218,
+        "passed": 132,
+        "pass_rate": 0.6055045871559633
+      },
+      "static_repair": {
+        "total": 218,
+        "passed": 126,
+        "pass_rate": 0.5779816513761468
+      }
+    },
+    "n_samples": 576
+  },
+  "oracle_router": {
+    "overall_pass": 0.6163194444444444,
+    "family_pass": 0.02666666666666667,
+    "per_task_type": {
+      "code_generation": {
+        "total": 140,
+        "passed": 34,
+        "pass_rate": 0.24285714285714285
+      },
+      "execution_repair": {
+        "total": 218,
+        "passed": 160,
+        "pass_rate": 0.7339449541284404
+      },
+      "static_repair": {
+        "total": 218,
+        "passed": 161,
+        "pass_rate": 0.7385321100917431
+      }
+    },
+    "n_samples": 576,
+    "lift_vs_best_single": 0.13194444444444442
+  },
+  "metadata_router": {
+    "overall_pass": 0.4878472222222222,
+    "family_pass": 0.013333333333333334,
+    "per_task_type": {
+      "code_generation": {
+        "total": 140,
+        "passed": 23,
+        "pass_rate": 0.16428571428571428
+      },
+      "execution_repair": {
+        "total": 218,
+        "passed": 132,
+        "pass_rate": 0.6055045871559633
+      },
+      "static_repair": {
+        "total": 218,
+        "passed": 126,
+        "pass_rate": 0.5779816513761468
+      }
+    },
+    "n_samples": 576,
+    "routing_map": {
+      "code_generation": "Base",
+      "static_repair": "Stage3-Independent",
+      "execution_repair": "Stage3-Independent"
+    },
+    "routing_map_keys": {
+      "code_generation": "full576-base",
+      "static_repair": "full576-independent-stage3",
+      "execution_repair": "full576-independent-stage3"
+    },
+    "routing_rates": {
+      "code_generation": {
+        "model": "Base",
+        "model_key": "full576-base",
+        "pass_rate": 0.16428571428571428
+      },
+      "static_repair": {
+        "model": "Stage3-Independent",
+        "model_key": "full576-independent-stage3",
+        "pass_rate": 0.5779816513761468
+      },
+      "execution_repair": {
+        "model": "Stage3-Independent",
+        "model_key": "full576-independent-stage3",
+        "pass_rate": 0.6055045871559633
+      }
+    },
+    "lift_vs_best_single": 0.00347222222222221
+  },
+  "deployable_router": {
+    "overall_pass": 0.4878472222222222,
+    "family_pass": 0.013333333333333334,
+    "per_task_type": {
+      "code_generation": {
+        "total": 140,
+        "passed": 23,
+        "pass_rate": 0.16428571428571428
+      },
+      "execution_repair": {
+        "total": 218,
+        "passed": 132,
+        "pass_rate": 0.6055045871559633
+      },
+      "static_repair": {
+        "total": 218,
+        "passed": 126,
+        "pass_rate": 0.5779816513761468
+      }
+    },
+    "n_samples": 576,
+    "routing_rules": [
+      {
+        "signal": "no broken_code, no execution_feedback",
+        "category": "code_generation",
+        "candidate": "Generalist (Best Single on code_gen)",
+        "model": "Base"
+      },
+      {
+        "signal": "broken_code present, no execution_feedback",
+        "category": "static_repair",
+        "candidate": "Static Repair Specialist",
+        "model": "Stage3-Independent"
+      },
+      {
+        "signal": "broken_code + execution_feedback",
+        "category": "execution_repair",
+        "candidate": "Repair Specialist",
+        "model": "Stage3-Independent"
+      }
+    ],
+    "routing_map": {
+      "code_generation": "Base",
+      "static_repair": "Stage3-Independent",
+      "execution_repair": "Stage3-Independent"
+    },
+    "routing_map_keys": {
+      "code_generation": "full576-base",
+      "static_repair": "full576-independent-stage3",
+      "execution_repair": "full576-independent-stage3"
+    },
+    "lift_vs_best_single": 0.00347222222222221
+  },
+  "decision_gate": {
+    "verdict": "SIGNAL",
+    "reason": "Oracle lift (13.2pp) >= 5pp (routing potential exists), but Deployable Router lift (0.3pp) or significance (McNemar p=0.7905, CI=[-0.0087, +0.0156]) does not meet the GO threshold — observable signals alone cannot capture the potential.",
+    "criteria": {
+      "lift_threshold_pp": 5.0,
+      "oracle_lift": 0.13194444444444442,
+      "oracle_meaningful": true,
+      "deployable_lift": 0.00347222222222221,
+      "deployable_meaningful": false,
+      "deployable_mcnemar_p": 0.79052734375,
+      "deployable_ci_95": [
+        -0.008680555555555556,
+        0.015625
+      ],
+      "deployable_ci_significant": false,
+      "deployable_significant": false,
+      "deployable_mcnemar_b": 6,
+      "deployable_mcnemar_c": 8,
+      "n_common": 576
+    }
+  },
+  "comparison_table": [
+    {
+      "name": "Base",
+      "type": "single_model",
+      "overall_pass": 0.3611111111111111,
+      "family_pass": 0.0,
+      "code_generation_pass": 0.16428571428571428,
+      "static_repair_pass": 0.5,
+      "execution_repair_pass": 0.3486238532110092,
+      "lift_vs_best_single": -0.1232638888888889
+    },
+    {
+      "name": "Stage2-v2",
+      "type": "single_model",
+      "overall_pass": 0.4409722222222222,
+      "family_pass": 0.0,
+      "code_generation_pass": 0.14285714285714285,
+      "static_repair_pass": 0.555045871559633,
+      "execution_repair_pass": 0.518348623853211,
+      "lift_vs_best_single": -0.04340277777777779
+    },
+    {
+      "name": "Stage3-v2-Continual",
+      "type": "single_model",
+      "overall_pass": 0.4166666666666667,
+      "family_pass": 0.013333333333333334,
+      "code_generation_pass": 0.11428571428571428,
+      "static_repair_pass": 0.5229357798165137,
+      "execution_repair_pass": 0.5045871559633027,
+      "lift_vs_best_single": -0.06770833333333331
+    },
+    {
+      "name": "Stage3-Independent",
+      "type": "single_model",
+      "overall_pass": 0.484375,
+      "family_pass": 0.02666666666666667,
+      "code_generation_pass": 0.15,
+      "static_repair_pass": 0.5779816513761468,
+      "execution_repair_pass": 0.6055045871559633,
+      "lift_vs_best_single": 0.0
+    },
+    {
+      "name": "Stage3-v3-Antiforget",
+      "type": "single_model",
+      "overall_pass": 0.4444444444444444,
+      "family_pass": 0.02666666666666667,
+      "code_generation_pass": 0.15714285714285714,
+      "static_repair_pass": 0.5229357798165137,
+      "execution_repair_pass": 0.5504587155963303,
+      "lift_vs_best_single": -0.03993055555555558
+    },
+    {
+      "name": "Best Single",
+      "type": "best_single",
+      "overall_pass": 0.484375,
+      "family_pass": 0.02666666666666667,
+      "code_generation_pass": 0.15,
+      "static_repair_pass": 0.5779816513761468,
+      "execution_repair_pass": 0.6055045871559633,
+      "lift_vs_best_single": 0.0
+    },
+    {
+      "name": "Oracle Router",
+      "type": "router",
+      "overall_pass": 0.6163194444444444,
+      "family_pass": 0.02666666666666667,
+      "code_generation_pass": 0.24285714285714285,
+      "static_repair_pass": 0.7385321100917431,
+      "execution_repair_pass": 0.7339449541284404,
+      "lift_vs_best_single": 0.13194444444444442
+    },
+    {
+      "name": "Metadata Router",
+      "type": "router",
+      "overall_pass": 0.4878472222222222,
+      "family_pass": 0.013333333333333334,
+      "code_generation_pass": 0.16428571428571428,
+      "static_repair_pass": 0.5779816513761468,
+      "execution_repair_pass": 0.6055045871559633,
+      "lift_vs_best_single": 0.00347222222222221
+    },
+    {
+      "name": "Deployable Router",
+      "type": "router",
+      "overall_pass": 0.4878472222222222,
+      "family_pass": 0.013333333333333334,
+      "code_generation_pass": 0.16428571428571428,
+      "static_repair_pass": 0.5779816513761468,
+      "execution_repair_pass": 0.6055045871559633,
+      "lift_vs_best_single": 0.00347222222222221
+    }
+  ],
+  "bug_type_distribution": {
+    "(none)": 140,
+    "aggregation_error": 28,
+    "branch_deletion": 70,
+    "condition_error": 62,
+    "index_error": 16,
+    "initialization_error": 38,
+    "off_by_one": 48,
+    "return_value_error": 138,
+    "type_error": 36
+  },
+  "notes": [
+    "Routing maps determined on full eval set (train-on-test). Future: split into validation (determine routing) and eval (apply).",
+    "Deployable Router uses only observable signals (broken_code, execution_feedback) inferred from task_type. Does not use hidden tests or gold bug_type.",
+    "Oracle Router is an upper bound (any model passes -> router passes).",
+    "Common sample IDs = intersection across all loaded models (fair comparison)."
+  ]
+}
