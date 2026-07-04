@@ -15,12 +15,23 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 - Task 6: Build Family Registry — COMPLETE (v2.1 redo; 807 families, 374 P2, 50 quarantine, 409 new-available)
 - Task 7: Frozen v3 Candidate Reservation — COMPLETE (v2.1 redo; source_pool=348, 120 candidates reserved, 10/10 tests pass)
 - Task 8: Build Frozen v3 Samples + Verify + Freeze — COMPLETE (v2.1 redo; 120/120 qualified, freeze_100, 100 frozen, 300 samples, 12/12 tests pass, sha_lock verified) [review APPROVED_WITH_NOTES: stale Concerns #2/#3 removed, Deviation #1 updated for shared module extraction; all binding reqs PASS]
-- Task 9: P3 Validation + Train Family Partition (pairwise disjoint + P2 replay whitelist) — PENDING
-- Task 10: Canonical Verified Sample Pool — PENDING
-- Task 11: Balanced Generalist Train Data (30/20/20/30) — PENDING
-- Task 12: Repair Specialist Train Data (15/15/30/40) — PENDING
-- Task 13: Training Config + 3-Tier Checkpoint Evaluator — PENDING
-- Task 14: Readiness Gate Report (GO/FIX FIRST) — PENDING (SESSION END)
+- Task 9: P3 Validation + Train Family Partition (pairwise disjoint + P2 replay whitelist) — COMPLETE (commit 697a585; validation=90, train_new=219, train_replay=206, total=425; 11/11 tests pass; pairwise disjoint PASS; review APPROVED_WITH_NOTES) [brief note: p2_train∩quarantine=18 not 26, replay=206 not 198; implementer correctly used dynamic count; downstream tasks use actual values 206/425]
+- Task 10: Canonical Verified Sample Pool — COMPLETE (commit c13dd02; 782 samples, 408/425 families; code=281/boundary=125/static=148/exec=228; 274 dupes removed, 7 capped; 16/16 tests pass; all hard gates PASS; review APPROVED_WITH_NOTES) [pool yield 782 < 2300-3100 but non-blocker per A7; Task 11 max 625 samples, Task 12 max 493 samples via sub-sampling]
+- Task 11: Balanced Generalist Train Data (30/20/20/30) — COMPLETE (commit 120fc98; 626 train + 90 val; 10/10 tests pass; all hard gates pass; review APPROVED_WITH_NOTES) [deviation: 438/626 train samples normalized verified=True via model_copy; upstream Task 10 issue — P2 replay variants have verification subfields all False; MUST be evaluated at Task 14 Readiness Gate]
+- Task 12: Repair Specialist Train Data (15/15/30/40) — COMPLETE (commit 59a128c; 493 train + 90 val; 11/11 tests pass; all hard gates pass; review APPROVED — no notes) [deviations.verified_normalization field added to manifest.json (419 samples normalized, addresses Task 11 review Concern #2); validation SHA byte-identical to Task 11 (Global Constraint #18 confirmed); token means rounded to 4 decimals]
+- Task 13: Training Config + 3-Tier Checkpoint Evaluator — COMPLETE (commit eb475d5; 2 YAMLs + evaluator module + 17/17 tests pass; all 12 hard gates pass; review APPROVED_WITH_NOTES) [concerns: compute_composite signature deviates (justified), early_stop confirm semantics loose, should_run_tier3 strict int, baseline key mapping codegen_pass1↔pass_at_1; 7 recommendations for Task 14 documented]
+- Task 14: Readiness Gate Report — COMPLETE (commit 86d879b; verdict GO_FOR_P3_TRAINING; 9/9 checks PASS [8 PASS + 1 SKIP]; 11/11 tests pass; report at reports/p3/p3-training-readiness-report.md) [documented: 857/1119 train samples verified=True normalization (Task 11:438 + Task 12:419); 5 risks R1-R5; 7 Task 13 recommendations documented; SESSION END — no training launched]
+
+## Issue #10 Fixes (6 items, 4 commits)
+
+- **Fix 1**: verified 数据一致性回填 — COMPLETE (commit 2003abd; 35 tests pass; backfill_canonical_pool_verification.py 新建；canonical-pool.jsonl 中 501 P2-replay 样本回填真实 verification 子字段；build scripts 移除 model_copy hack；揭露 boundary 变体 125/125 全失败；Balanced train 626→501, Repair train 493→416, total 917 << 2300 阈值)
+- **Fix 3+4**: Composite Score check_early_stop 收紧 + Metrics Schema 统一 — COMPLETE (commit 462c8d8; 26+73 tests pass; trigger 2 现要求 full_history>=2 且比较连续下降；METRICS_SCHEMA_VERSION=1.0.0 + normalize_baseline_key() 函数；baseline lock 添加 schema_version 字段)
+- **Fix 2+5+6**: Readiness Gate 综合修复 — COMPLETE (commit 263978f; 21+47 tests pass; Check 6 拆为 6a CPU smoke (必跑) + 6b GPU smoke (可 SKIP)；新增 Check 10 train capacity vs 2300-3100；compute_verdict 三态: GO_FOR_P3_TRAINING / GO_FOR_P3_PILOT_ONLY / FIX_FIRST)
+- **Fix docs**: Report documentation 一致性更新 — COMPLETE (commit 891b30f; 47 tests pass; B.1 加 Fix 1 修复结果子节；B.2.4 描述 normalize_baseline_key；B.2.6 动态计算 variant_type 分布)
+
+**最终 Readiness Gate 输出**: Verdict = `GO_FOR_P3_PILOT_ONLY`（11 项检查全 PASS，含 6b SKIP；但 Check 10 verdict_impact=PILOT_ONLY 因 train 总量 917 < 2300）。**未启动训练。**
+
+**关键发现**: Fix 1 回填揭露了 boundary 变体生成器的固有 bug — 125/125 boundary 样本的 target_code 在边界输入（0/-1/1）下返回错误值，全部 verified=False。这意味着 boundary 变体生成器本身需要后续修复（超出 Issue #10 scope）。
 
 ## Minor Findings (triaged by final review)
 
