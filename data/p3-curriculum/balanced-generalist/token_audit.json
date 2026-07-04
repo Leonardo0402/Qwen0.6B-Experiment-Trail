@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "candidate_type": "balanced_generalist",
+  "train": {
+    "total_samples": 626,
+    "total_tokens": 50142,
+    "mean_tokens_per_sample": 80.09904153354633,
+    "max_tokens": 274,
+    "min_tokens": 25,
+    "by_variant_type": {
+      "code": {
+        "count": 188,
+        "total_tokens": 13194,
+        "mean": 70.18085106382979
+      },
+      "boundary": {
+        "count": 125,
+        "total_tokens": 13988,
+        "mean": 111.904
+      },
+      "static_repair": {
+        "count": 125,
+        "total_tokens": 9008,
+        "mean": 72.064
+      },
+      "execution_repair": {
+        "count": 188,
+        "total_tokens": 13952,
+        "mean": 74.2127659574468
+      }
+    }
+  },
+  "validation": {
+    "total_samples": 90,
+    "total_tokens": 6203,
+    "mean_tokens_per_sample": 68.92222222222222
+  }
+}
