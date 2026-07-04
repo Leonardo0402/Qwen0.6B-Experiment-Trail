@@ -76,6 +76,11 @@ class FamilyEntry:
         if tag not in self.usage:
             self.usage.append(tag)
 
+    def unclaim(self, tag: str) -> None:
+        """Remove *tag* from usage. No-op if *tag* is not present."""
+        if tag in self.usage:
+            self.usage.remove(tag)
+
     def to_dict(self) -> dict:
         """Serialise to the per-family dict shape used in family-registry.json."""
         return {
@@ -195,6 +200,18 @@ class FamilyRegistry:
         if entry is None:
             raise KeyError(family_id)
         entry.claim(tag)
+
+    def unclaim(self, family_id: str, tag: str) -> None:
+        """Remove *tag* from *family_id*'s usage list.
+
+        No-op if *tag* is not present in the family's usage. No-op if
+        *family_id* is not in the registry (silent — useful for
+        idempotent re-runs of cleanup paths).
+        """
+        entry = self.families.get(family_id)
+        if entry is None:
+            return
+        entry.unclaim(tag)
 
     # ------------------------------------------------------------------
     # Invariants
