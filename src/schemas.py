@@ -75,6 +75,11 @@ class Sample(BaseModel):
     generator: str
     created_at: str
     dataset_version: str
+    # P3 optional metadata fields (free-form strings, default None for
+    # backward compatibility with pre-P3 JSONL files).
+    variant_type: Optional[str] = None
+    bug_type: Optional[str] = None
+    source_split: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Field-level validators

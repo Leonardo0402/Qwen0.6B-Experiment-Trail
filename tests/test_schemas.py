@@ -311,3 +311,85 @@ class TestToChatml:
             assert assistant_content.startswith("```python"), f"Failed for {label}"
             assert assistant_content.strip().endswith("```"), f"Failed for {label}"
             assert s.target_code in assistant_content, f"Failed for {label}"
+
+
+# ---------------------------------------------------------------------------
+# P3 optional fields: variant_type / bug_type / source_split
+# ---------------------------------------------------------------------------
+
+class TestP3OptionalFields:
+    def test_new_fields_default_none(self):
+        s = Sample(**_base_sample())
+        assert s.variant_type is None
+        assert s.bug_type is None
+        assert s.source_split is None
+
+    def test_new_fields_set(self):
+        s = Sample(
+            **_base_sample(
+                variant_type="boundary",
+                bug_type="off_by_one",
+                source_split="train",
+            )
+        )
+        assert s.variant_type == "boundary"
+        assert s.bug_type == "off_by_one"
+        assert s.source_split == "train"
+
+    def test_backward_compat_existing_json(self):
+        # Simulate a pre-P3 JSONL line: no variant_type/bug_type/source_split keys.
+        data = _base_sample()
+        # Ensure the 3 new keys are not present in the dict at all.
+        for k in ("variant_type", "bug_type", "source_split"):
+            assert k not in data
+        line = json.dumps(data, ensure_ascii=False)
+        s = Sample.from_json_line(line)
+        assert s.variant_type is None
+        assert s.bug_type is None
+        assert s.source_split is None
+
+    def test_serialization_includes_new_fields(self):
+        s = Sample(**_base_sample(variant_type="boundary"))
+        parsed = json.loads(s.to_json_line())
+        assert "variant_type" in parsed
+        assert parsed["variant_type"] == "boundary"
+
+    def test_serialization_includes_none_as_null(self):
+        # pydantic model_dump(mode="json") includes None fields by default
+        # (we do NOT use exclude_none), so the 3 new fields must appear as
+        # explicit null values in the serialised JSON line.
+        s = Sample(**_base_sample())
+        parsed = json.loads(s.to_json_line())
+        assert parsed["variant_type"] is None
+        assert parsed["bug_type"] is None
+        assert parsed["source_split"] is None
+
+    def test_boundary_variant_is_not_new_task_type(self):
+        # Boundary is expressed via variant_type, NOT a new task_type.
+        s = Sample(
+            **_base_sample(
+                task_type="code_generation",
+                variant_type="boundary",
+            )
+        )
+        assert s.task_type == "code_generation"
+        assert s.variant_type == "boundary"
+
+    def test_round_trip_with_new_fields(self):
+        original = Sample(
+            **_base_sample(
+                variant_type="empty_input",
+                bug_type="return_value_error",
+                source_split="validation",
+            )
+        )
+        restored = Sample.from_json_line(original.to_json_line())
+        assert restored.variant_type == original.variant_type
+        assert restored.bug_type == original.bug_type
+        assert restored.source_split == original.source_split
+        assert restored == original
+
+    def test_bug_type_free_form(self):
+        # No enum restriction: arbitrary bug_type strings must load fine.
+        s = Sample(**_base_sample(bug_type="some_new_bug_type_not_in_list"))
+        assert s.bug_type == "some_new_bug_type_not_in_list"
