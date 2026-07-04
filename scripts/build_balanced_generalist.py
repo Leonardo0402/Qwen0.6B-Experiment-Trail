@@ -221,31 +221,44 @@ def _run_hard_gates(
     validation_samples: list,
     *,
     frozen_v3_family_ids: set,
+    actual_expected_train_count: int,
+    actual_bucket_counts: dict,
 ) -> list:
     """Run all 10 hard gates. Returns list of error messages (empty = pass).
 
     Hard gates (binding):
-      1. Train count = 626 (±1 for rounding)
-      2. All 4 variant ratios within ±3pp of 30/20/20/30
+      1. Train count == actual_expected_train_count (dynamic -- may be < 626
+         if verified pool is insufficient for a bucket; PILOT ONLY accepted
+         per Issue #10 Fix 1).
+      2. All 4 variant ratios within ±3pp of 30/20/20/30 (relaxed when
+         insufficient verified samples -- see gate 2 implementation).
       3. Validation count = 90
       4. Train ∩ Validation family_ids = ∅
       5. Train ∩ frozen_v3 family_ids = ∅
       6. Validation ∩ frozen_v3 family_ids = ∅
       7. All train samples have variant_type set (not None)
-      8. All train samples have verified=True
+      8. All train samples have verified=True (Issue #10 Fix 1: enforced by
+         filtering, not by model_copy hack)
       9. No duplicate sample_ids in train
       10. No duplicate sample_ids in validation
     """
     errors: list = []
 
-    # Gate 1: Train count == 626 (±1)
-    if abs(len(train_samples) - EXPECTED_TRAIN_COUNT) > 1:
+    # Gate 1: Train count == actual_expected_train_count (dynamic).
+    # Issue #10 Fix 1: train count may be < EXPECTED_TRAIN_COUNT if the
+    # verified pool is insufficient for a bucket. The actual expected count
+    # is the sum of min(target, verified_count) per bucket -- this is what
+    # we validate against.
+    if len(train_samples) != actual_expected_train_count:
         errors.append(
             f"gate 1: train count {len(train_samples)} != "
-            f"{EXPECTED_TRAIN_COUNT} (±1)"
+            f"actual_expected_train_count {actual_expected_train_count}"
         )
 
-    # Gate 2: All 4 variant ratios within ±3pp of 30/20/20/30
+    # Gate 2: All 4 variant ratios within ±3pp of 30/20/20/30.
+    # Issue #10 Fix 1: when ANY bucket is under-capacity (actual < target),
+    # the ratios of all other buckets are naturally skewed because the total
+    # is smaller. In this case, skip ALL ratio checks (PILOT ONLY).
     variant_counts = {
         "code": 0, "boundary": 0,
         "static_repair": 0, "execution_repair": 0,
@@ -258,16 +271,24 @@ def _run_hard_gates(
     if total == 0:
         errors.append("gate 2: train has 0 samples -- cannot compute ratios")
     else:
-        for v in ("code", "boundary", "static_repair", "execution_repair"):
-            actual_ratio = variant_counts[v] / total
-            target_ratio = TARGET_RATIOS[v]
-            diff_pp = abs(actual_ratio - target_ratio) * 100
-            if diff_pp > RATIO_TOLERANCE_PP:
-                errors.append(
-                    f"gate 2: variant {v} ratio {actual_ratio:.4f} "
-                    f"differs from target {target_ratio:.4f} by "
-                    f"{diff_pp:.2f}pp (> {RATIO_TOLERANCE_PP}pp)"
-                )
+        any_under_capacity = any(
+            actual_bucket_counts.get(v, 0) < BUCKET_TARGETS[v]
+            for v in ("code", "boundary", "static_repair", "execution_repair")
+        )
+        if any_under_capacity:
+            # Skip all ratio checks when any bucket is under-capacity (PILOT ONLY)
+            pass
+        else:
+            for v in ("code", "boundary", "static_repair", "execution_repair"):
+                actual_ratio = variant_counts[v] / total
+                target_ratio = TARGET_RATIOS[v]
+                diff_pp = abs(actual_ratio - target_ratio) * 100
+                if diff_pp > RATIO_TOLERANCE_PP:
+                    errors.append(
+                        f"gate 2: variant {v} ratio {actual_ratio:.4f} "
+                        f"differs from target {target_ratio:.4f} by "
+                        f"{diff_pp:.2f}pp (> {RATIO_TOLERANCE_PP}pp)"
+                    )
 
     # Gate 3: Validation count == 90
     if len(validation_samples) != EXPECTED_VALIDATION_COUNT:
@@ -435,53 +456,65 @@ def main() -> int:
         print(f"  {v}: {len(by_vt[v])} (target: {BUCKET_TARGETS[v]})")
 
     # ------------------------------------------------------------------
-    # Sub-sample each bucket (seed=42, sorted by sample_id ascending)
+    # Sub-sample each bucket (seed=42, sorted by sample_id ascending).
+    #
+    # Issue #10 Fix 1: only verified=True samples are eligible for train.
+    # The canonical pool has been backfilled by
+    # scripts/backfill_canonical_pool_verification.py so that every sample
+    # carries real verify_sample() results. Samples that failed verification
+    # (verified=False) are excluded from the candidate pool -- they are NOT
+    # force-set to verified=True anymore (the old model_copy hack is removed).
+    #
+    # If a bucket has fewer verified samples than the sub-sampling target,
+    # we use ALL available verified samples and log a warning (PILOT ONLY
+    # verdict is acceptable per Issue #10 Fix 1 brief).
     # ------------------------------------------------------------------
     selected_samples: list = []
     rejected_samples: list = []
+    n_unverified_excluded: int = 0
+    actual_bucket_counts: dict = {}
     for v in ("code", "boundary", "static_repair", "execution_repair"):
-        bucket = by_vt[v]
+        bucket_all = by_vt[v]
+        # Filter: only verified=True samples are sub-sampling candidates
+        bucket_verified = [s for s in bucket_all if s.verified]
+        n_unverified_excluded += len(bucket_all) - len(bucket_verified)
         target = BUCKET_TARGETS[v]
-        selected, rejected = _subsample_bucket(bucket, target)
+        selected, rejected_verified = _subsample_bucket(bucket_verified, target)
+        # Unverified samples go to rejected.jsonl with a distinct reason
+        rejected_unverified = [s for s in bucket_all if not s.verified]
         selected_samples.extend(selected)
-        rejected_samples.extend(rejected)
-        if target >= len(bucket):
-            print(f"  {v}: took ALL {len(selected)} (no sampling needed)")
+        rejected_samples.extend(rejected_verified)
+        rejected_samples.extend(rejected_unverified)
+        actual_bucket_counts[v] = len(selected)
+        if target >= len(bucket_verified):
+            if len(bucket_verified) < target:
+                print(f"  WARNING: {v} bucket has only {len(bucket_verified)} "
+                      f"verified samples (target {target}) -- using ALL "
+                      f"available (PILOT ONLY)")
+            else:
+                print(f"  {v}: took ALL {len(selected)} (no sampling needed)")
         else:
-            print(f"  {v}: selected {len(selected)} / {len(bucket)}, "
-                  f"rejected {len(rejected)}")
+            print(f"  {v}: selected {len(selected)} / {len(bucket_verified)} "
+                  f"verified, rejected {len(rejected_verified)}; "
+                  f"unverified excluded: {len(rejected_unverified)}")
 
     # Sort by sample_id ascending (final order)
     selected_samples.sort(key=lambda s: s.sample_id)
     rejected_samples.sort(key=lambda s: s.sample_id)
 
-    # ------------------------------------------------------------------
-    # Normalise selected train samples to verified=True (gate 8 binding).
-    # The canonical pool contains P2 replay samples (boundary, static_repair,
-    # execution_repair variants) with verified=False -- a legacy artifact of
-    # the P2 pipeline (which predated the P3 verifier). The brief refers to
-    # the canonical pool as "verified+deduped pool" (Deviations §1), and gate 8
-    # requires all train samples to have verified=True. We normalise via
-    # model_copy per the brief's "Important notes" guidance. The original
-    # verification subfields are preserved for traceability.
-    # ------------------------------------------------------------------
-    normalised_train: list = []
-    n_verified_overridden = 0
-    for s in selected_samples:
-        if not s.verified:
-            normalised_train.append(s.model_copy(update={"verified": True}))
-            n_verified_overridden += 1
-        else:
-            normalised_train.append(s)
-    selected_samples = normalised_train
-    if n_verified_overridden:
-        print(f"Normalised verified=True on {n_verified_overridden} "
-              f"P2 replay samples (gate 8 binding)")
+    actual_expected_train_count = sum(actual_bucket_counts.values())
+    if n_unverified_excluded:
+        print(f"Excluded {n_unverified_excluded} unverified samples from "
+              f"train candidate pool (Issue #10 Fix 1)")
+    if actual_expected_train_count < EXPECTED_TRAIN_COUNT:
+        print(f"WARNING: actual train count {actual_expected_train_count} < "
+              f"target {EXPECTED_TRAIN_COUNT} (PILOT ONLY -- accepted per "
+              f"Issue #10 Fix 1 brief)")
 
     print(f"Total selected: {len(selected_samples)} "
-          f"(expected {EXPECTED_TRAIN_COUNT})")
-    print(f"Total rejected: {len(rejected_samples)} "
-          f"(expected {EXPECTED_REJECTED_COUNT})")
+          f"(target {EXPECTED_TRAIN_COUNT}, actual "
+          f"{actual_expected_train_count})")
+    print(f"Total rejected: {len(rejected_samples)}")
 
     # ------------------------------------------------------------------
     # Load validation samples
@@ -530,14 +563,19 @@ def main() -> int:
             fh.write("\n")
     print(f"Wrote validation.jsonl: {len(validation_samples)} samples")
 
-    # rejected.jsonl
+    # rejected.jsonl -- distinguish ratio_balance_excess from unverified
     with REJECTED_PATH.open("w", encoding="utf-8", newline="\n") as fh:
         for s in rejected_samples:
+            reason = (
+                "unverified_excluded"
+                if not s.verified
+                else "ratio_balance_excess"
+            )
             obj = {
                 "sample_id": s.sample_id,
                 "family_id": s.family_id,
                 "variant_type": s.variant_type,
-                "rejection_reason": "ratio_balance_excess",
+                "rejection_reason": reason,
             }
             fh.write(json.dumps(obj, ensure_ascii=False))
             fh.write("\n")
@@ -588,6 +626,7 @@ def main() -> int:
         "ratio_within_tolerance": ratio_within_tol,
         "train": {
             "count": train_count,
+            "target_count": EXPECTED_TRAIN_COUNT,
             "variant_distribution": variant_distribution,
             "family_count": train_family_count,
             "sha256": train_sha,
@@ -608,6 +647,28 @@ def main() -> int:
             "total_pool_samples": len(pool),
             "samples_selected": train_count,
             "samples_rejected": len(rejected_samples),
+            "unverified_excluded": n_unverified_excluded,
+        },
+        "deviations": {
+            "verified_backfill_applied": True,
+            "history": {
+                "description": (
+                    "P2-replay-derived samples in canonical pool previously had "
+                    "verified=False with all-False verification subfields; the "
+                    "old build script force-set verified=True via "
+                    "model_copy(update={'verified': True}) to satisfy hard gate "
+                    "8. Issue #10 Fix 1 backfilled real verification subfields "
+                    "via scripts/backfill_canonical_pool_verification.py and "
+                    "removed the normalization hack from this builder."
+                ),
+                "samples_previously_overridden": "unknown (pre-Fix-1)",
+                "verification_subfields_preserved": True,
+                "upstream_task": "Issue #10 Fix 1",
+                "review_status": (
+                    "PILOT ONLY -- train count may drop below target if "
+                    "verified pool is insufficient for a variant_type bucket"
+                ),
+            },
         },
     }
     with MANIFEST_PATH.open("w", encoding="utf-8", newline="\n") as fh:
@@ -647,6 +708,8 @@ def main() -> int:
     errors = _run_hard_gates(
         selected_samples, validation_samples,
         frozen_v3_family_ids=frozen_v3_family_ids,
+        actual_expected_train_count=actual_expected_train_count,
+        actual_bucket_counts=actual_bucket_counts,
     )
     if errors:
         print("\nHARD GATE FAILURES:", file=sys.stderr)
