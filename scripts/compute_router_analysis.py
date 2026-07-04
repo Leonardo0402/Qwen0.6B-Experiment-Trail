@@ -18,14 +18,17 @@ Inputs:
   evaluations/p2/full576-stage3-repair.json
   evaluations/p2/full576-independent-stage3.json
   evaluations/p2/full576-stage3-v3-antiforget.json
+  reports/p2/router-policy-v1.json (frozen policy from split_router_selection.py)
 
 Outputs:
   reports/p2/router-analysis.json
   reports/p2/router-analysis.md
 
-NOTE: Routing maps are currently determined on the full eval set
-(train-on-test). A future change will split into validation (determine
-routing) and eval (apply routing) subsets.
+Routing policy (Best Single, Metadata Router, Deployable Router) is loaded
+from the frozen artifact reports/p2/router-policy-v1.json, which was produced
+by scripts/split_router_selection.py on a held-out selection subset (45
+families, 342 samples). This script applies that frozen policy to the eval
+subset (30 families, 234 samples) — the two subsets are family-disjoint.
 """
 from __future__ import annotations
 
@@ -37,6 +40,7 @@ from typing import Any
 _ROOT = Path(__file__).resolve().parent.parent
 _EVAL_DIR = _ROOT / "evaluations" / "p2"
 _OUT_DIR = _ROOT / "reports" / "p2"
+_POLICY_PATH = _ROOT / "reports" / "p2" / "router-policy-v1.json"
 
 MODELS: list[tuple[str, str]] = [
     ("full576-base", "Base"),
@@ -59,6 +63,79 @@ def _load(name: str) -> dict[str, Any] | None:
         return None
     with f.open(encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def _load_policy(policy_path: Path | None = None) -> dict:
+    """Load the frozen router policy artifact. Hard-fail if missing.
+
+    Looks up ``_POLICY_PATH`` at call time (not as a default arg bound at
+    function-definition time) so tests can monkeypatch the module constant.
+    """
+    if policy_path is None:
+        policy_path = _POLICY_PATH
+    if not policy_path.exists():
+        raise SystemExit(
+            f"ERROR: router policy not found at {policy_path}. "
+            "Run `python scripts/split_router_selection.py` first."
+        )
+    with policy_path.open(encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _validate_policy_alignment(
+    policy: dict, docs: dict[str, dict], common: list[str]
+) -> None:
+    """Hard-fail if policy does not align with loaded evals.
+
+    Checks:
+    1. selection_dataset_sha256 matches dataset_sha256 of every loaded eval.
+    2. selection_sample_ids ∩ eval_sample_ids == empty.
+    3. eval_sample_ids ⊆ common (every eval sample must be present in all models).
+    4. selection_families ∩ eval_families == empty.
+    """
+    expected_sha = policy["selection_dataset_sha256"]
+    for key, doc in docs.items():
+        actual_sha = doc.get("dataset_sha256")
+        if actual_sha != expected_sha:
+            raise SystemExit(
+                f"ERROR: dataset_sha256 mismatch for model '{key}'. "
+                f"Policy expects {expected_sha}, eval has {actual_sha}. "
+                "Regenerate router-policy-v1.json with split_router_selection.py."
+            )
+    sel_ids = set(policy["selection_sample_ids"])
+    eval_ids = set(policy["eval_sample_ids"])
+    if sel_ids & eval_ids:
+        raise SystemExit(
+            "ERROR: selection_sample_ids and eval_sample_ids overlap. "
+            "Policy artifact is corrupted."
+        )
+    sel_fams = set(policy["selection_families"])
+    eval_fams = set(policy["eval_families"])
+    if sel_fams & eval_fams:
+        raise SystemExit(
+            "ERROR: selection_families and eval_families overlap. "
+            "Policy artifact is corrupted."
+        )
+    common_set = set(common)
+    missing = eval_ids - common_set
+    if missing:
+        raise SystemExit(
+            f"ERROR: {len(missing)} eval sample IDs from policy are not "
+            f"present in all loaded model evals (e.g. {sorted(missing)[:3]}). "
+            "Eval files and policy are out of sync."
+        )
+
+
+def _filter_to_eval_subset(
+    by_model: dict[str, dict[str, dict]],
+    common: list[str],
+    policy: dict,
+) -> list[str]:
+    """Return the sorted list of common sample IDs that are in policy's
+    eval_sample_ids. This is the held-out subset used for all router evaluation.
+    """
+    eval_ids = set(policy["eval_sample_ids"])
+    return sorted(sid for sid in common if sid in eval_ids)
 
 
 def _passed(o: dict) -> bool:
@@ -330,7 +407,15 @@ def apply_decision_gate(
 def main() -> int:
     _OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Load models, skip missing files --------------------------------------
+    # 1. Load policy artifact (hard-fail if missing) ----------------------
+    policy = _load_policy()
+    print(f"Loaded policy: {policy['policy_version']} from {_POLICY_PATH}")
+    print(f"  selection: {policy['selection_family_count']} families / "
+          f"{len(policy['selection_sample_ids'])} samples")
+    print(f"  eval:      {policy['eval_family_count']} families / "
+          f"{len(policy['eval_sample_ids'])} samples")
+
+    # 2. Load eval JSONs (skip missing files) ------------------------------
     docs: dict[str, dict] = {}
     skipped: list[str] = []
     for key, _label in MODELS:
@@ -340,22 +425,29 @@ def main() -> int:
             print(f"WARN: evaluations/p2/{key}.json not found - skipping")
             continue
         docs[key] = d
-
     if len(docs) < 2:
         print("ERROR: need at least 2 model evals for router analysis")
         return 1
 
-    # Per-model sample lookup ---------------------------------------------
+    # 3. Per-model sample lookup + common sample IDs -----------------------
     by_model: dict[str, dict[str, dict]] = {k: _outcomes_by_id(d) for k, d in docs.items()}
-
-    # Common sample IDs (intersection for fair comparison) -----------------
     sid_sets = {k: set(by_id.keys()) for k, by_id in by_model.items()}
-    common = sorted(set.intersection(*sid_sets.values()))
+    common_all = sorted(set.intersection(*sid_sets.values()))
     print(f"Models loaded: {list(docs)}")
     print(f"Skipped: {skipped}")
-    print(f"Common sample IDs: {len(common)}")
+    print(f"Common sample IDs (all models): {len(common_all)}")
 
-    # sid -> family_id / task_type (from any model that has the sample) ----
+    # 4. Validate policy alignment with loaded evals (hard-fail on mismatch)
+    _validate_policy_alignment(policy, docs, common_all)
+
+    # 5. Restrict to eval subset (held-out, family-disjoint from selection)
+    common = _filter_to_eval_subset(by_model, common_all, policy)
+    print(f"Eval subset sample IDs (held-out): {len(common)}")
+    if len(common) == 0:
+        print("ERROR: eval subset is empty after filtering")
+        return 1
+
+    # 6. sid -> family_id / task_type (restricted to eval subset) ----------
     sid_to_family: dict[str, str] = {}
     sid_to_task_type: dict[str, str] = {}
     for sid in common:
@@ -366,28 +458,35 @@ def main() -> int:
                 break
 
     # ------------------------------------------------------------------
-    # 1. Per-model stats + Best Single
+    # 7. Per-model stats on eval subset (for reporting)
     # ------------------------------------------------------------------
     per_model_stats: dict[str, dict] = {}
-    best_single_key = None
-    best_single_rate = -1.0
     for key in docs:
         pass_map = {sid: _passed(by_model[key][sid]) for sid in common}
-        stats = compute_router_stats(pass_map, sid_to_family, sid_to_task_type)
-        per_model_stats[key] = stats
-        if stats["overall_pass"] > best_single_rate:
-            best_single_rate = stats["overall_pass"]
-            best_single_key = key
+        per_model_stats[key] = compute_router_stats(
+            pass_map, sid_to_family, sid_to_task_type
+        )
 
+    # ------------------------------------------------------------------
+    # 8. Best Single — use the FROZEN choice from policy
+    # ------------------------------------------------------------------
+    best_single_key = policy["best_single_model"]
+    if best_single_key not in docs:
+        raise SystemExit(
+            f"ERROR: policy's best_single_model '{best_single_key}' is "
+            "not among loaded evals."
+        )
+    best_single_stats = per_model_stats[best_single_key]
+    best_single_overall = best_single_stats["overall_pass"]
     best_single = {
         "model": _label_of(best_single_key),
         "model_key": best_single_key,
-        **per_model_stats[best_single_key],
+        "source": "frozen_policy_v1",
+        **best_single_stats,
     }
-    best_single_overall = best_single["overall_pass"]
 
     # ------------------------------------------------------------------
-    # 2. Oracle Router (upper bound)
+    # 9. Oracle Router (upper bound — recomputed on eval subset, not "trained")
     # ------------------------------------------------------------------
     oracle_pass: dict[str, bool] = {}
     for sid in common:
@@ -399,24 +498,9 @@ def main() -> int:
     }
 
     # ------------------------------------------------------------------
-    # 3. Metadata Router (route by task_type)
+    # 10. Metadata Router — apply FROZEN mapping (do NOT recompute)
     # ------------------------------------------------------------------
-    # Determine routing map on full data (NOTE: train-on-test for now).
-    metadata_routing_map: dict[str, str] = {}
-    metadata_routing_rates: dict[str, dict] = {}
-    for tt in TASK_TYPES:
-        model_key, rate = best_model_for_task_type(
-            by_model, common, sid_to_task_type, tt
-        )
-        if model_key is not None:
-            metadata_routing_map[tt] = model_key
-            metadata_routing_rates[tt] = {
-                "model": _label_of(model_key),
-                "model_key": model_key,
-                "pass_rate": rate,
-            }
-
-    # Apply routing.
+    metadata_routing_map = dict(policy["metadata_router_mapping"])
     metadata_pass: dict[str, bool] = {}
     for sid in common:
         tt = sid_to_task_type.get(sid, "unknown")
@@ -432,18 +516,18 @@ def main() -> int:
         **metadata_stats,
         "routing_map": {tt: _label_of(k) for tt, k in metadata_routing_map.items()},
         "routing_map_keys": metadata_routing_map,
-        "routing_rates": metadata_routing_rates,
+        "source": "frozen_policy_v1",
+        "selection_pass_rate": policy["selection_metrics"]["metadata_router_pass_rate"],
         "lift_vs_best_single": metadata_stats["overall_pass"] - best_single_overall,
     }
 
     # ------------------------------------------------------------------
-    # 4. Deployable Deterministic Router (observable signals only)
+    # 11. Deployable Router — apply FROZEN mapping (do NOT recompute)
     # ------------------------------------------------------------------
-    # Determine routing map: best model per category (same selection as
-    # metadata router, but the deployment decision uses only observable
-    # signals - no task_type label, no hidden tests, no gold bug_type).
-    deployable_routing_map: dict[str, str] = dict(metadata_routing_map)
-    deployable_routing_rates = dict(metadata_routing_rates)
+    # The deployment decision uses only observable signals (broken_code,
+    # execution_feedback) inferred from task_type. The mapping from category
+    # to model is loaded from the frozen policy (selected on held-out subset).
+    deployable_routing_map = dict(policy["deployable_router_mapping"])
 
     routing_rules = [
         {
@@ -487,11 +571,13 @@ def main() -> int:
             tt: _label_of(k) for tt, k in deployable_routing_map.items()
         },
         "routing_map_keys": deployable_routing_map,
+        "source": "frozen_policy_v1",
+        "selection_pass_rate": policy["selection_metrics"]["deployable_router_pass_rate"],
         "lift_vs_best_single": deployable_stats["overall_pass"] - best_single_overall,
     }
 
     # ------------------------------------------------------------------
-    # 5. P3 Decision Gate — Deployable Router vs Best Single
+    # 12. P3 Decision Gate — Deployable Router vs Best Single (eval subset)
     # ------------------------------------------------------------------
     # McNemar convention: A = Best Single, B = Deployable Router
     #   b = #samples where A passed, B failed
@@ -580,9 +666,22 @@ def main() -> int:
         bug_type_dist[bt if bt else "(none)"] += 1
 
     # ------------------------------------------------------------------
-    # Assemble result
+    # 13. Assemble result — ADD policy fields, REMOVE train-on-test notes
     # ------------------------------------------------------------------
+    try:
+        policy_path_str = str(_POLICY_PATH.relative_to(_ROOT))
+    except ValueError:
+        # _POLICY_PATH may be patched outside _ROOT in tests.
+        policy_path_str = str(_POLICY_PATH)
+
     result = {
+        "policy_version": policy["policy_version"],
+        "policy_path": policy_path_str,
+        "selection_family_count": policy["selection_family_count"],
+        "eval_family_count": policy["eval_family_count"],
+        "selection_sample_count": len(policy["selection_sample_ids"]),
+        "eval_sample_count": len(policy["eval_sample_ids"]),
+        "eval_subset_size": len(common),
         "models_loaded": list(docs),
         "models_skipped": skipped,
         "common_sample_count": len(common),
@@ -594,14 +693,17 @@ def main() -> int:
         "comparison_table": comparison_table,
         "bug_type_distribution": dict(sorted(bug_type_dist.items())),
         "notes": [
-            "Routing maps determined on full eval set (train-on-test). "
-            "Future: split into validation (determine routing) and eval (apply).",
+            "Router policy (Best Single, Metadata, Deployable) loaded from "
+            "frozen artifact router-policy-v1.json, fit on a held-out "
+            "selection subset (45 families) using split_router_selection.py.",
+            "This script applies that frozen policy to the eval subset "
+            "(30 families, family-disjoint from selection). No selection-eval "
+            "leakage.",
+            "Oracle Router is recomputed on the eval subset (upper bound, "
+            "not 'trained' on selection).",
             "Deployable Router uses only observable signals (broken_code, "
             "execution_feedback) inferred from task_type. Does not use hidden "
             "tests or gold bug_type.",
-            "Oracle Router is an upper bound (any model passes -> router passes).",
-            "Common sample IDs = intersection across all loaded models "
-            "(fair comparison).",
         ],
     }
 
@@ -624,8 +726,32 @@ def main() -> int:
     md.append("- Sample passes iff `public_passed AND hidden_passed`.")
     md.append("- Family passes iff ALL its samples pass.")
     md.append("")
-    md.append("> **Note:** Routing maps are currently determined on the full eval set")
-    md.append("> (train-on-test). A future change will split validation/eval subsets.")
+    md.append(
+        "> **Methodology:** Router policy is frozen in `router-policy-v1.json` "
+        "(fit on"
+    )
+    md.append(
+        f"> {policy['selection_family_count']} selection families, evaluated here on "
+        f"the held-out {policy['eval_family_count']} eval families —"
+    )
+    md.append("> family-disjoint). No selection-eval leakage.")
+    md.append("")
+    md.append("## Selection / Eval Split")
+    md.append("")
+    md.append(f"- Policy version: {policy['policy_version']}")
+    md.append(
+        f"- Selection families: {policy['selection_family_count']} "
+        f"({len(policy['selection_sample_ids'])} samples) — used to fit routing maps"
+    )
+    md.append(
+        f"- Eval families: {policy['eval_family_count']} "
+        f"({len(policy['eval_sample_ids'])} samples) — held out, used here for evaluation"
+    )
+    md.append("- Selection ∩ Eval: empty (verified)")
+    md.append(
+        f"- Dataset SHA256: {policy['selection_dataset_sha256'][:16]}..."
+        f"{policy['selection_dataset_sha256'][-8:]} (verified across all loaded evals)"
+    )
     md.append("")
 
     # Comparison table
@@ -656,6 +782,7 @@ def main() -> int:
     md.append(f"- **Model:** {best_single['model']} (`{best_single['model_key']}`)")
     md.append(f"- Overall pass: {_pct(best_single['overall_pass'])}")
     md.append(f"- Family pass: {_pct(best_single['family_pass'])}")
+    md.append("- **Source:** frozen policy v1 (selected on held-out selection subset)")
     md.append("")
     md.append("### Per-task-type pass rates")
     md.append("")
@@ -704,18 +831,22 @@ def main() -> int:
     md.append("")
     md.append("### Routing map")
     md.append("")
-    md.append("| Task Type | Routed Model | Pass Rate (selection) |")
-    md.append("|-----------|-------------|----------------------|")
+    md.append("| Task Type | Routed Model |")
+    md.append("|-----------|-------------|")
     for tt in TASK_TYPES:
         if tt in metadata_routing_map:
-            r = metadata_routing_rates[tt]
-            md.append(f"| {tt} | {r['model']} | {_pct(r['pass_rate'])} |")
+            md.append(f"| {tt} | {_label_of(metadata_routing_map[tt])} |")
     md.append("")
-    md.append(f"- Overall pass: {_pct(metadata_router['overall_pass'])}")
+    md.append(f"- Overall pass (eval subset): {_pct(metadata_router['overall_pass'])}")
     md.append(f"- Family pass: {_pct(metadata_router['family_pass'])}")
+    md.append(
+        f"- Selection pass rate (overall, frozen): "
+        f"{_pct(metadata_router['selection_pass_rate'])}"
+    )
     md.append(
         f"- Lift vs Best Single: {metadata_router['lift_vs_best_single']:+.4f}"
     )
+    md.append("- **Source:** frozen policy v1 (selected on held-out selection subset)")
     md.append("")
 
     # Deployable
@@ -733,8 +864,13 @@ def main() -> int:
     md.append(f"- Overall pass: {_pct(deployable_router['overall_pass'])}")
     md.append(f"- Family pass: {_pct(deployable_router['family_pass'])}")
     md.append(
+        f"- Selection pass rate (overall, frozen): "
+        f"{_pct(deployable_router['selection_pass_rate'])}"
+    )
+    md.append(
         f"- Lift vs Best Single: {deployable_router['lift_vs_best_single']:+.4f}"
     )
+    md.append("- **Source:** frozen policy v1 (selected on held-out selection subset)")
     md.append("")
 
     # Bug type distribution
@@ -772,8 +908,9 @@ def main() -> int:
         "answers, or gold bug_type."
     )
     md.append(
-        "- **Limitation:** routing maps currently determined on full eval set "
-        "(train-on-test)."
+        "- **Methodology:** routing maps loaded from frozen policy artifact "
+        "(`router-policy-v1.json`). Selection and eval subsets are family-disjoint. "
+        "No selection-eval leakage."
     )
     md.append("")
 

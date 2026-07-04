@@ -72,12 +72,20 @@ def _minimal_paired_stats() -> dict:
 
 def _minimal_router_analysis() -> dict:
     return {
+        "policy_version": "v1",
+        "policy_path": "reports/p2/router-policy-v1.json",
+        "selection_family_count": 45,
+        "eval_family_count": 30,
+        "selection_sample_count": 342,
+        "eval_sample_count": 234,
+        "eval_subset_size": 234,
         "models_loaded": [k for k, _ in MODELS],
         "models_skipped": [],
-        "common_sample_count": 576,
+        "common_sample_count": 234,
         "best_single": {
             "model": "Base",
             "model_key": "full576-base",
+            "source": "frozen_policy_v1",
             "overall_pass": 0.25,
             "family_pass": 0.067,
             "per_task_type": {},
@@ -92,12 +100,14 @@ def _minimal_router_analysis() -> dict:
             "overall_pass": 0.30,
             "family_pass": 0.08,
             "routing_map": {},
+            "source": "frozen_policy_v1",
             "lift_vs_best_single": 0.05,
         },
         "deployable_router": {
             "overall_pass": 0.28,
             "family_pass": 0.07,
             "routing_map": {},
+            "source": "frozen_policy_v1",
             "lift_vs_best_single": 0.03,
         },
         "decision_gate": {
@@ -221,3 +231,48 @@ def test_all_five_models_in_table():
     )
     for _, label in MODELS:
         assert label in md, f"missing model label in table: {label}"
+
+
+def test_pass_at_1_column_renamed_to_codegen_pass_at_1():
+    """The Overall Metrics table header must say 'CodeGen Pass@1', not 'Pass@1'."""
+    md = generate_report(
+        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+    )
+    assert "| CodeGen Pass@1 |" in md
+    # The old ambiguous header must NOT appear
+    assert "| Pass@1 |" not in md
+    # But the data value should still be rendered (25.0%)
+    assert "25.0%" in md
+
+
+def test_router_methodology_section_rendered():
+    """The new Router Methodology section must show selection/eval split."""
+    md = generate_report(
+        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+    )
+    assert "## Router Methodology" in md
+    assert "Policy version: `v1`" in md
+    assert "Selection subset: 45 families / 342 samples" in md
+    assert "Eval subset: 30 families / 234 samples" in md
+    assert "Eval subset size (paired-stats n): 234" in md
+    assert "Selection ∩ Eval: empty" in md
+
+
+def test_router_feasibility_summary_has_eval_subset_note():
+    """The Router Feasibility Summary must note the eval subset size."""
+    md = generate_report(
+        _minimal_comparison(), _minimal_paired_stats(), _minimal_router_analysis()
+    )
+    assert "234-sample eval subset" in md
+    assert "342-sample selection subset" in md
+    assert "frozen policy" in md.lower()
+
+
+def test_router_methodology_skipped_when_policy_version_missing():
+    """If router_analysis lacks policy_version (old format), section is skipped."""
+    ra = _minimal_router_analysis()
+    ra_no_policy = {k: v for k, v in ra.items() if k != "policy_version"}
+    md = generate_report(_minimal_comparison(), _minimal_paired_stats(), ra_no_policy)
+    assert "## Router Methodology" not in md
+    # Other sections still present
+    assert "## Overall Metrics" in md

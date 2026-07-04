@@ -66,10 +66,35 @@ def generate_report(comparison: dict, paired_stats: dict, router_analysis: dict)
     lines.append(f"- Common sample count (paired-stats): {common_n}")
     lines.append("")
 
+    # 2.5. Router Methodology (from router-analysis.json)
+    policy_version = router_analysis.get("policy_version")
+    if policy_version is not None:
+        lines.append("## Router Methodology")
+        lines.append("")
+        lines.append(f"- Policy version: `{policy_version}`")
+        lines.append(f"- Policy artifact: `{router_analysis.get('policy_path', 'n/a')}`")
+        sel_fam = router_analysis.get("selection_family_count", "?")
+        eval_fam = router_analysis.get("eval_family_count", "?")
+        sel_n = router_analysis.get("selection_sample_count", "?")
+        eval_n = router_analysis.get("eval_sample_count", "?")
+        lines.append(
+            f"- Selection subset: {sel_fam} families / {sel_n} samples "
+            "(used to fit routing maps)"
+        )
+        lines.append(
+            f"- Eval subset: {eval_fam} families / {eval_n} samples "
+            "(held out, used to evaluate the frozen policy)"
+        )
+        lines.append(
+            f"- Eval subset size (paired-stats n): {router_analysis.get('eval_subset_size', '?')}"
+        )
+        lines.append("- Selection ∩ Eval: empty (family-disjoint, verified)")
+        lines.append("")
+
     # 3. Overall Metrics
     lines.append("## Overall Metrics")
     lines.append("")
-    lines.append("| Model | Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |")
+    lines.append("| Model | CodeGen Pass@1 | Syntax | Repair | Hidden | Format | Timeout | Family Pass |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
     for key, label in MODELS:
         if key not in comparison:
@@ -197,6 +222,14 @@ def generate_report(comparison: dict, paired_stats: dict, router_analysis: dict)
             f"{fmt_pct(row.get('execution_repair_pass', 0.0))} | "
             f"{row.get('lift_vs_best_single', 0.0):+.4f} |"
         )
+    lines.append("")
+    lines.append(
+        f"_Note: Router metrics above are computed on the {router_analysis.get('eval_subset_size', '?')}-sample "
+        f"eval subset (held-out, family-disjoint from the {router_analysis.get('selection_sample_count', '?')}-sample "
+        "selection subset where the routing maps were frozen). "
+        f"Best Single / Metadata / Deployable routers use the frozen policy "
+        f"({router_analysis.get('policy_version', 'v?')}); Oracle is recomputed on eval as an upper bound._"
+    )
     lines.append("")
 
     # 9. P3 Decision Gate
