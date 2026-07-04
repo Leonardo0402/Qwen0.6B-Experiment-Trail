@@ -1,0 +1,73 @@
+{
+  "issue": 9,
+  "branch": "feat/p3-capability-expansion-v2",
+  "purpose": "Lock P2 historical baselines for P3 same-config comparison. Must not be modified after P3 training starts.",
+  "frozen_eval_v2_manifest": "data/p2-curriculum/frozen-eval-v2/manifest.json",
+  "frozen_eval_v2_sha256": "748ea3a467876ef62c17d65006b4950477956a76a29379c0ad2ff0c71d897df3",
+  "created_at": "2026-07-04T08:30:00+00:00",
+  "models": [
+    {
+      "model_name": "Base Qwen3-0.6B",
+      "adapter_path": "models/Qwen3-0.6B",
+      "weight_sha256": "BASE_MODEL_NO_ADAPTER",
+      "config_sha256": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd",
+      "training_config_sha256": "BASE_MODEL_NO_TRAINING_CONFIG",
+      "historical_eval_set_sha256": "748ea3a467876ef62c17d65006b4950477956a76a29379c0ad2ff0c71d897df3",
+      "historical_held_out_metrics": {
+        "source_file": "reports/p2/router-analysis.json",
+        "eval_subset_sample_count": 234,
+        "eval_subset_family_count": 30,
+        "overall_pass": 0.36324786324786323,
+        "codegen_pass1": 0.15517241379310345,
+        "static_repair": 0.4659090909090909,
+        "execution_repair": 0.3977272727272727,
+        "family_pass": 0.0,
+        "full576_overall_pass": 0.3611111111111111,
+        "full576_source_file": "reports/p2/full576-paired-stats.json"
+      },
+      "created_at": "2026-07-04T08:30:00+00:00"
+    },
+    {
+      "model_name": "Stage3-Independent",
+      "adapter_path": "adapters/p2/independent/stage3-repair-v2",
+      "weight_sha256": "65e5c1f0aacff3d7e3203d90326ce6441823c3c3537fdaf0438ab12a5a8ea41a",
+      "config_sha256": "6a7ca1fcf35fb647dff89b119b79c94d613b909e88da75147739e0a5c59e4653",
+      "training_config_sha256": "74e84c3e66a3385132395eef62bc096f61ec45984ea0f0f98227b160d10d3dc3",
+      "historical_eval_set_sha256": "748ea3a467876ef62c17d65006b4950477956a76a29379c0ad2ff0c71d897df3",
+      "historical_held_out_metrics": {
+        "source_file": "reports/p2/router-analysis.json",
+        "eval_subset_sample_count": 234,
+        "eval_subset_family_count": 30,
+        "overall_pass": 0.49572649572649574,
+        "codegen_pass1": 0.15517241379310345,
+        "static_repair": 0.6136363636363636,
+        "execution_repair": 0.6022727272727273,
+        "family_pass": 0.03333333333333333,
+        "full576_overall_pass": 0.484375,
+        "full576_source_file": "reports/p2/full576-paired-stats.json"
+      },
+      "created_at": "2026-07-04T08:30:00+00:00"
+    },
+    {
+      "model_name": "Stage3-v3-Antiforget",
+      "adapter_path": "adapters/p2/continual/stage3-repair-v3",
+      "weight_sha256": "768bc7b6de538678097eaeed3d729733cb2297ab395380f593d0d9816c4a4491",
+      "config_sha256": "c50954b45bcf7f0fbebe21c23fdbd3399c18dc60ab0aee28ee406801c667bdfa",
+      "training_config_sha256": "f6adbdf3f5c47e80b7390b22e50f75a915b70fa41465c80b6e169b927e9aaf31",
+      "historical_eval_set_sha256": "748ea3a467876ef62c17d65006b4950477956a76a29379c0ad2ff0c71d897df3",
+      "historical_held_out_metrics": {
+        "source_file": "reports/p2/router-analysis.json",
+        "eval_subset_sample_count": 234,
+        "eval_subset_family_count": 30,
+        "overall_pass": 0.4658119658119658,
+        "codegen_pass1": 0.1724137931034483,
+        "static_repair": 0.5568181818181818,
+        "execution_repair": 0.5681818181818182,
+        "family_pass": 0.03333333333333333,
+        "full576_overall_pass": 0.4444444444444444,
+        "full576_source_file": "reports/p2/full576-paired-stats.json"
+      },
+      "created_at": "2026-07-04T08:30:00+00:00"
+    }
+  ]
+}
