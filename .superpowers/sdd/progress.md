@@ -14,7 +14,7 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 - Task 5: Cross-Split Semantic Dedup Audit — COMPLETE (v2.1 redo; 714 samples, 50 quarantined families, unresolved=0, PASS)
 - Task 6: Build Family Registry — COMPLETE (v2.1 redo; 807 families, 374 P2, 50 quarantine, 409 new-available)
 - Task 7: Frozen v3 Candidate Reservation — COMPLETE (v2.1 redo; source_pool=348, 120 candidates reserved, 10/10 tests pass)
-- Task 8: Build Frozen v3 Samples + Verify + Freeze — COMPLETE (v2.1 redo; 120/120 qualified, freeze_100, 100 frozen, 300 samples, 12/12 tests pass, sha_lock verified)
+- Task 8: Build Frozen v3 Samples + Verify + Freeze — COMPLETE (v2.1 redo; 120/120 qualified, freeze_100, 100 frozen, 300 samples, 12/12 tests pass, sha_lock verified) [review APPROVED_WITH_NOTES: stale Concerns #2/#3 removed, Deviation #1 updated for shared module extraction; all binding reqs PASS]
 - Task 9: P3 Validation + Train Family Partition (pairwise disjoint + P2 replay whitelist) — PENDING
 - Task 10: Canonical Verified Sample Pool — PENDING
 - Task 11: Balanced Generalist Train Data (30/20/20/30) — PENDING
