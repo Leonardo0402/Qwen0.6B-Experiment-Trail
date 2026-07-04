@@ -1,5 +1,5 @@
 {
-  "total_samples_checked": 955,
+  "total_samples_checked": 714,
   "splits_checked": [
     "train",
     "test",
@@ -61,7 +61,7 @@
     ]
   },
   "high_similarity": {
-    "count": 38,
+    "count": 34,
     "pairs": [
       {
         "sample_a": "mbpp_625",
@@ -114,18 +114,6 @@
       {
         "sample_a": "mbpp_248",
         "sample_b": "mbpp_704",
-        "method": "func_signature",
-        "score": 1.0
-      },
-      {
-        "sample_a": "mbpp_705",
-        "sample_b": "mbpp_569",
-        "method": "func_signature",
-        "score": 1.0
-      },
-      {
-        "sample_a": "mbpp_224",
-        "sample_b": "mbpp_707",
         "method": "func_signature",
         "score": 1.0
       },
@@ -192,18 +180,6 @@
       {
         "sample_a": "mbpp_228",
         "sample_b": "mbpp_884",
-        "method": "func_signature",
-        "score": 1.0
-      },
-      {
-        "sample_a": "mbpp_273",
-        "sample_b": "mbpp_888",
-        "method": "func_signature",
-        "score": 1.0
-      },
-      {
-        "sample_a": "mbpp_460",
-        "sample_b": "mbpp_893",
         "method": "func_signature",
         "score": 1.0
       },
@@ -294,16 +270,14 @@
     ]
   },
   "quarantined_families": {
-    "count": 58,
+    "count": 50,
     "families": [
       "mbpp_fam_208",
       "mbpp_fam_216",
       "mbpp_fam_217",
-      "mbpp_fam_224",
       "mbpp_fam_228",
       "mbpp_fam_248",
       "mbpp_fam_271",
-      "mbpp_fam_273",
       "mbpp_fam_327",
       "mbpp_fam_349",
       "mbpp_fam_359",
@@ -311,7 +285,6 @@
       "mbpp_fam_420",
       "mbpp_fam_427",
       "mbpp_fam_43",
-      "mbpp_fam_460",
       "mbpp_fam_479",
       "mbpp_fam_487",
       "mbpp_fam_521",
@@ -319,7 +292,6 @@
       "mbpp_fam_554",
       "mbpp_fam_559",
       "mbpp_fam_564",
-      "mbpp_fam_569",
       "mbpp_fam_591",
       "mbpp_fam_595",
       "mbpp_fam_602",
@@ -330,8 +302,6 @@
       "mbpp_fam_657",
       "mbpp_fam_699",
       "mbpp_fam_704",
-      "mbpp_fam_705",
-      "mbpp_fam_707",
       "mbpp_fam_719",
       "mbpp_fam_759",
       "mbpp_fam_770",
@@ -346,8 +316,6 @@
       "mbpp_fam_879",
       "mbpp_fam_880",
       "mbpp_fam_884",
-      "mbpp_fam_888",
-      "mbpp_fam_893",
       "mbpp_fam_90",
       "mbpp_fam_928",
       "mbpp_fam_930",
@@ -361,5 +329,5 @@
     "note": "All high-similarity pairs auto-quarantined per P3 plan (unconfirmed → quarantine)"
   },
   "conclusion": "PASS",
-  "generated_at": "2026-07-04T11:05:21.788820+00:00"
+  "generated_at": "2026-07-04T14:13:41.039203+00:00"
 }

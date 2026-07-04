@@ -11,7 +11,7 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 - Task 2: Extend Sample Schema — COMPLETE (commit 5b88a6e, review APPROVED, 48/48 tests pass) [v2.1: compliant, no rework]
 - Task 3: Fix import_mbpp.py + New verify_imported_mbpp.py — COMPLETE (commit 621be8d, pad-then-verify implemented, 33 tests pass) [v2.1 A2 compliant]
 - Task 4: Run Import + Verify + Source Audit — COMPLETE (commit c9bb78a; pad-then-verify re-run: 714/964 verified, 433 new families, LIKELY_FEASIBLE) [v2.1 A2 compliant]
-- Task 5: Cross-Split Semantic Dedup Audit — NEEDS_REWORK (was COMPLETE 4d3cb23; re-run on new verified set)
+- Task 5: Cross-Split Semantic Dedup Audit — COMPLETE (v2.1 redo; 714 samples, 50 quarantined families, unresolved=0, PASS)
 - Task 6: Build Family Registry — NEEDS_REWORK (was COMPLETE e88146c; rebuild with new verified sample_ids)
 - Task 7: Frozen v3 Candidate Reservation — NEEDS_REWORK (was COMPLETE 2483968; re-run on new source pool)
 - Task 8: Build Frozen v3 Samples + Verify + Freeze — NEEDS_REWORK (was COMPLETE 0e60b3a; re-run with new candidates; reviewer cancelled)

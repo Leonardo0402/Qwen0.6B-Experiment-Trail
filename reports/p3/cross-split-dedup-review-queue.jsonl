@@ -7,8 +7,6 @@
 {"sample_a":"mbpp_479","split_a":"test","sample_b":"mbpp_657","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_699","split_a":"train","sample_b":"mbpp_595","split_b":"validation","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_248","split_a":"test","sample_b":"mbpp_704","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
-{"sample_a":"mbpp_705","split_a":"train","sample_b":"mbpp_569","split_b":"validation","method":"func_signature","score":1.0,"status":"auto_quarantined"}
-{"sample_a":"mbpp_224","split_a":"test","sample_b":"mbpp_707","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_43","split_a":"test","sample_b":"mbpp_719","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_43","split_a":"test","sample_b":"mbpp_879","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_43","split_a":"test","sample_b":"mbpp_930","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
@@ -20,8 +18,6 @@
 {"sample_a":"mbpp_420","split_a":"test","sample_b":"mbpp_837","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_487","split_a":"test","sample_b":"mbpp_839","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_228","split_a":"test","sample_b":"mbpp_884","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
-{"sample_a":"mbpp_273","split_a":"test","sample_b":"mbpp_888","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
-{"sample_a":"mbpp_460","split_a":"test","sample_b":"mbpp_893","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_427","split_a":"test","sample_b":"mbpp_928","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_90","split_a":"test","sample_b":"mbpp_947","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
 {"sample_a":"mbpp_79","split_a":"test","sample_b":"mbpp_964","split_b":"train","method":"func_signature","score":1.0,"status":"auto_quarantined"}
