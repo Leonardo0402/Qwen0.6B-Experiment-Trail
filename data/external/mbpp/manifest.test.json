@@ -10,12 +10,12 @@
   "imported_at": "2026-07-04T08:58:21.981893+00:00",
   "benchmark_contaminated": true,
   "standard_mbpp_test_claims_disallowed": true,
-  "verified_sha256": "e1fa1eef4159cf7897be0699ae9ff6eaeac0c2200c40c62a42f0bc98b94a2fa0",
-  "verified_count": 494,
-  "rejected_count": 6,
-  "rejected_sha256": "21b7a68c3badd0a9385f68d6790ac27829e8e2faaed7040a424d870673f91874",
-  "verified_at": "2026-07-04T10:03:39.292469+00:00",
+  "verified_sha256": "b3e9c0aaeb22502f1506761182c35e3674e5e86e6c589c33430dc72b65349c28",
+  "verified_count": 365,
+  "rejected_count": 135,
+  "rejected_sha256": "b82b2626c59384d3ef7d3b46a6322b8796071ba92f70170493e6771ccbd80c10",
+  "verified_at": "2026-07-04T13:58:18.588239+00:00",
   "warnings": {
-    "low_hidden_count": 494
+    "padding_rejected_count": 127
   }
 }
