@@ -1,239 +1,120 @@
-{"sample_id": "mbpp_101", "family_id": "mbpp_fam_101", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_100", "family_id": "mbpp_fam_100", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_102", "family_id": "mbpp_fam_102", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_103", "family_id": "mbpp_fam_103", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_105", "family_id": "mbpp_fam_105", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_106", "family_id": "mbpp_fam_106", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_112", "family_id": "mbpp_fam_112", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_114", "family_id": "mbpp_fam_114", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_114", "family_id": "mbpp_fam_114", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_114_boundary", "family_id": "mbpp_fam_114", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_114", "family_id": "mbpp_fam_114", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_114_boundary", "family_id": "mbpp_fam_114", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_117", "family_id": "mbpp_fam_117", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_117", "family_id": "mbpp_fam_117", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_117_boundary", "family_id": "mbpp_fam_117", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_117", "family_id": "mbpp_fam_117", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_117_boundary", "family_id": "mbpp_fam_117", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_124", "family_id": "mbpp_fam_124", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_124", "family_id": "mbpp_fam_124", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_124", "family_id": "mbpp_fam_124", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_124", "family_id": "mbpp_fam_124", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_126", "family_id": "mbpp_fam_126", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_137", "family_id": "mbpp_fam_137", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_138", "family_id": "mbpp_fam_138", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_148", "family_id": "mbpp_fam_148", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_148", "family_id": "mbpp_fam_148", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_148", "family_id": "mbpp_fam_148", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_148", "family_id": "mbpp_fam_148", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_15", "family_id": "mbpp_fam_15", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_150", "family_id": "mbpp_fam_150", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_152", "family_id": "mbpp_fam_152", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_152", "family_id": "mbpp_fam_152", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_152", "family_id": "mbpp_fam_152", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_152", "family_id": "mbpp_fam_152", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_154", "family_id": "mbpp_fam_154", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_156", "family_id": "mbpp_fam_156", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_156", "family_id": "mbpp_fam_156", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_156", "family_id": "mbpp_fam_156", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_156", "family_id": "mbpp_fam_156", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_158", "family_id": "mbpp_fam_158", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_168", "family_id": "mbpp_fam_168", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_17", "family_id": "mbpp_fam_17", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_175", "family_id": "mbpp_fam_175", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_176", "family_id": "mbpp_fam_176", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_178", "family_id": "mbpp_fam_178", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_181", "family_id": "mbpp_fam_181", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_181", "family_id": "mbpp_fam_181", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_181", "family_id": "mbpp_fam_181", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_181", "family_id": "mbpp_fam_181", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_11", "family_id": "mbpp_fam_11", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_110", "family_id": "mbpp_fam_110", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_118", "family_id": "mbpp_fam_118", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_119", "family_id": "mbpp_fam_119", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_125", "family_id": "mbpp_fam_125", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_128", "family_id": "mbpp_fam_128", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_13", "family_id": "mbpp_fam_13", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_134", "family_id": "mbpp_fam_134", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_135", "family_id": "mbpp_fam_135", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_144", "family_id": "mbpp_fam_144", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_145", "family_id": "mbpp_fam_145", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_155", "family_id": "mbpp_fam_155", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_157", "family_id": "mbpp_fam_157", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_159", "family_id": "mbpp_fam_159", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_162", "family_id": "mbpp_fam_162", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_163", "family_id": "mbpp_fam_163", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_177", "family_id": "mbpp_fam_177", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_179", "family_id": "mbpp_fam_179", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_182", "family_id": "mbpp_fam_182", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_186", "family_id": "mbpp_fam_186", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_192", "family_id": "mbpp_fam_192", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_205", "family_id": "mbpp_fam_205", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_205", "family_id": "mbpp_fam_205", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_205", "family_id": "mbpp_fam_205", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_205", "family_id": "mbpp_fam_205", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_209", "family_id": "mbpp_fam_209", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_211", "family_id": "mbpp_fam_211", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_211", "family_id": "mbpp_fam_211", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_211", "family_id": "mbpp_fam_211", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_211", "family_id": "mbpp_fam_211", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_222", "family_id": "mbpp_fam_222", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_222", "family_id": "mbpp_fam_222", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_222", "family_id": "mbpp_fam_222", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_222", "family_id": "mbpp_fam_222", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_185", "family_id": "mbpp_fam_185", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_187", "family_id": "mbpp_fam_187", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_188", "family_id": "mbpp_fam_188", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_190", "family_id": "mbpp_fam_190", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_191", "family_id": "mbpp_fam_191", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_199", "family_id": "mbpp_fam_199", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_204", "family_id": "mbpp_fam_204", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_215", "family_id": "mbpp_fam_215", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_225", "family_id": "mbpp_fam_225", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_226", "family_id": "mbpp_fam_226", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_227", "family_id": "mbpp_fam_227", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_229", "family_id": "mbpp_fam_229", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_230", "family_id": "mbpp_fam_230", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_234", "family_id": "mbpp_fam_234", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_235", "family_id": "mbpp_fam_235", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_233", "family_id": "mbpp_fam_233", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_236", "family_id": "mbpp_fam_236", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_238", "family_id": "mbpp_fam_238", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_240", "family_id": "mbpp_fam_240", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_242", "family_id": "mbpp_fam_242", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_246", "family_id": "mbpp_fam_246", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_246", "family_id": "mbpp_fam_246", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_246", "family_id": "mbpp_fam_246", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_246", "family_id": "mbpp_fam_246", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_249", "family_id": "mbpp_fam_249", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_25", "family_id": "mbpp_fam_25", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_252", "family_id": "mbpp_fam_252", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_253", "family_id": "mbpp_fam_253", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_254", "family_id": "mbpp_fam_254", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_256", "family_id": "mbpp_fam_256", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_256", "family_id": "mbpp_fam_256", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_256", "family_id": "mbpp_fam_256", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_256", "family_id": "mbpp_fam_256", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_239", "family_id": "mbpp_fam_239", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_245", "family_id": "mbpp_fam_245", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_247", "family_id": "mbpp_fam_247", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_250", "family_id": "mbpp_fam_250", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_251", "family_id": "mbpp_fam_251", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_257", "family_id": "mbpp_fam_257", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_258", "family_id": "mbpp_fam_258", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_26", "family_id": "mbpp_fam_26", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_262", "family_id": "mbpp_fam_262", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_269", "family_id": "mbpp_fam_269", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_269", "family_id": "mbpp_fam_269", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_269_boundary", "family_id": "mbpp_fam_269", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_269", "family_id": "mbpp_fam_269", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_269_boundary", "family_id": "mbpp_fam_269", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_270", "family_id": "mbpp_fam_270", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_272", "family_id": "mbpp_fam_272", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_272", "family_id": "mbpp_fam_272", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_272_boundary", "family_id": "mbpp_fam_272", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_272", "family_id": "mbpp_fam_272", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_272_boundary", "family_id": "mbpp_fam_272", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_282", "family_id": "mbpp_fam_282", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_288", "family_id": "mbpp_fam_288", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_29", "family_id": "mbpp_fam_29", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_295", "family_id": "mbpp_fam_295", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_268", "family_id": "mbpp_fam_268", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_27", "family_id": "mbpp_fam_27", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_275", "family_id": "mbpp_fam_275", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_285", "family_id": "mbpp_fam_285", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_289", "family_id": "mbpp_fam_289", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_296", "family_id": "mbpp_fam_296", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_297", "family_id": "mbpp_fam_297", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_302", "family_id": "mbpp_fam_302", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_306", "family_id": "mbpp_fam_306", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_306", "family_id": "mbpp_fam_306", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_306_boundary", "family_id": "mbpp_fam_306", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_306", "family_id": "mbpp_fam_306", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_306_boundary", "family_id": "mbpp_fam_306", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_31", "family_id": "mbpp_fam_31", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_317", "family_id": "mbpp_fam_317", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_298", "family_id": "mbpp_fam_298", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_305", "family_id": "mbpp_fam_305", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_308", "family_id": "mbpp_fam_308", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_309", "family_id": "mbpp_fam_309", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_310", "family_id": "mbpp_fam_310", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_311", "family_id": "mbpp_fam_311", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_314", "family_id": "mbpp_fam_314", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_319", "family_id": "mbpp_fam_319", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_321", "family_id": "mbpp_fam_321", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_324", "family_id": "mbpp_fam_324", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_324", "family_id": "mbpp_fam_324", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_324", "family_id": "mbpp_fam_324", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_324", "family_id": "mbpp_fam_324", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_322", "family_id": "mbpp_fam_322", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_328", "family_id": "mbpp_fam_328", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_329", "family_id": "mbpp_fam_329", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_33", "family_id": "mbpp_fam_33", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_33", "family_id": "mbpp_fam_33", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_33", "family_id": "mbpp_fam_33", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_33", "family_id": "mbpp_fam_33", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_330", "family_id": "mbpp_fam_330", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_341", "family_id": "mbpp_fam_341", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_341", "family_id": "mbpp_fam_341", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_341", "family_id": "mbpp_fam_341", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_341", "family_id": "mbpp_fam_341", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_331", "family_id": "mbpp_fam_331", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_340", "family_id": "mbpp_fam_340", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_343", "family_id": "mbpp_fam_343", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_348", "family_id": "mbpp_fam_348", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_348", "family_id": "mbpp_fam_348", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_348", "family_id": "mbpp_fam_348", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_348", "family_id": "mbpp_fam_348", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_345", "family_id": "mbpp_fam_345", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_347", "family_id": "mbpp_fam_347", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_350", "family_id": "mbpp_fam_350", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_354", "family_id": "mbpp_fam_354", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_358", "family_id": "mbpp_fam_358", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_363", "family_id": "mbpp_fam_363", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_379", "family_id": "mbpp_fam_379", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_381", "family_id": "mbpp_fam_381", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_381", "family_id": "mbpp_fam_381", "variant_type": "code", "rejection_reason": "reference_verification_failed", "verification_messages": ["hidden tests: 1 failure(s); stdout=F                                                                        [100%]\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\n\n    def test_solution():\n        assert index_on_inner_list([('Greyson Fulton', 98, 99), ('Brady Kent', 97, 96), ('Wyatt Knott', 91, 94), ('Beau Turnbull', 94,", "ruff: ruff not installed"]}
-{"sample_id": "mbpp_381_boundary", "family_id": "mbpp_fam_381", "variant_type": "boundary", "rejection_reason": "reference_verification_failed", "verification_messages": ["public tests: 3 failure(s); stdout=...FFF.                                                                  [100%]\n================================== FAILURES ===================================\n_________________________ test_boundary_index_no_zero _________________________\n\n    def test_boundary_index_no_zero():\n>       assert index_on_inner_list([['Greyson Fulton', 98, 99], ['Brady Kent', 97, 96], ['Wyatt Knott', 91, 94], ['Beau ", "hidden tests: 1 failure(s); stdout=F                                                                        [100%]\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\n\n    def test_solution():\n        assert index_on_inner_list([('Greyson Fulton', 98, 99), ('Brady Kent', 97, 96), ('Wyatt Knott', 91, 94), ('Beau Turnbull', 94,", "ruff: ruff not installed"]}
+{"sample_id": "mbpp_371", "family_id": "mbpp_fam_371", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_38", "family_id": "mbpp_fam_38", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_382", "family_id": "mbpp_fam_382", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_386", "family_id": "mbpp_fam_386", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_387", "family_id": "mbpp_fam_387", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_39", "family_id": "mbpp_fam_39", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_388", "family_id": "mbpp_fam_388", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_390", "family_id": "mbpp_fam_390", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_391", "family_id": "mbpp_fam_391", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_393", "family_id": "mbpp_fam_393", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_393", "family_id": "mbpp_fam_393", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_393_boundary", "family_id": "mbpp_fam_393", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_393", "family_id": "mbpp_fam_393", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_393_boundary", "family_id": "mbpp_fam_393", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_401", "family_id": "mbpp_fam_401", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_401", "family_id": "mbpp_fam_401", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_401", "family_id": "mbpp_fam_401", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_401", "family_id": "mbpp_fam_401", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_406", "family_id": "mbpp_fam_406", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_407", "family_id": "mbpp_fam_407", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_397", "family_id": "mbpp_fam_397", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_403", "family_id": "mbpp_fam_403", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_405", "family_id": "mbpp_fam_405", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_411", "family_id": "mbpp_fam_411", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_412", "family_id": "mbpp_fam_412", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_415", "family_id": "mbpp_fam_415", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_419", "family_id": "mbpp_fam_419", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_421", "family_id": "mbpp_fam_421", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_421", "family_id": "mbpp_fam_421", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_421", "family_id": "mbpp_fam_421", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_421", "family_id": "mbpp_fam_421", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_435", "family_id": "mbpp_fam_435", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_413", "family_id": "mbpp_fam_413", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_418", "family_id": "mbpp_fam_418", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_433", "family_id": "mbpp_fam_433", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_434", "family_id": "mbpp_fam_434", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_438", "family_id": "mbpp_fam_438", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_440", "family_id": "mbpp_fam_440", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_442", "family_id": "mbpp_fam_442", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_441", "family_id": "mbpp_fam_441", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_443", "family_id": "mbpp_fam_443", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_444", "family_id": "mbpp_fam_444", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_445", "family_id": "mbpp_fam_445", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_445", "family_id": "mbpp_fam_445", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_445", "family_id": "mbpp_fam_445", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_445", "family_id": "mbpp_fam_445", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
 {"sample_id": "mbpp_446", "family_id": "mbpp_fam_446", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_448", "family_id": "mbpp_fam_448", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_448", "family_id": "mbpp_fam_448", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_448", "family_id": "mbpp_fam_448", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_448", "family_id": "mbpp_fam_448", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_451", "family_id": "mbpp_fam_451", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_453", "family_id": "mbpp_fam_453", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_455", "family_id": "mbpp_fam_455", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_457", "family_id": "mbpp_fam_457", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_466", "family_id": "mbpp_fam_466", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_466", "family_id": "mbpp_fam_466", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_466", "family_id": "mbpp_fam_466", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_466", "family_id": "mbpp_fam_466", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_467", "family_id": "mbpp_fam_467", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_467", "family_id": "mbpp_fam_467", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_467", "family_id": "mbpp_fam_467", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_467", "family_id": "mbpp_fam_467", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_470", "family_id": "mbpp_fam_470", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_470", "family_id": "mbpp_fam_470", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_470", "family_id": "mbpp_fam_470", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_470", "family_id": "mbpp_fam_470", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_486", "family_id": "mbpp_fam_486", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_486", "family_id": "mbpp_fam_486", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_486", "family_id": "mbpp_fam_486", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_486", "family_id": "mbpp_fam_486", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_494", "family_id": "mbpp_fam_494", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_494", "family_id": "mbpp_fam_494", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_494", "family_id": "mbpp_fam_494", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_494", "family_id": "mbpp_fam_494", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_502", "family_id": "mbpp_fam_502", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_506", "family_id": "mbpp_fam_506", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_459", "family_id": "mbpp_fam_459", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_461", "family_id": "mbpp_fam_461", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_462", "family_id": "mbpp_fam_462", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_463", "family_id": "mbpp_fam_463", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_473", "family_id": "mbpp_fam_473", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_474", "family_id": "mbpp_fam_474", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_476", "family_id": "mbpp_fam_476", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_477", "family_id": "mbpp_fam_477", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_483", "family_id": "mbpp_fam_483", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_488", "family_id": "mbpp_fam_488", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_489", "family_id": "mbpp_fam_489", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_492", "family_id": "mbpp_fam_492", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_496", "family_id": "mbpp_fam_496", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_507", "family_id": "mbpp_fam_507", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_508", "family_id": "mbpp_fam_508", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_53", "family_id": "mbpp_fam_53", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_59", "family_id": "mbpp_fam_59", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
 {"sample_id": "mbpp_60", "family_id": "mbpp_fam_60", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_61", "family_id": "mbpp_fam_61", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_63", "family_id": "mbpp_fam_63", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_63", "family_id": "mbpp_fam_63", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_63_boundary", "family_id": "mbpp_fam_63", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_63", "family_id": "mbpp_fam_63", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_63_boundary", "family_id": "mbpp_fam_63", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_64", "family_id": "mbpp_fam_64", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_64", "family_id": "mbpp_fam_64", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_64_boundary", "family_id": "mbpp_fam_64", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_64", "family_id": "mbpp_fam_64", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_64_boundary", "family_id": "mbpp_fam_64", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_65", "family_id": "mbpp_fam_65", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_70", "family_id": "mbpp_fam_70", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_70", "family_id": "mbpp_fam_70", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_70", "family_id": "mbpp_fam_70", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_70", "family_id": "mbpp_fam_70", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_75", "family_id": "mbpp_fam_75", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_75", "family_id": "mbpp_fam_75", "variant_type": "code", "rejection_reason": "reference_verification_failed", "verification_messages": ["hidden tests: 1 failure(s); stdout=F                                                                        [100%]\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\n\n    def test_solution():\n        assert find_tuples([(7, 9, 16), (8, 16, 4), (19, 17, 18)], 4) == '[(8, 16, 4)]'\n    \n        assert find_tuples([], 6) == '[]'", "ruff: ruff not installed"]}
-{"sample_id": "mbpp_75_boundary", "family_id": "mbpp_fam_75", "variant_type": "boundary", "rejection_reason": "reference_verification_failed", "verification_messages": ["public tests: 2 failure(s); stdout=....FF.                                                                  [100%]\n================================== FAILURES ===================================\n________________________ test_boundary_K_negative_one _________________________\n\n    def test_boundary_K_negative_one():\n>       assert find_tuples([[6, 24, 12], [7, 9, 6], [12, 18, 21]], -1) == '[(6, 24, 12), (7, 9, 6), (12, 18, 21)]'\nE   ", "hidden tests: 1 failure(s); stdout=F                                                                        [100%]\n================================== FAILURES ===================================\n________________________________ test_solution ________________________________\n\n    def test_solution():\n        assert find_tuples([(7, 9, 16), (8, 16, 4), (19, 17, 18)], 4) == '[(8, 16, 4)]'\n    \n        assert find_tuples([], 6) == '[]'", "ruff: ruff not installed"]}
-{"sample_id": "mbpp_78", "family_id": "mbpp_fam_78", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_80", "family_id": "mbpp_fam_80", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_89", "family_id": "mbpp_fam_89", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_93", "family_id": "mbpp_fam_93", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_94", "family_id": "mbpp_fam_94", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_94", "family_id": "mbpp_fam_94", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_94_boundary", "family_id": "mbpp_fam_94", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_94", "family_id": "mbpp_fam_94", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_94_boundary", "family_id": "mbpp_fam_94", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_96", "family_id": "mbpp_fam_96", "variant_type": null, "rejection_reason": "boundary_variant_generation_failed", "verification_messages": []}
-{"sample_id": "mbpp_96", "family_id": "mbpp_fam_96", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_96", "family_id": "mbpp_fam_96", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_96", "family_id": "mbpp_fam_96", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_97", "family_id": "mbpp_fam_97", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
-{"sample_id": "mbpp_97", "family_id": "mbpp_fam_97", "variant_type": "code", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_97_boundary", "family_id": "mbpp_fam_97", "variant_type": "boundary", "rejection_reason": "hidden_padding_insufficient", "verification_messages": []}
-{"sample_id": "mbpp_97", "family_id": "mbpp_fam_97", "variant_type": "code", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
-{"sample_id": "mbpp_97_boundary", "family_id": "mbpp_fam_97", "variant_type": "boundary", "rejection_reason": "hidden_assertions_count_1_lt_3", "verification_messages": ["ruff: ruff not installed"]}
+{"sample_id": "mbpp_68", "family_id": "mbpp_fam_68", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_69", "family_id": "mbpp_fam_69", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_72", "family_id": "mbpp_fam_72", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_74", "family_id": "mbpp_fam_74", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_76", "family_id": "mbpp_fam_76", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_85", "family_id": "mbpp_fam_85", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}
+{"sample_id": "mbpp_99", "family_id": "mbpp_fam_99", "variant_type": null, "rejection_reason": "no_failing_bug_variants", "verification_messages": []}

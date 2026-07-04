@@ -1,23 +1,23 @@
 # Task 8 Report: Build Frozen v3 Samples with Verification and Freeze
 
 ## Status
-DONE — All deliverables complete. 83 families qualified (>=80 threshold), freeze decision = `freeze_actual`, all 4 output files written, sha_lock verified consistent, registry updated, all 12 tests pass.
+DONE (v2.1 rework — re-run on pad-then-verify candidates) — All deliverables complete. **120 families qualified** (>=100 threshold), freeze decision = `freeze_100`, **100 frozen**, all 4 output files written, sha_lock verified consistent, registry updated, all 12 tests pass.
 
 ## Files created / modified
 
 | Path | Action |
 |---|---|
-| `scripts/build_frozen_v3_samples.py` | Created (orchestrator, ~900 lines) |
-| `tests/test_build_frozen_v3_samples.py` | Created (12-test suite) |
-| `data/frozen-eval/v3/families.json` | Created (83 frozen family IDs) |
-| `data/frozen-eval/v3/test_raw.jsonl` | Created (249 samples) |
-| `data/frozen-eval/v3/manifest.json` | Created (with `immutability.sha_lock`) |
-| `data/frozen-eval/v3/rejected.jsonl` | Created (239 records) |
-| `data/family-registry.json` | Modified (83 families claimed `frozen_v3`, 37 unclaimed `frozen_v3_candidate`) |
-| `src/family_registry.py` | Modified (added `unclaim` method on `FamilyEntry` and `FamilyRegistry`) |
-| `src/training_data.py` | Modified (added `assert_not_frozen_v3` helper + `FROZEN_V3_DIR` constant) |
+| `scripts/build_frozen_v3_samples.py` | Unchanged (orchestrator, uses shared `src.hidden_test_padding`) |
+| `tests/test_build_frozen_v3_samples.py` | Unchanged (12-test suite, 12/12 pass) |
+| `data/frozen-eval/v3/families.json` | Regenerated (100 frozen family IDs) |
+| `data/frozen-eval/v3/test_raw.jsonl` | Regenerated (300 samples) |
+| `data/frozen-eval/v3/manifest.json` | Regenerated (with `immutability.sha_lock`) |
+| `data/frozen-eval/v3/rejected.jsonl` | Regenerated (120 records) |
+| `data/family-registry.json` | Modified (100 families claimed `frozen_v3`, 20 surplus unclaimed `frozen_v3_candidate`) |
+| `src/family_registry.py` | Unchanged (unclaim method from original Task 8) |
+| `src/training_data.py` | Unchanged (assert_not_frozen_v3 from original Task 8) |
 
-## Pipeline run
+## Pipeline run (v2.1 redo)
 
 ```
 python scripts/build_frozen_v3_samples.py \
@@ -31,47 +31,45 @@ python scripts/build_frozen_v3_samples.py \
 
 Exit code 0.
 
-## Totals
+## Totals (v2.1 redo vs original)
 
-| Metric | Value |
-|---|---|
-| Total candidates processed | 120 |
-| Qualified families | 83 |
-| Rejected families | 37 |
-| Total frozen samples (test_raw.jsonl) | 249 |
-| Rejected records (rejected.jsonl) | 239 |
+| Metric | v2.1 Redo | Original (0e60b3a) |
+|---|---|---|
+| Total candidates processed | 120 | 120 |
+| Qualified families | **120** | 83 |
+| Rejected families | **0** | 37 |
+| Total frozen samples (test_raw.jsonl) | **300** | 249 |
+| Rejected records (rejected.jsonl) | 120 | 239 |
+
+The redo achieved a MUCH better outcome: all 120 candidates qualified (vs 83 before), enabling the `freeze_100` decision (best case per Amendment A3). This improvement is attributed to the pad-then-verify flow producing better hidden tests that more samples can pass.
 
 ## Freeze decision
 
-`freeze_actual` — Froze all 83 qualified families (between `MIN_FROZEN=80` and `MAX_FROZEN=100`, so all qualified families were frozen with no surplus).
+`freeze_100` — Froze first 100 of 120 qualified families by family_id ascending. 20 surplus families reverted to available pool (their `frozen_v3_candidate` tag was removed via `unclaim`). Per v2.1 Amendment A3: 合格 >=100 → 冻结100.
 
 ## variant_breakdown
 
 | variant_type | count |
 |---|---|
-| code | 83 |
-| boundary | 83 |
+| code | 100 |
+| boundary | 100 |
 | static_repair | 0 |
 | execution_repair | 0 |
-| canary | 83 |
-| **total** | **249** |
+| canary | 100 |
+| **total** | **300** |
 
-Each qualified family contributes exactly 3 samples (1 code + 1 boundary + 1 canary). The static_repair / execution_repair counts are 0 because `generate_all_variants` did not produce any failing-bug variants for these MBPP problems (`gen_rejected` reason `no_failing_bug_variants` — see "Concerns" below).
+Each qualified family contributes exactly 3 samples (1 code + 1 boundary + 1 canary). The static_repair / execution_repair counts are 0 because `generate_all_variants` did not produce any failing-bug variants for these MBPP problems (`gen_rejected` reason `no_failing_bug_variants` — same as original Task 8). The 120 records in `rejected.jsonl` are the per-family `no_failing_bug_variants` rejection records (1 per family × 120 families = 120).
 
-## Rejected records breakdown (rejected.jsonl — 239 records)
+## Rejected records breakdown (rejected.jsonl — 120 records)
 
 | count | rejection_reason | notes |
 |---|---|---|
-| 120 | `no_failing_bug_variants` | One per family (all 120 candidates). `gen_rejected` records from `generate_all_variants`; do NOT disqualify the family. |
-| 45 | `hidden_padding_insufficient` | Could not pad hidden tests to count>=3 with boundary values. |
-| 45 | `hidden_assertions_count_1_lt_3` | Final hidden_tests assert count < 3. |
-| 25 | `boundary_variant_generation_failed` | Boundary variant generation failed (subset of the 37 rejected families). |
-| 4 | `reference_verification_failed` | Reference sample (code or boundary) failed REAL pytest. |
-| **239** | **TOTAL** | |
+| 120 | `no_failing_bug_variants` | One per family (all 120 candidates). `gen_rejected` records from `generate_all_variants`; informational only — does NOT disqualify the family. |
+| **120** | **TOTAL** | |
 
-Note: A single rejected family typically contributes multiple records (e.g. one `no_failing_bug_variants` + one `hidden_padding_insufficient` + one `hidden_assertions_count_1_lt_3` per failing sample). The 120 `no_failing_bug_variants` records appear for ALL 120 families (qualified and rejected), because MBPP-style problems rarely produce failing-bug variants via the existing generator — these records are informational only.
+Note: In the v2.1 redo, ALL 120 candidates qualified — there are NO per-sample verification failures (no `hidden_padding_insufficient`, no `reference_verification_failed`, etc.). The pad-then-verify flow successfully padded all hidden tests to >=3, and all reference samples passed REAL pytest. The only rejected records are the 120 `no_failing_bug_variants` informational entries.
 
-## Hard gates (all pass on the 83 frozen families)
+## Hard gates (all pass on the 100 frozen families)
 
 | # | Gate | Result |
 |---|---|---|
@@ -80,30 +78,25 @@ Note: A single rejected family typically contributes multiple records (e.g. one 
 | 3 | Reference samples pass REAL pytest (`verify_sample`) | ✅ |
 | 4 | `verify_broken_is_broken` (would apply to repair samples; none here) | N/A (no repair samples) |
 | 5 | Real `execution_feedback` (would apply to execution_repair samples; none here) | N/A |
-| 6 | Canary sample FAILS pytest (negative control) | ✅ (all 83 canaries verified=False) |
+| 6 | Canary sample FAILS pytest (negative control) | ✅ (all 100 canaries verified=False) |
 
 ## sha_lock verification
 
-```
-$ python -c "from pathlib import Path; from scripts.build_frozen_v3_samples import verify_sha_lock; verify_sha_lock(Path('data/frozen-eval/v3')); print('sha_lock verification: OK')"
-sha_lock verification: OK
-```
+The `immutability.sha_lock` stored in `manifest.json` is verified consistent by the script itself (re-reads all 4 files and recomputes). ✅
 
-The `immutability.sha_lock` stored in `manifest.json` is computed over the concatenation of `families.json` + `test_raw.jsonl` + `rejected.jsonl` (the 3 non-manifest files). Recomputed value matches the stored value. ✅
+`sha_lock` value: `a27f36bf5558fbaeff4ee98c906d8e2ecba25794a93adb4d535585d733d8fd09`
 
-`sha_lock` value: `809811cd1b5e6e1d7f90f005a111f6798947bb7d03aeea510b977c77939ea8f4`
-
-## Registry update
+## Registry update (v2.1 redo)
 
 | Tag | Count | Notes |
 |---|---|---|
-| `frozen_v3_candidate` | 83 | Only the 83 frozen families retain this tag. |
-| `frozen_v3` | 83 | Newly claimed on the 83 frozen families. |
-| Reverted `frozen_v3_candidate` | 37 | The 37 rejected families had `frozen_v3_candidate` unclaimed (reverted to empty usage). |
+| `frozen_v3_candidate` | 100 | Only the 100 frozen families retain this tag. |
+| `frozen_v3` | 100 | Newly claimed on the 100 frozen families. |
+| Reverted `frozen_v3_candidate` | 20 | The 20 surplus families had `frozen_v3_candidate` unclaimed (reverted to empty usage). |
 
 Example:
-- `mbpp_fam_101` (frozen): `usage = ["frozen_v3_candidate", "frozen_v3"]`
-- `mbpp_fam_114` (rejected): `usage = []`
+- `mbpp_fam_100` (frozen): `usage = ["frozen_v3_candidate", "frozen_v3"]`
+- `mbpp_fam_476` (surplus): `usage = []` (reverted to available pool)
 
 ## Test summary
 

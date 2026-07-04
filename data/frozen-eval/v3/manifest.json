@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-07-04T12:51:24.403610+00:00",
+  "generated_at": "2026-07-04T14:27:53.122261+00:00",
   "schema_version": 1,
   "frozen_version": "v3",
-  "frozen_family_count": 83,
-  "total_sample_count": 249,
+  "frozen_family_count": 100,
+  "total_sample_count": 300,
   "variant_breakdown": {
-    "code": 83,
-    "boundary": 83,
+    "code": 100,
+    "boundary": 100,
     "static_repair": 0,
     "execution_repair": 0,
-    "canary": 83
+    "canary": 100
   },
-  "test_raw_sha256": "9e5d481820b9b7cb1fc3d959dbf59f9a4438a381896c7d67c204efe9ed518ee2",
-  "families_sha256": "5de3052caa2745fb9f444bd7e8dbfecdc95412a1a324a45cb899d46dc5f48f91",
-  "rejected_count": 239,
-  "rejected_sha256": "dd4cc0d5c5144ea91076f22ba85a3b3ea81ab765d8b8c97d186effc31a31e64d",
-  "freeze_decision": "freeze_actual",
-  "freeze_decision_note": "Froze all 83 qualified families.",
+  "test_raw_sha256": "764ba24e7fed54abadb7090a831ccae5a39a103174c1842fb1bfbcd8bb5174b3",
+  "families_sha256": "aa4996c71ec0fbc6ae68b3473fbf0974065505b9051ee512b9889f713f0bb7c6",
+  "rejected_count": 120,
+  "rejected_sha256": "decb49206e58a31203064f375166cffe5d5387e836fa8b50914ed13548cc51fb",
+  "freeze_decision": "freeze_100",
+  "freeze_decision_note": "Froze first 100 of 120 qualified families (surplus 20 reverted to available pool).",
   "immutability": {
     "write_once": true,
     "any_change_requires": "v4",
-    "sha_lock": "809811cd1b5e6e1d7f90f005a111f6798947bb7d03aeea510b977c77939ea8f4"
+    "sha_lock": "a27f36bf5558fbaeff4ee98c906d8e2ecba25794a93adb4d535585d733d8fd09"
   }
 }
