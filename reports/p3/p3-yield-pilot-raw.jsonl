@@ -1,0 +1,200 @@
+{"family_id": "mbpp_fam_14", "bucket": "code", "sample_id": "mbpp_14_code_orig", "verified": true}
+{"family_id": "mbpp_fam_14", "bucket": "code", "sample_id": "mbpp_14_code_sig", "verified": true}
+{"family_id": "mbpp_fam_14", "bucket": "code", "sample_id": "mbpp_14_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_14", "bucket": "boundary", "sample_id": "mbpp_14_boundary", "verified": true}
+{"family_id": "mbpp_fam_14", "bucket": "static_repair", "sample_id": "mbpp_14_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_14", "bucket": "execution_repair", "sample_id": "mbpp_14_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_141", "bucket": "code", "sample_id": "mbpp_141_code_orig", "verified": true}
+{"family_id": "mbpp_fam_141", "bucket": "code", "sample_id": "mbpp_141_code_sig", "verified": true}
+{"family_id": "mbpp_fam_141", "bucket": "code", "sample_id": "mbpp_141_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_141", "bucket": "boundary", "sample_id": "mbpp_141_boundary", "verified": true}
+{"family_id": "mbpp_fam_141", "bucket": "static_repair", "sample_id": "mbpp_141_sr_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_141", "bucket": "static_repair", "sample_id": "mbpp_141_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_141", "bucket": "static_repair", "sample_id": "mbpp_141_sr_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_141", "bucket": "execution_repair", "sample_id": "mbpp_141_er_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_141", "bucket": "execution_repair", "sample_id": "mbpp_141_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_141", "bucket": "execution_repair", "sample_id": "mbpp_141_er_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_146", "bucket": "code", "sample_id": "mbpp_146_code_orig", "verified": true}
+{"family_id": "mbpp_fam_146", "bucket": "code", "sample_id": "mbpp_146_code_sig", "verified": true}
+{"family_id": "mbpp_fam_146", "bucket": "code", "sample_id": "mbpp_146_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_146", "bucket": "boundary", "sample_id": "mbpp_146_boundary", "verified": true}
+{"family_id": "mbpp_fam_146", "bucket": "static_repair", "sample_id": "mbpp_146_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_146", "bucket": "static_repair", "sample_id": "mbpp_146_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_146", "bucket": "execution_repair", "sample_id": "mbpp_146_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_146", "bucket": "execution_repair", "sample_id": "mbpp_146_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_147", "bucket": "code", "sample_id": "mbpp_147_code_orig", "verified": true}
+{"family_id": "mbpp_fam_147", "bucket": "code", "sample_id": "mbpp_147_code_sig", "verified": true}
+{"family_id": "mbpp_fam_147", "bucket": "code", "sample_id": "mbpp_147_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_147", "bucket": "boundary", "sample_id": "mbpp_147_boundary", "verified": true}
+{"family_id": "mbpp_fam_147", "bucket": "static_repair", "sample_id": "mbpp_147_sr_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_147", "bucket": "static_repair", "sample_id": "mbpp_147_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_147", "bucket": "static_repair", "sample_id": "mbpp_147_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_147", "bucket": "execution_repair", "sample_id": "mbpp_147_er_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_147", "bucket": "execution_repair", "sample_id": "mbpp_147_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_147", "bucket": "execution_repair", "sample_id": "mbpp_147_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_210", "bucket": "code", "sample_id": "mbpp_210_code_orig", "verified": true}
+{"family_id": "mbpp_fam_210", "bucket": "code", "sample_id": "mbpp_210_code_sig", "verified": true}
+{"family_id": "mbpp_fam_210", "bucket": "code", "sample_id": "mbpp_210_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_210", "bucket": "boundary", "sample_id": "mbpp_210_boundary", "verified": true}
+{"family_id": "mbpp_fam_210", "bucket": "static_repair", "sample_id": "mbpp_210_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_210", "bucket": "execution_repair", "sample_id": "mbpp_210_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_22", "bucket": "code", "sample_id": "mbpp_22_code_orig", "verified": true}
+{"family_id": "mbpp_fam_22", "bucket": "code", "sample_id": "mbpp_22_code_sig", "verified": true}
+{"family_id": "mbpp_fam_22", "bucket": "code", "sample_id": "mbpp_22_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_22", "bucket": "boundary", "sample_id": "mbpp_22_boundary", "verified": true}
+{"family_id": "mbpp_fam_22", "bucket": "static_repair", "sample_id": "mbpp_22_sr_off_by_one", "verified": false, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_22", "bucket": "static_repair", "sample_id": "mbpp_22_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_22", "bucket": "static_repair", "sample_id": "mbpp_22_sr_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_22", "bucket": "execution_repair", "sample_id": "mbpp_22_er_off_by_one", "verified": false, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_22", "bucket": "execution_repair", "sample_id": "mbpp_22_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_22", "bucket": "execution_repair", "sample_id": "mbpp_22_er_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_234", "bucket": "code", "sample_id": "mbpp_234_code_orig", "verified": true}
+{"family_id": "mbpp_fam_234", "bucket": "code", "sample_id": "mbpp_234_code_sig", "verified": true}
+{"family_id": "mbpp_fam_234", "bucket": "code", "sample_id": "mbpp_234_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_234", "bucket": "boundary", "sample_id": "mbpp_234_boundary", "verified": true}
+{"family_id": "mbpp_fam_234", "bucket": "static_repair", "sample_id": "mbpp_234_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_234", "bucket": "execution_repair", "sample_id": "mbpp_234_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_25", "bucket": "code", "sample_id": "mbpp_25_code_orig", "verified": true}
+{"family_id": "mbpp_fam_25", "bucket": "code", "sample_id": "mbpp_25_code_sig", "verified": true}
+{"family_id": "mbpp_fam_25", "bucket": "code", "sample_id": "mbpp_25_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_25", "bucket": "boundary", "sample_id": "mbpp_25_boundary", "verified": true}
+{"family_id": "mbpp_fam_25", "bucket": "static_repair", "sample_id": "mbpp_25_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_25", "bucket": "static_repair", "sample_id": "mbpp_25_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_25", "bucket": "static_repair", "sample_id": "mbpp_25_sr_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_25", "bucket": "execution_repair", "sample_id": "mbpp_25_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_25", "bucket": "execution_repair", "sample_id": "mbpp_25_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_25", "bucket": "execution_repair", "sample_id": "mbpp_25_er_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_284", "bucket": "code", "sample_id": "mbpp_284_code_orig", "verified": true}
+{"family_id": "mbpp_fam_284", "bucket": "code", "sample_id": "mbpp_284_code_sig", "verified": true}
+{"family_id": "mbpp_fam_284", "bucket": "code", "sample_id": "mbpp_284_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_284", "bucket": "boundary", "sample_id": "mbpp_284_boundary", "verified": true}
+{"family_id": "mbpp_fam_284", "bucket": "static_repair", "sample_id": "mbpp_284_sr_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_284", "bucket": "static_repair", "sample_id": "mbpp_284_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_284", "bucket": "static_repair", "sample_id": "mbpp_284_sr_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_284", "bucket": "execution_repair", "sample_id": "mbpp_284_er_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_284", "bucket": "execution_repair", "sample_id": "mbpp_284_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_284", "bucket": "execution_repair", "sample_id": "mbpp_284_er_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_346", "bucket": "code", "sample_id": "mbpp_346_code_orig", "verified": true}
+{"family_id": "mbpp_fam_346", "bucket": "code", "sample_id": "mbpp_346_code_sig", "verified": true}
+{"family_id": "mbpp_fam_346", "bucket": "code", "sample_id": "mbpp_346_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_346", "bucket": "boundary", "sample_id": "mbpp_346_boundary", "verified": true}
+{"family_id": "mbpp_fam_346", "bucket": "static_repair", "sample_id": "mbpp_346_sr_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_346", "bucket": "static_repair", "sample_id": "mbpp_346_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_346", "bucket": "static_repair", "sample_id": "mbpp_346_sr_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_346", "bucket": "execution_repair", "sample_id": "mbpp_346_er_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_346", "bucket": "execution_repair", "sample_id": "mbpp_346_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_346", "bucket": "execution_repair", "sample_id": "mbpp_346_er_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_369", "bucket": "code", "sample_id": "mbpp_369_code_orig", "verified": true}
+{"family_id": "mbpp_fam_369", "bucket": "code", "sample_id": "mbpp_369_code_sig", "verified": true}
+{"family_id": "mbpp_fam_369", "bucket": "code", "sample_id": "mbpp_369_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_369", "bucket": "boundary", "sample_id": "mbpp_369_boundary", "verified": true}
+{"family_id": "mbpp_fam_369", "bucket": "static_repair", "sample_id": "mbpp_369_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_369", "bucket": "execution_repair", "sample_id": "mbpp_369_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_374", "bucket": "code", "sample_id": "mbpp_374_code_orig", "verified": true}
+{"family_id": "mbpp_fam_374", "bucket": "code", "sample_id": "mbpp_374_code_sig", "verified": true}
+{"family_id": "mbpp_fam_374", "bucket": "code", "sample_id": "mbpp_374_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_374", "bucket": "boundary", "sample_id": "mbpp_374_boundary", "verified": true}
+{"family_id": "mbpp_fam_374", "bucket": "static_repair", "sample_id": "mbpp_374_sr_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_374", "bucket": "static_repair", "sample_id": "mbpp_374_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_374", "bucket": "static_repair", "sample_id": "mbpp_374_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_374", "bucket": "execution_repair", "sample_id": "mbpp_374_er_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_374", "bucket": "execution_repair", "sample_id": "mbpp_374_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_374", "bucket": "execution_repair", "sample_id": "mbpp_374_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_383", "bucket": "code", "sample_id": "mbpp_383_code_orig", "verified": true}
+{"family_id": "mbpp_fam_383", "bucket": "code", "sample_id": "mbpp_383_code_sig", "verified": true}
+{"family_id": "mbpp_fam_383", "bucket": "code", "sample_id": "mbpp_383_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_383", "bucket": "boundary", "sample_id": "mbpp_383_boundary", "verified": true}
+{"family_id": "mbpp_fam_383", "bucket": "static_repair", "sample_id": "mbpp_383_sr_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_383", "bucket": "static_repair", "sample_id": "mbpp_383_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_383", "bucket": "static_repair", "sample_id": "mbpp_383_sr_initialization_error", "verified": true, "bug_type": "initialization_error"}
+{"family_id": "mbpp_fam_383", "bucket": "execution_repair", "sample_id": "mbpp_383_er_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_383", "bucket": "execution_repair", "sample_id": "mbpp_383_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_383", "bucket": "execution_repair", "sample_id": "mbpp_383_er_initialization_error", "verified": true, "bug_type": "initialization_error"}
+{"family_id": "mbpp_fam_392", "bucket": "code", "sample_id": "mbpp_392_code_orig", "verified": true}
+{"family_id": "mbpp_fam_392", "bucket": "code", "sample_id": "mbpp_392_code_sig", "verified": true}
+{"family_id": "mbpp_fam_392", "bucket": "code", "sample_id": "mbpp_392_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_392", "bucket": "boundary", "sample_id": "mbpp_392_boundary", "verified": true}
+{"family_id": "mbpp_fam_392", "bucket": "static_repair", "sample_id": "mbpp_392_sr_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_392", "bucket": "static_repair", "sample_id": "mbpp_392_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_392", "bucket": "static_repair", "sample_id": "mbpp_392_sr_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_392", "bucket": "execution_repair", "sample_id": "mbpp_392_er_condition_error", "verified": false, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_392", "bucket": "execution_repair", "sample_id": "mbpp_392_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_392", "bucket": "execution_repair", "sample_id": "mbpp_392_er_aggregation_error", "verified": true, "bug_type": "aggregation_error"}
+{"family_id": "mbpp_fam_426", "bucket": "code", "sample_id": "mbpp_426_code_orig", "verified": true}
+{"family_id": "mbpp_fam_426", "bucket": "code", "sample_id": "mbpp_426_code_sig", "verified": true}
+{"family_id": "mbpp_fam_426", "bucket": "code", "sample_id": "mbpp_426_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_426", "bucket": "boundary", "sample_id": "mbpp_426_boundary", "verified": true}
+{"family_id": "mbpp_fam_426", "bucket": "static_repair", "sample_id": "mbpp_426_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_426", "bucket": "execution_repair", "sample_id": "mbpp_426_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_623", "bucket": "code", "sample_id": "mbpp_623_boundary_code_orig", "verified": true}
+{"family_id": "mbpp_fam_623", "bucket": "code", "sample_id": "mbpp_623_boundary_code_sig", "verified": true}
+{"family_id": "mbpp_fam_623", "bucket": "code", "sample_id": "mbpp_623_boundary_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_623", "bucket": "boundary", "sample_id": "mbpp_623_boundary_boundary", "verified": true}
+{"family_id": "mbpp_fam_623", "bucket": "static_repair", "sample_id": "mbpp_623_boundary_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_623", "bucket": "execution_repair", "sample_id": "mbpp_623_boundary_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_693", "bucket": "code", "sample_id": "mbpp_693_er_return_value_error_code_orig", "verified": true}
+{"family_id": "mbpp_fam_693", "bucket": "code", "sample_id": "mbpp_693_er_return_value_error_code_sig", "verified": true}
+{"family_id": "mbpp_fam_693", "bucket": "code", "sample_id": "mbpp_693_er_return_value_error_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_693", "bucket": "boundary", "sample_id": "mbpp_693_er_return_value_error_boundary", "verified": true}
+{"family_id": "mbpp_fam_693", "bucket": "static_repair", "sample_id": "mbpp_693_er_return_value_error_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_693", "bucket": "execution_repair", "sample_id": "mbpp_693_er_return_value_error_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_73", "bucket": "code", "sample_id": "mbpp_73_code_orig", "verified": true}
+{"family_id": "mbpp_fam_73", "bucket": "code", "sample_id": "mbpp_73_code_sig", "verified": true}
+{"family_id": "mbpp_fam_73", "bucket": "code", "sample_id": "mbpp_73_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_73", "bucket": "boundary", "sample_id": "mbpp_73_boundary", "verified": true}
+{"family_id": "mbpp_fam_73", "bucket": "static_repair", "sample_id": "mbpp_73_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_73", "bucket": "execution_repair", "sample_id": "mbpp_73_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_74", "bucket": "code", "sample_id": "mbpp_74_code_orig", "verified": true}
+{"family_id": "mbpp_fam_74", "bucket": "code", "sample_id": "mbpp_74_code_sig", "verified": true}
+{"family_id": "mbpp_fam_74", "bucket": "code", "sample_id": "mbpp_74_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_74", "bucket": "boundary", "sample_id": "mbpp_74_boundary", "verified": true}
+{"family_id": "mbpp_fam_74", "bucket": "static_repair", "sample_id": "mbpp_74_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_74", "bucket": "static_repair", "sample_id": "mbpp_74_sr_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_74", "bucket": "execution_repair", "sample_id": "mbpp_74_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_74", "bucket": "execution_repair", "sample_id": "mbpp_74_er_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_767", "bucket": "code", "sample_id": "mbpp_767_boundary_code_orig", "verified": true}
+{"family_id": "mbpp_fam_767", "bucket": "code", "sample_id": "mbpp_767_boundary_code_sig", "verified": true}
+{"family_id": "mbpp_fam_767", "bucket": "code", "sample_id": "mbpp_767_boundary_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_767", "bucket": "boundary", "sample_id": "mbpp_767_boundary_boundary", "verified": true}
+{"family_id": "mbpp_fam_767", "bucket": "static_repair", "sample_id": "mbpp_767_boundary_sr_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_767", "bucket": "static_repair", "sample_id": "mbpp_767_boundary_sr_off_by_one", "verified": false, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_767", "bucket": "static_repair", "sample_id": "mbpp_767_boundary_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_767", "bucket": "execution_repair", "sample_id": "mbpp_767_boundary_er_condition_error", "verified": true, "bug_type": "condition_error"}
+{"family_id": "mbpp_fam_767", "bucket": "execution_repair", "sample_id": "mbpp_767_boundary_er_off_by_one", "verified": false, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_767", "bucket": "execution_repair", "sample_id": "mbpp_767_boundary_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_78", "bucket": "code", "sample_id": "mbpp_78_code_orig", "verified": true}
+{"family_id": "mbpp_fam_78", "bucket": "code", "sample_id": "mbpp_78_code_sig", "verified": true}
+{"family_id": "mbpp_fam_78", "bucket": "code", "sample_id": "mbpp_78_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_78", "bucket": "boundary", "sample_id": "mbpp_78_boundary", "verified": true}
+{"family_id": "mbpp_fam_78", "bucket": "static_repair", "sample_id": "mbpp_78_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_78", "bucket": "static_repair", "sample_id": "mbpp_78_sr_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_78", "bucket": "execution_repair", "sample_id": "mbpp_78_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_78", "bucket": "execution_repair", "sample_id": "mbpp_78_er_branch_deletion", "verified": true, "bug_type": "branch_deletion"}
+{"family_id": "mbpp_fam_806", "bucket": "code", "sample_id": "mbpp_806_code_orig", "verified": true}
+{"family_id": "mbpp_fam_806", "bucket": "code", "sample_id": "mbpp_806_code_sig", "verified": true}
+{"family_id": "mbpp_fam_806", "bucket": "code", "sample_id": "mbpp_806_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_806", "bucket": "boundary", "sample_id": "mbpp_806_boundary", "verified": true}
+{"family_id": "mbpp_fam_806", "bucket": "static_repair", "sample_id": "mbpp_806_sr_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_806", "bucket": "static_repair", "sample_id": "mbpp_806_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_806", "bucket": "static_repair", "sample_id": "mbpp_806_sr_initialization_error", "verified": false, "bug_type": "initialization_error"}
+{"family_id": "mbpp_fam_806", "bucket": "execution_repair", "sample_id": "mbpp_806_er_off_by_one", "verified": true, "bug_type": "off_by_one"}
+{"family_id": "mbpp_fam_806", "bucket": "execution_repair", "sample_id": "mbpp_806_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_806", "bucket": "execution_repair", "sample_id": "mbpp_806_er_initialization_error", "verified": false, "bug_type": "initialization_error"}
+{"family_id": "mbpp_fam_835", "bucket": "code", "sample_id": "mbpp_835_boundary_code_orig", "verified": true}
+{"family_id": "mbpp_fam_835", "bucket": "code", "sample_id": "mbpp_835_boundary_code_sig", "verified": true}
+{"family_id": "mbpp_fam_835", "bucket": "code", "sample_id": "mbpp_835_boundary_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_835", "bucket": "boundary", "sample_id": "mbpp_835_boundary_boundary", "verified": true}
+{"family_id": "mbpp_fam_835", "bucket": "static_repair", "sample_id": "mbpp_835_boundary_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_835", "bucket": "execution_repair", "sample_id": "mbpp_835_boundary_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_892", "bucket": "code", "sample_id": "mbpp_892_boundary_code_orig", "verified": true}
+{"family_id": "mbpp_fam_892", "bucket": "code", "sample_id": "mbpp_892_boundary_code_sig", "verified": true}
+{"family_id": "mbpp_fam_892", "bucket": "code", "sample_id": "mbpp_892_boundary_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_892", "bucket": "boundary", "sample_id": "mbpp_892_boundary_boundary", "verified": true}
+{"family_id": "mbpp_fam_892", "bucket": "static_repair", "sample_id": "mbpp_892_boundary_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_892", "bucket": "execution_repair", "sample_id": "mbpp_892_boundary_er_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_896", "bucket": "code", "sample_id": "mbpp_896_er_return_value_error_code_orig", "verified": true}
+{"family_id": "mbpp_fam_896", "bucket": "code", "sample_id": "mbpp_896_er_return_value_error_code_sig", "verified": true}
+{"family_id": "mbpp_fam_896", "bucket": "code", "sample_id": "mbpp_896_er_return_value_error_code_pubex", "verified": true}
+{"family_id": "mbpp_fam_896", "bucket": "boundary", "sample_id": null, "verified": false, "note": "boundary generator returned None"}
+{"family_id": "mbpp_fam_896", "bucket": "static_repair", "sample_id": "mbpp_896_er_return_value_error_sr_return_value_error", "verified": true, "bug_type": "return_value_error"}
+{"family_id": "mbpp_fam_896", "bucket": "execution_repair", "sample_id": "mbpp_896_er_return_value_error_er_return_value_error", "verified": true, "bug_type": "return_value_error"}

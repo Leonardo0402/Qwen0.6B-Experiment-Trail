@@ -1,22 +1,32 @@
-# P3 Pilot Report — Issue #12 P8
+# P3 Independent Engineering Smoke Report — Issue #14 P0.2 Reclassification
 
-**Date:** 2026-07-05
-**Verdict:** PASS (both candidates, pilot mode)
-**Capability claims allowed:** NO (pilot only, not formal training)
+**Date:** 2026-07-05 (originally run as "Pilot", reclassified per Issue #14 P0.2)
+**Verdict:** PASS (engineering smoke, NOT compliant pilot)
+**Capability claims allowed:** NO (engineering smoke, not formal training)
+
+> **Reclassification Notice (Issue #14 P0.2):**
+> The two 50-step runs originally labeled "Pilot" exceed the 0.25-epoch
+> limit and are reclassified as **Independent Engineering Smoke**.
+> Compliant pilot max_steps (Issue #14 P0.3):
+> - Balanced: ceil(622/8)=78 steps/epoch, pilot_max=min(50, floor(0.25×78))=19
+> - Repair: ceil(490/8)=62 steps/epoch, pilot_max=min(50, floor(0.25×62))=15
+> The 50-step runs (~0.64 and ~0.81 epoch respectively) do NOT satisfy
+> the 0.25-epoch pilot contract. They remain valid as engineering smoke
+> evidence only.
 
 ---
 
-## Pilot Constraints
+## Engineering Smoke Context
 
-Per Issue #12 P8:
-- max 0.25 epoch / max 50 optimizer steps per candidate
+Per Issue #12 P8 (original) / Issue #14 P0.2 (reclassified):
+- 50 optimizer steps per candidate (exceeds 0.25 epoch)
 - GO_FOR_P3_PILOT_ONLY verdict (capacity < 2300 but >= 400)
 - Results must NOT be reported as formal capability
 - No Frozen v4 formal evaluation
 
 ---
 
-## Balanced Generalist Pilot
+## Balanced Generalist Engineering Smoke
 
 **Config:** `configs/p3/balanced-generalist-pilot.yaml` (max_steps=50, independent)
 **Adapter:** `adapters/p3/balanced-generalist-pilot/`
@@ -63,7 +73,7 @@ def divide(a,
 
 ---
 
-## Repair Specialist Pilot
+## Repair Specialist Engineering Smoke
 
 **Config:** `configs/p3/repair-specialist-pilot.yaml` (max_steps=50, independent)
 **Adapter:** `adapters/p3/repair-specialist-pilot/`
