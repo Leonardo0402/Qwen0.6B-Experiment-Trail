@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-04T17:58:11.552188+00:00",
+  "generated_at": "2026-07-05T04:15:21.745276+00:00",
   "generator": "build_balanced_generalist.py",
   "candidate_type": "balanced_generalist",
   "seed": 42,
@@ -11,42 +11,42 @@
     "execution_repair": 0.3
   },
   "actual_ratios": {
-    "code": 0.37524950099800397,
-    "boundary": 0.0,
-    "static_repair": 0.249500998003992,
-    "execution_repair": 0.37524950099800397
+    "code": 0.3022508038585209,
+    "boundary": 0.1945337620578778,
+    "static_repair": 0.20096463022508038,
+    "execution_repair": 0.3022508038585209
   },
   "ratio_tolerance_pp": 3,
-  "ratio_within_tolerance": false,
+  "ratio_within_tolerance": true,
   "train": {
-    "count": 501,
+    "count": 622,
     "target_count": 626,
     "variant_distribution": {
       "code": 188,
-      "boundary": 0,
+      "boundary": 121,
       "static_repair": 125,
       "execution_repair": 188
     },
-    "family_count": 301,
-    "sha256": "83951a40dc2d5a574b83f125f367b803e20f2cfdde630dc8ee45fe8c95b12cb9"
+    "family_count": 332,
+    "sha256": "95ba99c073018fc407bede4a196c35a9afb0b9a6d9ded6615631eb262274b2cf"
   },
   "validation": {
-    "count": 90,
-    "family_count": 90,
-    "sha256": "1f1d38c1a11b4cac2e8e18a8be5ed5dc6e3d20b08f622dfa5358a4f056230985"
+    "count": 180,
+    "family_count": 45,
+    "sha256": "e481126d0d4ec5743d1e0bd47f5bd5db3e8350b21f09145d948335a0e64ecce6"
   },
   "families": {
-    "train_family_count": 301,
-    "validation_family_count": 90,
-    "total_family_count": 391,
+    "train_family_count": 332,
+    "validation_family_count": 45,
+    "total_family_count": 377,
     "train_validation_disjoint": true
   },
   "pool_source": {
     "path": "data/p3-curriculum/canonical-pool.jsonl",
     "total_pool_samples": 782,
-    "samples_selected": 501,
-    "samples_rejected": 281,
-    "unverified_excluded": 132
+    "samples_selected": 622,
+    "samples_rejected": 160,
+    "unverified_excluded": 11
   },
   "deviations": {
     "verified_backfill_applied": true,

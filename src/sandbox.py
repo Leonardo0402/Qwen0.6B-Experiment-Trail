@@ -238,6 +238,26 @@ def run_python_code(
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+def _has_bare_asserts_before_import(test_code: str) -> bool:
+    """Return True if any ``assert `` statement appears before the first
+    ``from solution import`` line in *test_code*.
+
+    This detects the mixed-format case where bare-assert public tests are
+    concatenated before a pytest test-function block that starts with its
+    own ``from solution import`` header.  Without intervention, the bare
+    asserts run at module top-level BEFORE the import line and raise
+    ``NameError`` during pytest collection because the function under test
+    is undefined in the test module's namespace.
+    """
+    for line in test_code.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("from solution"):
+            return False  # reached the import line; no bare asserts before it
+        if stripped.startswith("assert "):
+            return True
+    return False
+
+
 def _normalize_test_code(test_code: str) -> str:
     """Normalize bare-assert test code to a pytest-collectable format.
 
@@ -255,13 +275,24 @@ def _normalize_test_code(test_code: str) -> str:
             <indented asserts>
 
     Test code that already contains ``from solution`` or ``def test_`` is
-    returned unchanged.  Empty / comment-only test code is also returned
-    unchanged (the caller handles "no tests" as a failure).
+    returned unchanged — UNLESS it is a mixed-format file where bare asserts
+    appear BEFORE the first ``from solution`` line (produced by
+    ``generate_boundary_variants.py`` concatenating bare-assert public tests
+    with pytest test functions).  In that case ``from solution import *`` is
+    prepended at the top so the bare asserts resolve the function under test.
+    Empty / comment-only test code is also returned unchanged (the caller
+    handles "no tests" as a failure).
     """
     if not test_code or not test_code.strip():
         return test_code
-    # Already in pytest format - leave as-is
-    if "from solution" in test_code or "def test" in test_code:
+    # Mixed-format: `from solution` present AND bare asserts precede it.
+    # Prepend `from solution import *` so the bare asserts resolve.
+    if "from solution" in test_code:
+        if _has_bare_asserts_before_import(test_code):
+            return "from solution import *\n\n" + test_code
+        return test_code
+    # Already in pytest format (def test_* but no from solution) - leave as-is
+    if "def test" in test_code:
         return test_code
     # No asserts to wrap
     if "assert" not in test_code:

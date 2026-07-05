@@ -1,0 +1,47 @@
+# P3 Balanced Generalist Pilot — Issue #12 Phase D
+# Controlled pilot: max 0.25 epoch (~20 steps) on RTX 3050.
+# Results must NOT be reported as formal capability (GO_FOR_P3_PILOT_ONLY).
+training_mode: continual
+model_name_or_path: models/Qwen3-0.6B
+initial_adapter: adapters/p2/continual/stage3-repair-v3  # Continue from P2 final
+
+train_file: data/p3-curriculum/balanced-generalist/train.jsonl
+eval_file: data/p3-curriculum/validation-v2/validation.jsonl
+output_dir: adapters/p3/balanced-generalist-pilot
+dataset_manifest: data/p3-curriculum/balanced-generalist/manifest.json
+
+# RTX 3050 4GB constraints
+max_seq_length: 384
+num_train_epochs: 0.25  # Issue #12: max 0.25 epoch (~20 steps)
+learning_rate: 0.00002
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 0.3
+
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+
+bf16: true  # runtime_check: torch.cuda.is_bf16_supported() called in train_lora.py
+fp16: false
+gradient_checkpointing: true
+use_cache: false
+
+logging_steps: 5
+save_steps: 25
+eval_steps: 10
+save_total_limit: 2
+
+assistant_only_loss: true
+truncation_policy: preserve_assistant
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+seed: 42
+dataloader_num_workers: 0
+report_to: none

@@ -1,16 +1,16 @@
 # P3 Repair Specialist — Issue #9 §6.1
 # Train: 493 samples (15/15/30/40 code/boundary/static/exec)
-# Validation: 90 samples (code-only, shared with Balanced Generalist)
+# Validation: 180 samples (4 categories x 45, shared with Balanced Generalist)
 training_mode: continual
 model_name_or_path: models/Qwen3-0.6B
-initial_adapter: adapters/p2/continual/stage3-repair-v3-antiforget  # Continue from P2 final
+initial_adapter: adapters/p2/continual/stage3-repair-v3  # Continue from P2 final (Stage3-v3-Antiforget)
 
 train_file: data/p3-curriculum/repair-specialist/train.jsonl
-eval_file: data/p3-curriculum/repair-specialist/validation.jsonl
+eval_file: data/p3-curriculum/validation-v2/validation.jsonl
 output_dir: adapters/p3/repair-specialist
 dataset_manifest: data/p3-curriculum/repair-specialist/manifest.json
-frozen_eval_file: data/frozen-eval/v3/test_raw.jsonl
-frozen_eval_manifest: data/frozen-eval/v3/manifest.json
+frozen_eval_file: data/frozen-eval/v4/test_raw.jsonl
+frozen_eval_manifest: data/frozen-eval/v4/manifest.json
 
 # RTX 3050 4GB constraints
 max_seq_length: 384
@@ -26,11 +26,8 @@ per_device_eval_batch_size: 1
 gradient_accumulation_steps: 8
 
 # BF16 with explicit FP16 fallback (Amendment A11 — no silent fallback)
-bf16:
-  enabled: true
-  runtime_check: true  # Call torch.cuda.is_bf16_supported(); if False, fall back to fp16 and log warning
-fp16:
-  enabled: false  # Only used if bf16 unsupported
+bf16: true  # runtime_check: torch.cuda.is_bf16_supported() called in train_lora.py
+fp16: false  # Only used if bf16 unsupported
 gradient_checkpointing: true
 use_cache: false
 
@@ -71,13 +68,14 @@ checkpoint_evaluator:
     full_validation: true
     composite_score: true
 
-# Composite Score formula (Issue #9 §6.5 — Repair Specialist)
-# Match training ratio 15/15/30/40
+# Composite Score formula (Issue #12 — 5-component with format_compliance_rate)
+# Original 15/15/30/40 scaled by 0.9 + 10% format_compliance
 composite_score:
-  code_generation_pass_at_1: 0.15
-  boundary_pass_at_1: 0.15  # variant_type="boundary", task_type="code_generation"
-  static_repair_success: 0.30
-  execution_repair_success: 0.40
+  code_generation_pass_at_1: 0.13
+  boundary_pass_at_1: 0.13  # variant_type="boundary", task_type="code_generation"
+  static_repair_success: 0.27
+  execution_repair_success: 0.37
+  format_compliance_rate: 0.10  # Issue #12: cross-cutting 5th component
   # Hard constraint: code_generation drop vs P2 final <= 3.0 percentage points
   hard_constraint:
     code_generation_drop_vs_p2_final_max_pct: 3.0
@@ -95,4 +93,4 @@ early_stopping:
 # Best checkpoint selection (Amendment A11 — by full Validation Composite only)
 best_checkpoint:
   selection_metric: full_validation_composite
-  never_use: [frozen_v3, probe]  # Best checkpoint NEVER selected by frozen v3 or probe
+  never_use: [frozen_v4, probe]  # Best checkpoint NEVER selected by frozen v4 or probe

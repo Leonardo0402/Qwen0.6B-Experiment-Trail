@@ -33,6 +33,15 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 
 **关键发现**: Fix 1 回填揭露了 boundary 变体生成器的固有 bug — 125/125 boundary 样本的 target_code 在边界输入（0/-1/1）下返回错误值，全部 verified=False。这意味着 boundary 变体生成器本身需要后续修复（超出 Issue #10 scope）。
 
+## Issue #12: P3.6 — Boundary 数据链修复 + Repair-capable Eval v4 + GPU Pilot
+
+- **Phase A**: 修复 Boundary 生成器 bug — COMPLETE (`_normalize_test_code` in `src/sandbox.py` 处理 mixed-format test code; boundary verified 0/125 → 121/125)
+- **Phase B**: 重建数据 — COMPLETE (Validation v2: 180 samples 4×45; Balanced: 622 samples; Repair: 490 samples; Frozen Eval v4: 860 samples = 300 v3 + 530 repair + 30 canary_repair, 用 py -3.11 构建)
+- **Phase C**: 配置 + Gate 修复 — COMPLETE (两 YAML 引用 v4 eval + 5 分量 Composite; `format_compliance_rate` 作为第 5 分量; 逐候选 Capacity Gate; verified 一致性 Gate; bf16/fp16 dict→bool 修复; initial_adapter 路径修复)
+- **Phase D**: GPU Smoke + Pilot — COMPLETE (torch 2.6.0+cu124 安装于 Python 3.11; GPU Smoke PASS on RTX 3050: bf16=True; Pilot: 20/20 steps, 0.25 epoch, train_loss 0.84→0.40, eval_loss 0.5935, peak GPU 1350 MiB, adapter save/reload verified)
+
+**最终 Readiness Gate 输出**: Verdict = `GO_FOR_P3_PILOT_ONLY`（12/12 检查全 PASS，含 Check 6b GPU smoke PASS on RTX 3050；Check 10 verdict_impact=PILOT_ONLY 因 train 总量 1112 < 2300）。**Pilot 已完成（balanced-generalist, 0.25 epoch）。**
+
 ## Minor Findings (triaged by final review)
 
 - Task 1 #1: review-diff.txt 为空（19 字节），git diff 重定向问题；reviewer 直接审阅实际文件绕过。后续 task 改用 `git show` 或分步生成 diff 文件。

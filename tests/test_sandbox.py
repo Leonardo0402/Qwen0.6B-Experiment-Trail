@@ -19,10 +19,13 @@ import pytest
 from src.sandbox import (
     ExecResult,
     PytestResult,
+    _normalize_test_code,
     check_code_safety,
     run_python_code,
     run_pytest,
 )
+from src.schemas import Sample, Verification
+from src.validators import verify_sample
 
 
 # ===========================================================================
@@ -244,6 +247,145 @@ class TestRunPytest:
         result = run_pytest(broken, bare, timeout_s=15.0)
         assert result.passed is False
         assert result.num_failed >= 1
+
+
+
+# ===========================================================================
+# _normalize_test_code — mixed-format handling (P3 boundary-variant fix)
+# ===========================================================================
+
+
+class TestNormalizeTestCodeMixedFormat:
+    """Tests for _normalize_test_code() with mixed-format input.
+
+    Boundary-variant samples produced by ``generate_boundary_variants.py``
+    concatenate bare-assert ``public_tests`` with pytest test functions
+    (which start with their own ``from solution import`` header). The bare
+    asserts end up BEFORE the import line, causing ``NameError`` during
+    pytest collection because the function under test is undefined in the
+    test module's namespace at module top-level.
+
+    The fix: when ``from solution`` is present AND bare asserts appear
+    before it, prepend ``from solution import *`` so the bare asserts
+    resolve the function under test.
+    """
+
+    def test_mixed_format_prepends_star_import(self):
+        """Bare asserts before ``from solution`` line must trigger a
+        ``from solution import *`` prefix so the bare asserts resolve."""
+        mixed = (
+            "assert add(1, 2) == 3\n"
+            "\n"
+            "from solution import add\n"
+            "\n"
+            "def test_add_positive():\n"
+            "    assert add(2, 3) == 5\n"
+        )
+        normalized = _normalize_test_code(mixed)
+        # The star-import header must be prepended at the very top.
+        assert normalized.startswith("from solution import *\n\n"), (
+            f"expected star-import prefix; got:\n{normalized!r}"
+        )
+        # The bare assert must still be present (after the new import).
+        assert "assert add(1, 2) == 3" in normalized
+        # The original `from solution import add` line must be preserved
+        # (not dropped) — pytest test functions still reference `add`.
+        assert "from solution import add" in normalized
+        assert "def test_add_positive" in normalized
+
+    def test_mixed_format_no_bare_asserts_before_import_unchanged(self):
+        """When ``from solution`` is present but no bare asserts precede it,
+        the code is returned unchanged (existing behaviour)."""
+        code = (
+            "from solution import add\n"
+            "\n"
+            "def test_add_positive():\n"
+            "    assert add(2, 3) == 5\n"
+        )
+        assert _normalize_test_code(code) == code
+
+    def test_mixed_format_run_pytest_passes(self):
+        """End-to-end via run_pytest: a mixed-format test file (bare asserts
+        before the import line) must pass against a correct solution."""
+        target = "def add(a, b):\n    return a + b\n"
+        mixed = (
+            "assert add(1, 2) == 3\n"
+            "assert add(0, 0) == 0\n"
+            "\n"
+            "from solution import add\n"
+            "\n"
+            "def test_add_positive():\n"
+            "    assert add(2, 3) == 5\n"
+        )
+        result = run_pytest(target, mixed, timeout_s=15.0)
+        assert result.passed is True, (
+            f"expected pass; stdout={result.stdout}\nstderr={result.stderr}"
+        )
+        # Only the explicit `def test_add_positive` is counted as a collected
+        # test item (bare asserts at module top-level execute during
+        # collection but are not counted as test items).
+        assert result.num_passed == 1
+        assert result.num_failed == 0
+
+    def test_mixed_format_run_pytest_bare_assert_failure_reported(self):
+        """If a bare assert in the mixed-format block fails, pytest must
+        report it as a collection error (num_failed >= 1)."""
+        target = "def add(a, b):\n    return a - b\n"  # intentionally wrong
+        mixed = (
+            "assert add(1, 2) == 3\n"
+            "\n"
+            "from solution import add\n"
+            "\n"
+            "def test_add_positive():\n"
+            "    assert add(2, 3) == 5\n"
+        )
+        result = run_pytest(target, mixed, timeout_s=15.0)
+        assert result.passed is False
+        assert result.num_failed >= 1
+
+    def test_verify_sample_mixed_format_public_tests_passes(self):
+        """Regression: verify_sample on a sample with mixed-format
+        public_tests (bare asserts before ``from solution import``) must
+        report ``pytest_ok=True``.
+
+        This mirrors the boundary-variant bug where 125/125 samples had
+        ``verified=False`` because bare asserts ran before the import line,
+        triggering ``NameError`` during pytest collection.
+        """
+        sample = Sample(
+            sample_id="mbpp_42_mixed_regression",
+            family_id="mbpp_fam_42",
+            difficulty=1,
+            task_type="code_generation",
+            language="python",
+            skill_tags=["test"],
+            instruction="Write a function.",
+            broken_code=None,
+            execution_feedback=None,
+            target_code="def add(a, b):\n    return a + b\n",
+            public_tests=(
+                "assert add(1, 2) == 3\n"
+                "assert add(0, 0) == 0\n"
+                "\n"
+                "from solution import add\n"
+                "\n"
+                "def test_add_positive():\n"
+                "    assert add(2, 3) == 5\n"
+            ),
+            hidden_tests="assert add(-1, 1) == 0\n",
+            verified=False,
+            verification=Verification(
+                syntax_ok=False, pytest_ok=False, ruff_ok=False, timeout=False
+            ),
+            generator="test",
+            created_at="2026-01-01T00:00:00+00:00",
+            dataset_version="mbpp-v1",
+        )
+        sv = verify_sample(sample, run_ruff=False)
+        assert sv.verification.pytest_ok is True, (
+            f"expected pytest_ok=True; messages: {sv.messages}"
+        )
+        assert sv.is_accepted is True
 
 
 

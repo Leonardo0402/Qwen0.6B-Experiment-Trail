@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-05T04:08:22.989628+00:00",
+  "generator": "build_validation_v2.py",
+  "seed": 42,
+  "target_per_category": 45,
+  "total_samples": 180,
+  "variant_distribution": {
+    "code": 45,
+    "boundary": 45,
+    "static_repair": 45,
+    "execution_repair": 45
+  },
+  "families": {
+    "validation_family_count": 45,
+    "validation_family_ids": [
+      "mbpp_fam_126",
+      "mbpp_fam_130",
+      "mbpp_fam_150",
+      "mbpp_fam_153",
+      "mbpp_fam_16",
+      "mbpp_fam_165",
+      "mbpp_fam_214",
+      "mbpp_fam_220",
+      "mbpp_fam_249",
+      "mbpp_fam_332",
+      "mbpp_fam_387",
+      "mbpp_fam_395",
+      "mbpp_fam_431",
+      "mbpp_fam_436",
+      "mbpp_fam_450",
+      "mbpp_fam_477",
+      "mbpp_fam_478",
+      "mbpp_fam_513",
+      "mbpp_fam_515",
+      "mbpp_fam_516",
+      "mbpp_fam_518",
+      "mbpp_fam_524",
+      "mbpp_fam_527",
+      "mbpp_fam_536",
+      "mbpp_fam_540",
+      "mbpp_fam_543",
+      "mbpp_fam_548",
+      "mbpp_fam_550",
+      "mbpp_fam_555",
+      "mbpp_fam_558",
+      "mbpp_fam_567",
+      "mbpp_fam_574",
+      "mbpp_fam_578",
+      "mbpp_fam_581",
+      "mbpp_fam_583",
+      "mbpp_fam_584",
+      "mbpp_fam_587",
+      "mbpp_fam_590",
+      "mbpp_fam_593",
+      "mbpp_fam_594",
+      "mbpp_fam_597",
+      "mbpp_fam_598",
+      "mbpp_fam_600",
+      "mbpp_fam_66",
+      "mbpp_fam_92"
+    ],
+    "disjoint_from": [
+      "p3_train",
+      "frozen_v3"
+    ]
+  },
+  "validation": {
+    "count": 180,
+    "sha256": "e481126d0d4ec5743d1e0bd47f5bd5db3e8350b21f09145d948335a0e64ecce6",
+    "path": "data/p3-curriculum/validation-v2/validation.jsonl"
+  },
+  "rejected": {
+    "count": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "path": "data/p3-curriculum/validation-v2/rejected.jsonl"
+  },
+  "source": {
+    "code_pool_size": 90,
+    "code_subsampled": 45,
+    "p3_validation_family_count": 90
+  }
+}

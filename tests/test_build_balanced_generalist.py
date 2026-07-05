@@ -3,7 +3,7 @@
 Covers the 10 integration tests specified in ``.superpowers/sdd/task-11-brief.md``:
 
   1. test_train_count -- train.jsonl has 626 samples
-  2. test_validation_count -- validation.jsonl has 90 samples
+  2. test_validation_count -- validation.jsonl has 180 samples (4 categories x 45)
   3. test_ratio_within_tolerance -- all 4 variant ratios within ±3pp of 30/20/20/30
   4. test_train_validation_disjoint -- no family in both train and validation
   5. test_train_frozen_v3_disjoint -- no frozen_v3 family in train
@@ -14,7 +14,9 @@ Covers the 10 integration tests specified in ``.superpowers/sdd/task-11-brief.md
   10. test_manifest_consistency -- manifest counts match actual files
 
 These tests use the REAL data files (data/p3-curriculum/balanced-generalist/*)
-produced by ``scripts/build_balanced_generalist.py``. If the output files do
+produced by ``scripts/build_balanced_generalist.py``. The validation file is
+the shared Validation v2 (data/p3-curriculum/validation-v2/validation.jsonl)
+produced by ``scripts/build_validation_v2.py``. If the output files do
 not exist yet, the tests are SKIPPED with a clear instruction to run the
 orchestrator first.
 """
@@ -41,7 +43,12 @@ from src.schemas import Sample  # noqa: E402
 
 OUTPUT_DIR = _ROOT / "data" / "p3-curriculum" / "balanced-generalist"
 TRAIN_PATH = OUTPUT_DIR / "train.jsonl"
-VALIDATION_PATH = OUTPUT_DIR / "validation.jsonl"
+# Validation v2 is the shared file produced by scripts/build_validation_v2.py
+# (4 categories x 45 = 180 samples). It is NOT an output of
+# build_balanced_generalist.py -- only its SHA256 is recorded in the manifest.
+VALIDATION_PATH = (
+    _ROOT / "data" / "p3-curriculum" / "validation-v2" / "validation.jsonl"
+)
 MANIFEST_PATH = OUTPUT_DIR / "manifest.json"
 FAMILIES_PATH = OUTPUT_DIR / "families.json"
 REJECTED_PATH = OUTPUT_DIR / "rejected.jsonl"
@@ -51,9 +58,11 @@ POOL_PATH = _ROOT / "data" / "p3-curriculum" / "canonical-pool.jsonl"
 PARTITION_PATH = _ROOT / "data" / "p3-curriculum" / "family-partition.json"
 FROZEN_V3_FAMILIES_PATH = _ROOT / "data" / "frozen-eval" / "v3" / "families.json"
 SCRIPT_PATH = _ROOT / "scripts" / "build_balanced_generalist.py"
+VALIDATION_SCRIPT_PATH = _ROOT / "scripts" / "build_validation_v2.py"
 
 EXPECTED_TRAIN_COUNT = 626
-EXPECTED_VALIDATION_COUNT = 90
+EXPECTED_VALIDATION_COUNT = 180  # 4 categories x 45 (Validation v2)
+EXPECTED_VALIDATION_PER_CATEGORY = 45
 EXPECTED_REJECTED_COUNT = 156
 SEED = 42
 
@@ -108,20 +117,26 @@ def generated_train() -> list:
 
 @pytest.fixture(scope="module")
 def generated_validation() -> list:
-    """Ensure validation.jsonl exists and return a list of Sample objects."""
+    """Ensure validation.jsonl exists and return a list of Sample objects.
+
+    The validation file is the shared Validation v2 produced by
+    ``scripts/build_validation_v2.py`` (4 categories x 45 = 180 samples).
+    If missing, run the Validation v2 builder first, then the balanced
+    generalist builder (so the manifest records the validation SHA256).
+    """
     if not VALIDATION_PATH.exists():
         result = subprocess.run(
-            [sys.executable, str(SCRIPT_PATH)],
+            [sys.executable, str(VALIDATION_SCRIPT_PATH)],
             capture_output=True, text=True, cwd=str(_ROOT),
         )
         if result.returncode != 0:
             pytest.fail(
-                f"build_balanced_generalist.py failed (exit "
+                f"build_validation_v2.py failed (exit "
                 f"{result.returncode}):\nstdout:\n{result.stdout}\n"
                 f"stderr:\n{result.stderr}"
             )
     if not VALIDATION_PATH.exists():
-        pytest.skip("validation.jsonl not produced by the orchestrator")
+        pytest.skip("validation.jsonl not produced by build_validation_v2.py")
     samples: list = []
     with VALIDATION_PATH.open(encoding="utf-8") as fh:
         for line in fh:
@@ -177,11 +192,29 @@ def test_train_count(generated_train):
 # ---------------------------------------------------------------------------
 
 def test_validation_count(generated_validation):
-    """validation.jsonl has exactly 90 samples."""
+    """validation.jsonl has exactly 180 samples (4 categories x 45).
+
+    Validates the Validation v2 structure: each of code/boundary/
+    static_repair/execution_repair must have exactly 45 samples.
+    """
     count = len(generated_validation)
     assert count == EXPECTED_VALIDATION_COUNT, (
         f"validation count {count} != {EXPECTED_VALIDATION_COUNT}"
     )
+    # Validation v2: 4 categories x 45 each
+    val_variant_counts = {
+        "code": 0, "boundary": 0,
+        "static_repair": 0, "execution_repair": 0,
+    }
+    for s in generated_validation:
+        vt = s.variant_type
+        if vt in val_variant_counts:
+            val_variant_counts[vt] += 1
+    for v in ("code", "boundary", "static_repair", "execution_repair"):
+        assert val_variant_counts[v] == EXPECTED_VALIDATION_PER_CATEGORY, (
+            f"validation category {v} count {val_variant_counts[v]} != "
+            f"{EXPECTED_VALIDATION_PER_CATEGORY}"
+        )
 
 
 # ---------------------------------------------------------------------------

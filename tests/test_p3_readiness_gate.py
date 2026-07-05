@@ -9,6 +9,7 @@ Per .superpowers/sdd/task-14-brief.md Part E + Issue #10 Fix 2+5+6.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -61,9 +62,9 @@ def test_check2_pairwise_disjoint():
 def test_check3_assistant_retention():
     passed, details = gate.check3_assistant_retention()
     assert passed is True, f"assistant retention failed: {details}"
-    # Fix 1 backfilled verified, capacity reduced: 501 + 416 = 917 total
-    assert details["checked"] == 917
-    assert details["retained"] == 917
+    # Issue #12 rebuild: 622 (balanced) + 490 (repair) = 1112 total
+    assert details["checked"] == 1112
+    assert details["retained"] == 1112
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@ def test_check4_silent_truncation_zero():
     assert passed is True, f"silent truncation check failed: {details}"
     # PASS criterion: 0 real silent truncations (assistant target cut)
     assert details["real_silent_truncations"] == 0
-    assert details["checked"] == 917
+    assert details["checked"] == 1112
     # potential_truncations is informational; we expect a small number of
     # boundary samples to exceed 384 chars//4 = 384 token estimate, but the
     # assistant target itself is never cut under preserve_assistant policy.
@@ -205,24 +206,25 @@ def test_check9_baseline_lock_present():
 # ---------------------------------------------------------------------------
 
 def test_check10_capacity_pass_when_above_min(tmp_path):
-    """total >= MIN_TRAIN_SAMPLES_FOR_FULL -> PASS, verdict_impact=FULL."""
+    """Issue #12: BOTH candidates >= MIN -> PASS, verdict_impact=FULL."""
     balanced = tmp_path / "balanced.jsonl"
     repair = tmp_path / "repair.jsonl"
-    balanced.write_text("\n".join('{"x":1}' for _ in range(1500)) + "\n", encoding="utf-8")
-    repair.write_text("\n".join('{"x":1}' for _ in range(900)) + "\n", encoding="utf-8")
+    balanced.write_text("\n".join('{"x":1}' for _ in range(2500)) + "\n", encoding="utf-8")
+    repair.write_text("\n".join('{"x":1}' for _ in range(2400)) + "\n", encoding="utf-8")
 
     passed, details = gate.check10_train_capacity(balanced, repair)
     assert passed is True
-    assert details["balanced_train"] == 1500
-    assert details["repair_train"] == 900
-    assert details["total"] == 2400
+    assert details["balanced_train"] == 2500
+    assert details["repair_train"] == 2400
+    assert details["total"] == 4900
     assert details["verdict_impact"] == "FULL"
-    assert details["min_threshold"] == gate.MIN_TRAIN_SAMPLES_FOR_FULL
-    assert details["max_threshold"] == gate.MAX_TRAIN_SAMPLES_FOR_FULL
+    assert details["balanced_verdict"] == "FULL"
+    assert details["repair_verdict"] == "FULL"
+    assert details["per_candidate_check"] is True
 
 
 def test_check10_capacity_warn_when_below_min(tmp_path):
-    """0 < total < MIN_TRAIN_SAMPLES_FOR_FULL -> PASS, verdict_impact=PILOT_ONLY."""
+    """Issue #12: BOTH candidates < MIN (but >0) -> PASS, verdict_impact=PILOT_ONLY."""
     balanced = tmp_path / "balanced.jsonl"
     repair = tmp_path / "repair.jsonl"
     balanced.write_text("\n".join('{"x":1}' for _ in range(500)) + "\n", encoding="utf-8")
@@ -232,10 +234,26 @@ def test_check10_capacity_warn_when_below_min(tmp_path):
     assert passed is True
     assert details["total"] == 900
     assert details["verdict_impact"] == "PILOT_ONLY"
+    assert details["balanced_verdict"] == "PILOT_ONLY"
+    assert details["repair_verdict"] == "PILOT_ONLY"
+
+
+def test_check10_capacity_mixed_per_candidate(tmp_path):
+    """Issue #12: one candidate >= MIN, other < MIN -> PILOT_ONLY."""
+    balanced = tmp_path / "balanced.jsonl"
+    repair = tmp_path / "repair.jsonl"
+    balanced.write_text("\n".join('{"x":1}' for _ in range(2500)) + "\n", encoding="utf-8")
+    repair.write_text("\n".join('{"x":1}' for _ in range(400)) + "\n", encoding="utf-8")
+
+    passed, details = gate.check10_train_capacity(balanced, repair)
+    assert passed is True
+    assert details["verdict_impact"] == "PILOT_ONLY"
+    assert details["balanced_verdict"] == "FULL"
+    assert details["repair_verdict"] == "PILOT_ONLY"
 
 
 def test_check10_capacity_fail_when_zero(tmp_path):
-    """total == 0 -> FAIL, verdict_impact=FAIL."""
+    """Any candidate == 0 -> FAIL, verdict_impact=FAIL."""
     balanced = tmp_path / "balanced_empty.jsonl"
     repair = tmp_path / "repair_empty.jsonl"
     balanced.write_text("", encoding="utf-8")
@@ -245,6 +263,45 @@ def test_check10_capacity_fail_when_zero(tmp_path):
     assert passed is False
     assert details["total"] == 0
     assert details["verdict_impact"] == "FAIL"
+
+
+# ---------------------------------------------------------------------------
+# Check 11: verified consistency (Issue #12)
+# ---------------------------------------------------------------------------
+
+def test_check11_verified_consistency_pass(tmp_path):
+    """All samples consistent (verified=True with syntax_ok+pytest_ok)."""
+    balanced = tmp_path / "balanced.jsonl"
+    repair = tmp_path / "repair.jsonl"
+    samples = [
+        {"sample_id": "s1", "verified": True, "verification": {"syntax_ok": True, "pytest_ok": True}},
+        {"sample_id": "s2", "verified": True, "verification": {"syntax_ok": True, "pytest_ok": True}},
+    ]
+    balanced.write_text("\n".join(json.dumps(s) for s in samples) + "\n", encoding="utf-8")
+    repair.write_text("", encoding="utf-8")
+
+    passed, details = gate.check11_verified_consistency(balanced, repair)
+    assert passed is True
+    assert details["checked"] == 2
+    assert details["inconsistent_count"] == 0
+
+
+def test_check11_verified_consistency_fail(tmp_path):
+    """verified=True but pytest_ok=False -> inconsistent."""
+    balanced = tmp_path / "balanced.jsonl"
+    repair = tmp_path / "repair.jsonl"
+    samples = [
+        {"sample_id": "s1", "verified": True, "verification": {"syntax_ok": True, "pytest_ok": True}},
+        {"sample_id": "s2", "verified": True, "verification": {"syntax_ok": True, "pytest_ok": False}},
+    ]
+    balanced.write_text("\n".join(json.dumps(s) for s in samples) + "\n", encoding="utf-8")
+    repair.write_text("", encoding="utf-8")
+
+    passed, details = gate.check11_verified_consistency(balanced, repair)
+    assert passed is False
+    assert details["checked"] == 2
+    assert details["inconsistent_count"] == 1
+    assert "s2" in details["inconsistent_sample_ids"]
 
 
 # ---------------------------------------------------------------------------

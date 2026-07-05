@@ -482,6 +482,7 @@ def run_training(config_path: str) -> int:
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=cfg.get("num_train_epochs", 2),
+        max_steps=cfg.get("max_steps", -1),
         per_device_train_batch_size=cfg.get("per_device_train_batch_size", 1),
         per_device_eval_batch_size=cfg.get("per_device_eval_batch_size", 1),
         gradient_accumulation_steps=cfg.get("gradient_accumulation_steps", 8),

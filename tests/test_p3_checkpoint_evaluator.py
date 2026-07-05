@@ -155,19 +155,19 @@ class TestConfigSchema:
         assert cfg["lora"]["alpha"] == 32
         assert cfg["lora"]["dropout"] == 0.05
         assert len(cfg["lora"]["target_modules"]) == 7
-        # bf16 block
-        assert cfg["bf16"]["enabled"] is True
-        assert cfg["bf16"]["runtime_check"] is True
-        assert cfg["fp16"]["enabled"] is False
+        # bf16/fp16 (bool, not dict — matches train_lora.py and TrainingArguments)
+        assert cfg["bf16"] is True
+        assert cfg["fp16"] is False
         # checkpoint_evaluator with tier1/tier2/tier3
         ce = cfg["checkpoint_evaluator"]
         for tier in ("tier1", "tier2", "tier3"):
             assert tier in ce, f"missing {tier}"
-        # composite_score with 4 weights
+        # composite_score with 5 weights (Issue #12: + format_compliance_rate)
         cs = cfg["composite_score"]
         for w in [
             "code_generation_pass_at_1", "boundary_pass_at_1",
             "static_repair_success", "execution_repair_success",
+            "format_compliance_rate",
         ]:
             assert w in cs, f"missing composite weight: {w}"
         assert "hard_constraint" in cs
@@ -178,7 +178,7 @@ class TestConfigSchema:
         # best_checkpoint
         bc = cfg["best_checkpoint"]
         assert bc["selection_metric"] == "full_validation_composite"
-        assert bc["never_use"] == ["frozen_v3", "probe"]
+        assert bc["never_use"] == ["frozen_v4", "probe"]
 
     def test_config_schema_repair(self) -> None:
         cfg = _load_yaml(REPAIR_CONFIG_PATH)
@@ -193,9 +193,8 @@ class TestConfigSchema:
         assert cfg["lora"]["alpha"] == 32
         assert cfg["lora"]["dropout"] == 0.05
         assert len(cfg["lora"]["target_modules"]) == 7
-        assert cfg["bf16"]["enabled"] is True
-        assert cfg["bf16"]["runtime_check"] is True
-        assert cfg["fp16"]["enabled"] is False
+        assert cfg["bf16"] is True
+        assert cfg["fp16"] is False
         ce = cfg["checkpoint_evaluator"]
         for tier in ("tier1", "tier2", "tier3"):
             assert tier in ce
@@ -203,6 +202,7 @@ class TestConfigSchema:
         for w in [
             "code_generation_pass_at_1", "boundary_pass_at_1",
             "static_repair_success", "execution_repair_success",
+            "format_compliance_rate",
         ]:
             assert w in cs
         assert "hard_constraint" in cs
@@ -211,10 +211,10 @@ class TestConfigSchema:
         assert es["full_validation_confirm"] is True
         bc = cfg["best_checkpoint"]
         assert bc["selection_metric"] == "full_validation_composite"
-        assert bc["never_use"] == ["frozen_v3", "probe"]
-        # Repair-specific paths
+        assert bc["never_use"] == ["frozen_v4", "probe"]
+        # Repair-specific paths (eval_file is the shared Validation v2 file
+        # and does not contain "repair-specialist" -- only train/output/manifest do)
         assert "repair-specialist" in cfg["train_file"]
-        assert "repair-specialist" in cfg["eval_file"]
         assert "repair-specialist" in cfg["output_dir"]
         assert "repair-specialist" in cfg["dataset_manifest"]
 
@@ -233,14 +233,16 @@ class TestCompositeWeights:
             cs["boundary_pass_at_1"],
             cs["static_repair_success"],
             cs["execution_repair_success"],
+            cs["format_compliance_rate"],
         ]
         # Sum to 1.0 within tolerance
         assert abs(sum(weights) - 1.0) < 0.01
-        # Match 30/20/20/30 within +-0.01
-        assert abs(cs["code_generation_pass_at_1"] - 0.30) < 0.01
-        assert abs(cs["boundary_pass_at_1"] - 0.20) < 0.01
-        assert abs(cs["static_repair_success"] - 0.20) < 0.01
-        assert abs(cs["execution_repair_success"] - 0.30) < 0.01
+        # Issue #12: 27/18/18/27/10 (original 30/20/20/30 scaled by 0.9 + 10% fmt)
+        assert abs(cs["code_generation_pass_at_1"] - 0.27) < 0.01
+        assert abs(cs["boundary_pass_at_1"] - 0.18) < 0.01
+        assert abs(cs["static_repair_success"] - 0.18) < 0.01
+        assert abs(cs["execution_repair_success"] - 0.27) < 0.01
+        assert abs(cs["format_compliance_rate"] - 0.10) < 0.01
 
     def test_config_ratio_weights_repair(self) -> None:
         cfg = _load_yaml(REPAIR_CONFIG_PATH)
@@ -250,13 +252,15 @@ class TestCompositeWeights:
             cs["boundary_pass_at_1"],
             cs["static_repair_success"],
             cs["execution_repair_success"],
+            cs["format_compliance_rate"],
         ]
         assert abs(sum(weights) - 1.0) < 0.01
-        # Match 15/15/30/40 within +-0.01
-        assert abs(cs["code_generation_pass_at_1"] - 0.15) < 0.01
-        assert abs(cs["boundary_pass_at_1"] - 0.15) < 0.01
-        assert abs(cs["static_repair_success"] - 0.30) < 0.01
-        assert abs(cs["execution_repair_success"] - 0.40) < 0.01
+        # Issue #12: 13/13/27/37/10 (original 15/15/30/40 scaled by 0.9 + 10% fmt)
+        assert abs(cs["code_generation_pass_at_1"] - 0.13) < 0.01
+        assert abs(cs["boundary_pass_at_1"] - 0.13) < 0.01
+        assert abs(cs["static_repair_success"] - 0.27) < 0.01
+        assert abs(cs["execution_repair_success"] - 0.37) < 0.01
+        assert abs(cs["format_compliance_rate"] - 0.10) < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +321,30 @@ class TestCompositeScoreCompute:
             "execution_repair_success": 0.30,
         }
         assert abs(cs.compute(weights) - 1.0) < 1e-9
+
+    def test_composite_score_compute_5component(self) -> None:
+        """Issue #12: 5-component Composite with format_compliance_rate."""
+        cs = CompositeScore(
+            code_generation_pass_at_1=0.5,
+            boundary_pass_at_1=0.4,
+            static_repair_success=0.6,
+            execution_repair_success=0.7,
+            format_compliance_rate=0.9,
+        )
+        weights = {
+            "code_generation_pass_at_1": 0.27,
+            "boundary_pass_at_1": 0.18,
+            "static_repair_success": 0.18,
+            "execution_repair_success": 0.27,
+            "format_compliance_rate": 0.10,
+        }
+        result = cs.compute(weights)
+        expected = (
+            0.5 * 0.27 + 0.4 * 0.18 + 0.6 * 0.18
+            + 0.7 * 0.27 + 0.9 * 0.10
+        )
+        assert abs(result - expected) < 1e-9
+        assert 0.0 <= result <= 1.0
 
 
 # ---------------------------------------------------------------------------
