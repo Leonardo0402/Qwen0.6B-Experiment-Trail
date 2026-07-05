@@ -1,0 +1,71 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-07-05T17:16:26.229855+00:00",
+  "generator": "p3_formal_pool_builder.py",
+  "pool_sha256": "cd72eb63969b69989aa795a252db8a3b365f1a3b3bb1f6b0591b477f74f223c2",
+  "total_samples": 162,
+  "total_families": 25,
+  "bucket_counts": {
+    "code": 48,
+    "boundary": 50,
+    "static_repair": 32,
+    "execution_repair": 32
+  },
+  "max_family_pct": 4.9383,
+  "max_per_family_cap": 8,
+  "per_bucket_cap": {
+    "code": 3,
+    "boundary": 3,
+    "static_repair": 3,
+    "execution_repair": 3
+  },
+  "shard_count": 1,
+  "shards": [
+    {
+      "schema_version": 2,
+      "shard_id": "shard-000",
+      "shard_index": 0,
+      "shard_size": 25,
+      "family_ids": [
+        "mbpp_fam_101",
+        "mbpp_fam_107",
+        "mbpp_fam_108",
+        "mbpp_fam_109",
+        "mbpp_fam_112",
+        "mbpp_fam_122",
+        "mbpp_fam_131",
+        "mbpp_fam_133",
+        "mbpp_fam_136",
+        "mbpp_fam_137",
+        "mbpp_fam_138",
+        "mbpp_fam_139",
+        "mbpp_fam_14",
+        "mbpp_fam_141",
+        "mbpp_fam_142",
+        "mbpp_fam_146",
+        "mbpp_fam_147",
+        "mbpp_fam_149",
+        "mbpp_fam_15",
+        "mbpp_fam_154",
+        "mbpp_fam_158",
+        "mbpp_fam_161",
+        "mbpp_fam_166",
+        "mbpp_fam_168",
+        "mbpp_fam_17"
+      ],
+      "started_at": "2026-07-05T17:07:34.099639+00:00",
+      "completed_at": "2026-07-05T17:14:48.929233+00:00",
+      "duration_s": 434.83,
+      "candidate_count": 264,
+      "verified_count": 162,
+      "rejected_count": 102,
+      "bucket_counts": {
+        "code": 48,
+        "boundary": 50,
+        "static_repair": 32,
+        "execution_repair": 32
+      },
+      "generator": "p3_formal_pool_builder.py"
+    }
+  ]
+}

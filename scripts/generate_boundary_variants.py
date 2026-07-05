@@ -357,6 +357,134 @@ def _ast_to_value(node: ast.expr) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Multi-variant boundary generation (Issue #14 P6.2 / Wave 4-G1)
+# ---------------------------------------------------------------------------
+
+def generate_boundary_variants_multi(
+    sample: Sample,
+    *,
+    max_variants: int = 2,
+    max_boundary_tests_per_variant: int = 4,
+) -> list[Sample]:
+    """Generate up to max_variants boundary variants with disjoint edge sets.
+
+    Each variant uses a non-overlapping subset of boundary values so the
+    edge-set combinations are unique across variants (Issue #14 P6.2).
+
+    Strategy:
+      1. Collect all boundary values per argument position (existing logic).
+      2. Round-robin partition them into N disjoint groups (one per variant).
+      3. For each non-empty group, execute boundary calls against target_code
+         and build a pytest test suite from the results.
+      4. Return one Sample per non-empty group; sample_id suffix encodes the
+         variant index (``_boundary_v0``, ``_boundary_v1``, ...).
+
+    Parameters
+    ----------
+    sample:
+        Source code_generation sample (target_code must be correct).
+    max_variants:
+        Maximum number of boundary variants to produce (cap at 3).
+    max_boundary_tests_per_variant:
+        Maximum boundary test cases per variant sample.
+
+    Returns
+    -------
+    list[Sample]
+        Possibly empty; one entry per non-empty disjoint edge-set.
+    """
+    info = _parse_function_info(sample.target_code)
+    if info is None:
+        return []
+    func_name, param_names = info
+
+    test_calls = _extract_test_calls(sample.public_tests, func_name)
+    if not test_calls:
+        return []
+    template_args = test_calls[0]
+
+    try:
+        base_values = [_ast_to_value(a) for a in template_args]
+    except ValueError:
+        return []
+
+    # Build all boundary calls per argument position
+    all_calls_by_arg: list[list[tuple[str, list[Any]]]] = []
+    for i, arg in enumerate(template_args):
+        if i >= len(param_names):
+            break
+        type_name = _classify_arg(arg)
+        boundaries = _boundary_values_for_type(type_name, arg)
+        arg_calls: list[tuple[str, list[Any]]] = []
+        for label, value in boundaries:
+            new_args = list(base_values)
+            new_args[i] = value
+            arg_calls.append((f"{param_names[i]}_{label}", new_args))
+        if arg_calls:
+            all_calls_by_arg.append(arg_calls)
+
+    if not all_calls_by_arg:
+        return []
+
+    # Round-robin partition into N disjoint groups so each variant gets a
+    # non-overlapping subset of boundary labels per argument position.
+    n_variants = max(1, min(max_variants, 3))
+    variant_calls: list[list[tuple[str, list[Any]]]] = [
+        [] for _ in range(n_variants)
+    ]
+    for arg_calls in all_calls_by_arg:
+        for i, call in enumerate(arg_calls):
+            target_v = i % n_variants
+            variant_calls[target_v].append(call)
+
+    # Build one Sample per non-empty variant
+    variants: list[Sample] = []
+    new_difficulty = min(sample.difficulty + 1, 4)
+    created_at = datetime.now(timezone.utc).isoformat()
+
+    for v_idx, calls in enumerate(variant_calls):
+        if not calls:
+            continue
+        # Cap per variant to keep test suites tractable
+        calls = calls[:max_boundary_tests_per_variant]
+
+        exec_results = _execute_boundary_calls(
+            sample.target_code, func_name, param_names, calls
+        )
+        if not exec_results:
+            continue
+
+        boundary_tests = _generate_boundary_tests(
+            func_name, param_names, exec_results
+        )
+        enhanced_tests = sample.public_tests.rstrip() + "\n\n" + boundary_tests
+
+        new_sample_id = f"{sample.sample_id}_boundary_v{v_idx}"
+
+        variants.append(Sample(
+            sample_id=new_sample_id,
+            family_id=sample.family_id,
+            difficulty=new_difficulty,
+            task_type="code_generation",
+            language="python",
+            skill_tags=list(sample.skill_tags) + ["boundary"],
+            instruction=sample.instruction,
+            broken_code=None,
+            execution_feedback=None,
+            target_code=sample.target_code,
+            public_tests=enhanced_tests,
+            hidden_tests=sample.hidden_tests,
+            verified=False,
+            verification=_PLACEHOLDER_VER,
+            generator=_GENERATOR,
+            created_at=created_at,
+            dataset_version=_DATASET_VERSION,
+        ))
+
+    return variants
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
