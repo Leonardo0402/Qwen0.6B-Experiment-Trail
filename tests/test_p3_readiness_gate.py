@@ -29,30 +29,46 @@ import p3_readiness_gate as gate  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# Check 1: Frozen v3 SHA locked
+# Check 1: Frozen v4 SHA locked (Issue #14 Wave 2-B)
 # ---------------------------------------------------------------------------
 
-def test_check1_frozen_v3_sha_locked():
-    passed, details = gate.check1_frozen_v3_sha_locked()
-    assert passed is True, f"frozen v3 SHA lock mismatch: {details}"
-    assert details["sha_lock"] == gate.EXPECTED_SHA_LOCK
-    assert details["recomputed"] == details["sha_lock"]
+def test_check1_frozen_v4_sha_locked():
+    passed, details = gate.check1_frozen_v4_sha_locked()
+    assert passed is True, f"frozen v4 SHA lock mismatch: {details}"
     assert len(details["sha_lock"]) == 64
+    assert details["sha_lock"] == details["recomputed_lock"]
+    assert len(details["manifest_sha256"]) == 64
+    assert len(details["test_raw_sha256"]) == 64
+    assert len(details["families_sha256"]) == 64
+    assert len(details["rejected_sha256"]) == 64
 
 
 # ---------------------------------------------------------------------------
-# Check 2: Pairwise disjoint
+# Check 2: Family isolation (pairwise disjoint with explicit whitelist)
 # ---------------------------------------------------------------------------
 
-def test_check2_pairwise_disjoint():
-    passed, details = gate.check2_pairwise_disjoint()
-    assert passed is True, f"pairwise disjoint failed: {details}"
-    # Snapshot counts from progress.md / Task 9
-    assert details["frozen_v3"] == 100
-    assert details["p3_validation"] == 90
-    assert details["p3_train"] == 219
-    assert details["p3_train_replay"] == 206
-    assert ("p3_train_replay", "p2_train") in details["whitelist"]
+def test_check2_family_isolation():
+    passed, details = gate.check2_family_isolation()
+    assert passed is True, f"family isolation failed: {details}"
+    counts = details["counts"]
+    # formal_train = families in balanced+repair train.jsonl (actual formal
+    # train data; NOT family-partition.json which is stale — p3_train_new had
+    # 53 families later claimed by frozen_v4)
+    assert counts["formal_train"] == 345
+    assert counts["validation_v2"] == 45
+    assert counts["frozen_v4"] == 100
+    # historical_frozen = v1 + v3 + p2-frozen-v2
+    assert counts["historical_frozen"] > 0
+    assert counts["historical_validation"] > 0
+    # Whitelist: p3_train_replay ⊆ p2_train
+    wl = details["whitelist"]
+    assert wl["pair"] == ("p3_train_replay", "p2_train")
+    assert wl["all_replay_in_p2_train"] is True
+    assert wl["formal_train_p2_overlap_clean"] is True
+    assert wl["replay_count"] == 206
+    assert wl["intersection_count"] == 206
+    # No pairwise violations among the 5 main sets
+    assert details["violations"] == []
 
 
 # ---------------------------------------------------------------------------

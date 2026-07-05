@@ -11,6 +11,7 @@ Best checkpoint: by full Validation Composite only (never frozen v3, never probe
 """
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass, field
 from typing import Any
@@ -23,6 +24,67 @@ from src.metrics import (
     pass_at_1,
     repair_success_rate,
 )
+
+
+# ---------------------------------------------------------------------------
+# Canonical metrics + composite schema version (Issue #14 Wave 2-C)
+# ---------------------------------------------------------------------------
+
+# Canonical, unambiguous metric names. Do NOT mix with legacy aliases
+# (pass_at_1, codegen_pass1, overall pass, etc.) when reporting Composite
+# Score inputs. Issue #14 P2.4.
+CANONICAL_METRICS = [
+    "overall_executable_pass",
+    "codegen_pass_at_1",
+    "boundary_pass_at_1",
+    "static_repair_success",
+    "execution_repair_success",
+    "hidden_pass_rate",
+    "syntax_rate",
+    "format_compliance_rate",
+    "timeout_rate",
+    "strict_family_pass",
+]
+
+# Schema version for the ``composite_score`` config block. Bumped alongside
+# METRICS_SCHEMA_VERSION; ``validate_composite_schema`` enforces exact match.
+COMPOSITE_SCHEMA_VERSION = "1.0.0"
+
+# Required keys (exactly) inside ``config["composite_score"]``.
+_COMPOSITE_REQUIRED_KEYS = {
+    "code_generation_pass_at_1",
+    "boundary_pass_at_1",
+    "static_repair_success",
+    "execution_repair_success",
+    "hidden_pass_rate",
+    "hard_constraint",
+    "schema_version",
+}
+
+# The four variant_type buckets that MUST be present and non-empty before
+# ``compute_composite`` will produce a CompositeScore. Issue #14 P2.2.
+_REQUIRED_VARIANT_BUCKETS = (
+    "code",
+    "boundary",
+    "static_repair",
+    "execution_repair",
+)
+
+
+class CompositeCoverageError(Exception):
+    """Raised when a required variant bucket is missing or empty.
+
+    Issue #14 P2.2: ``compute_composite`` no longer silently substitutes
+    0.0 for missing buckets. Any of the four required variant buckets
+    (``code``, ``boundary``, ``static_repair``, ``execution_repair``)
+    being absent or empty causes a hard fail.
+
+    Readiness policy: ``FIX_FIRST`` — the offending checkpoint is excluded
+    from best-checkpoint selection and the run must be fixed before
+    proceeding.
+    """
+
+    READINESS = "FIX_FIRST"
 
 
 # ---------------------------------------------------------------------------
@@ -265,26 +327,49 @@ class CheckpointEvaluator:
         Returns
         -------
         CompositeScore
-        """
-        code_outcomes = metrics_by_variant.get("code", [])
-        boundary_outcomes = metrics_by_variant.get("boundary", [])
-        static_outcomes = metrics_by_variant.get("static_repair", [])
-        exec_outcomes = metrics_by_variant.get("execution_repair", [])
 
-        # Empty bucket -> rate 0.0 (pass_at_1 / repair_success_rate already
-        # return 0.0 on empty lists, but we make the intent explicit).
-        code_rate = pass_at_1(code_outcomes) if code_outcomes else 0.0
-        boundary_rate = pass_at_1(boundary_outcomes) if boundary_outcomes else 0.0
-        static_rate = repair_success_rate(static_outcomes) if static_outcomes else 0.0
-        exec_rate = repair_success_rate(exec_outcomes) if exec_outcomes else 0.0
+        Raises
+        ------
+        CompositeCoverageError
+            If any of the four required variant buckets (``code``,
+            ``boundary``, ``static_repair``, ``execution_repair``) is
+            missing or empty. Issue #14 P2.2: hard fail — the checkpoint
+            must NOT participate in best selection (Readiness=FIX_FIRST).
+        """
+        # Issue #14 P2.2: hard fail on missing/empty required buckets.
+        # No more silent 0.0 substitution.
+        missing_or_empty = [
+            bucket
+            for bucket in _REQUIRED_VARIANT_BUCKETS
+            if not metrics_by_variant.get(bucket)
+        ]
+        if missing_or_empty:
+            raise CompositeCoverageError(
+                "CompositeScore hard fail (Issue #14 P2.2): missing or "
+                f"empty variant buckets: {missing_or_empty}. Required "
+                f"buckets = {_REQUIRED_VARIANT_BUCKETS}. Readiness="
+                f"{CompositeCoverageError.READINESS} — checkpoint excluded "
+                f"from best selection."
+            )
+
+        code_outcomes = metrics_by_variant["code"]
+        boundary_outcomes = metrics_by_variant["boundary"]
+        static_outcomes = metrics_by_variant["static_repair"]
+        exec_outcomes = metrics_by_variant["execution_repair"]
+
+        code_rate = pass_at_1(code_outcomes)
+        boundary_rate = pass_at_1(boundary_outcomes)
+        static_rate = repair_success_rate(static_outcomes)
+        exec_rate = repair_success_rate(exec_outcomes)
 
         # Issue #12 P5: 5th component — hidden_pass_rate is cross-cutting
-        # (computed over ALL outcomes, not per-variant).
+        # (computed over ALL outcomes, not per-variant). Since the four
+        # required buckets are all non-empty here, all_outcomes is non-empty.
         all_outcomes = (
             code_outcomes + boundary_outcomes
             + static_outcomes + exec_outcomes
         )
-        hidden_rate = hidden_pass_rate(all_outcomes) if all_outcomes else 0.0
+        hidden_rate = hidden_pass_rate(all_outcomes)
 
         return CompositeScore(
             code_generation_pass_at_1=code_rate,
@@ -492,3 +577,103 @@ def check_bf16_support() -> tuple[bool, str]:
         return (True, "BF16 supported")
 
     return (False, "BF16 not supported, falling back to FP16")
+
+
+# ---------------------------------------------------------------------------
+# Composite-score schema validation (Issue #14 P2.3)
+# ---------------------------------------------------------------------------
+
+
+def validate_composite_schema(config: dict) -> None:
+    """Validate the ``composite_score`` block of a P3 config.
+
+    Issue #14 P2.3: hard-fail validation of the composite-score schema
+    before training starts. Catches mis-weighted configs, out-of-range
+    metrics, NaN/Inf leakage, and schema_version drift.
+
+    Parameters
+    ----------
+    config : dict
+        Loaded YAML config (the full dict). The function inspects
+        ``config["composite_score"]``.
+
+    Raises
+    ------
+    ValueError
+        On any of:
+        - ``composite_score`` block missing entirely
+        - Required keys do not exactly match the schema (extra or missing)
+        - ``schema_version`` does not equal ``COMPOSITE_SCHEMA_VERSION``
+        - The five weight values do not sum to 1.0 ± 1e-9
+        - Any weight value is outside [0, 1]
+        - Any weight value is NaN or Inf
+    """
+    cs = config.get("composite_score")
+    if cs is None:
+        raise ValueError(
+            "validate_composite_schema: config is missing the "
+            "'composite_score' block"
+        )
+
+    actual_keys = set(cs.keys())
+    required_keys = _COMPOSITE_REQUIRED_KEYS
+    missing = required_keys - actual_keys
+    extra = actual_keys - required_keys
+    if missing or extra:
+        raise ValueError(
+            "validate_composite_schema: composite_score schema keys "
+            f"mismatch. missing={sorted(missing)} extra={sorted(extra)} "
+            f"required={sorted(required_keys)}"
+        )
+
+    # schema_version exact match
+    schema_version = cs["schema_version"]
+    if schema_version != COMPOSITE_SCHEMA_VERSION:
+        raise ValueError(
+            "validate_composite_schema: schema_version mismatch: "
+            f"config={schema_version!r} != "
+            f"COMPOSITE_SCHEMA_VERSION={COMPOSITE_SCHEMA_VERSION!r}"
+        )
+
+    # Validate each weight: NaN/Inf + [0,1] range
+    weight_keys = (
+        "code_generation_pass_at_1",
+        "boundary_pass_at_1",
+        "static_repair_success",
+        "execution_repair_success",
+        "hidden_pass_rate",
+    )
+    weights = []
+    for key in weight_keys:
+        value = cs[key]
+        # NaN/Inf hard fail (math.isnan / math.isinf require float-like input)
+        try:
+            fvalue = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"validate_composite_schema: weight {key!r} is not "
+                f"numeric: {value!r}"
+            ) from exc
+        if math.isnan(fvalue):
+            raise ValueError(
+                f"validate_composite_schema: weight {key!r} is NaN"
+            )
+        if math.isinf(fvalue):
+            raise ValueError(
+                f"validate_composite_schema: weight {key!r} is Inf"
+            )
+        if not (0.0 <= fvalue <= 1.0):
+            raise ValueError(
+                f"validate_composite_schema: weight {key!r}={fvalue} "
+                f"out of range [0, 1]"
+            )
+        weights.append(fvalue)
+
+    # Sum to 1.0 ± 1e-9
+    total = sum(weights)
+    if abs(total - 1.0) > 1e-9:
+        raise ValueError(
+            "validate_composite_schema: composite weights do not sum to "
+            f"1.0 (sum={total}). weights={dict(zip(weight_keys, weights))}"
+        )
+

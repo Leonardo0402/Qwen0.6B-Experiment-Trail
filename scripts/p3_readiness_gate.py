@@ -43,16 +43,24 @@ from src.schemas import Sample, to_chatml  # noqa: E402
 # Constants
 # ---------------------------------------------------------------------------
 
-FROZEN_V3_DIR = _ROOT / "data" / "frozen-eval" / "v3"
-MANIFEST_PATH = FROZEN_V3_DIR / "manifest.json"
-FAMILIES_PATH = FROZEN_V3_DIR / "families.json"
-TEST_RAW_PATH = FROZEN_V3_DIR / "test_raw.jsonl"
-REJECTED_PATH = FROZEN_V3_DIR / "rejected.jsonl"
+FROZEN_V4_DIR = _ROOT / "data" / "frozen-eval" / "v4"
+MANIFEST_PATH = FROZEN_V4_DIR / "manifest.json"
+FAMILIES_PATH = FROZEN_V4_DIR / "families.json"
+TEST_RAW_PATH = FROZEN_V4_DIR / "test_raw.jsonl"
+REJECTED_PATH = FROZEN_V4_DIR / "rejected.jsonl"
+
+FROZEN_V4_LOCK_PATH = _ROOT / "reports" / "p3" / "frozen-v4-lock.json"
 
 REGISTRY_PATH = _ROOT / "data" / "family-registry.json"
+FAMILY_PARTITION_PATH = _ROOT / "data" / "p3-curriculum" / "family-partition.json"
 
 BALANCED_TRAIN_PATH = _ROOT / "data" / "p3-curriculum" / "balanced-generalist" / "train.jsonl"
 REPAIR_TRAIN_PATH = _ROOT / "data" / "p3-curriculum" / "repair-specialist" / "train.jsonl"
+
+VALIDATION_V2_DIR = _ROOT / "data" / "p3-curriculum" / "validation-v2"
+VALIDATION_V2_PATH = VALIDATION_V2_DIR / "validation.jsonl"
+VALIDATION_V2_FAMILIES_PATH = VALIDATION_V2_DIR / "families.json"
+VALIDATION_V2_MANIFEST_PATH = VALIDATION_V2_DIR / "manifest.json"
 
 BASELINE_LOCK_PATH = _ROOT / "reports" / "p3" / "p3-baseline-lock.json"
 REPORT_PATH = _ROOT / "reports" / "p3" / "p3-training-readiness-report.md"
@@ -68,6 +76,7 @@ P3_TEST_FILES = [
     "tests/test_build_balanced_generalist.py",
     "tests/test_build_repair_specialist.py",
     "tests/test_p3_checkpoint_evaluator.py",
+    "tests/test_frozen_v4_compliance.py",
 ]
 
 # max_seq_length from configs/p3/*.yaml
@@ -77,9 +86,6 @@ MAX_SEQ_LENGTH = 384
 # total >= MIN -> FULL training; 0 < total < MIN -> PILOT_ONLY; total == 0 -> FAIL.
 MIN_TRAIN_SAMPLES_FOR_FULL = 2300
 MAX_TRAIN_SAMPLES_FOR_FULL = 3100
-
-# Expected SHA lock from Task 8 (referenced in task-14-brief.md)
-EXPECTED_SHA_LOCK = "a27f36bf5558fbaeff4ee98c906d8e2ecba25794a93adb4d535585d733d8fd09"
 
 # Expected model names in baseline lock (Task 1)
 EXPECTED_BASELINE_MODELS = (
@@ -141,62 +147,292 @@ def _count_variant_types(path: Path) -> "dict[str, int]":
     return counts
 
 
+def _load_family_set(path: Path) -> "set[str]":
+    """Load family IDs from a families.json file.
+
+    Supports multiple key conventions:
+      - ``families`` (frozen-eval/v4)
+      - ``validation_family_ids`` (validation-v2)
+      - ``frozen_family_ids`` (other frozen sets)
+    """
+    if not path.exists():
+        return set()
+    with path.open(encoding="utf-8") as fh:
+        data = json.load(fh)
+    out: "set[str]" = set()
+    items: list = []
+    for key in ("families", "validation_family_ids", "frozen_family_ids",
+                "train_family_ids"):
+        items.extend(data.get(key, []) or [])
+    for item in items:
+        if isinstance(item, str):
+            out.add(item)
+        elif isinstance(item, dict):
+            fid = item.get("family_id") or item.get("id")
+            if isinstance(fid, str):
+                out.add(fid)
+    return out
+
+
+def _load_family_ids_from_jsonl(path: Path) -> "set[str]":
+    """Extract unique family_id values from a JSONL file."""
+    out: "set[str]" = set()
+    if not path.exists():
+        return out
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            fid = rec.get("family_id")
+            if isinstance(fid, str):
+                out.add(fid)
+    return out
+
+
 # ---------------------------------------------------------------------------
-# Check 1: Frozen v3 frozen (SHA locked)
+# Check 1: Frozen v4 SHA locked (Issue #14 Wave 2-B)
 # ---------------------------------------------------------------------------
 
-def check1_frozen_v3_sha_locked() -> Tuple[bool, dict]:
-    """Verify the frozen v3 sha_lock matches a recompute over the 3 files."""
-    if not MANIFEST_PATH.exists():
-        return False, {"error": f"manifest not found: {MANIFEST_PATH}"}
-    for p in (FAMILIES_PATH, TEST_RAW_PATH, REJECTED_PATH):
+def check1_frozen_v4_sha_locked() -> Tuple[bool, dict]:
+    """Verify the frozen v4 lock file matches a recompute over the 4 files.
+
+    Checks (Issue #14 P1.1 + P1.2):
+      - reports/p3/frozen-v4-lock.json exists
+      - manifest, test_raw, families, rejected all exist
+      - manifest SHA matches lock file
+      - test_raw SHA matches both lock file and manifest's test_raw_sha256
+      - families SHA matches both lock file and manifest's families_sha256
+      - rejected SHA matches both lock file and manifest's rejected_sha256
+      - combined sha_lock (sha256 of families+test_raw+rejected, CRLF normalized)
+        matches the lock file
+    """
+    if not FROZEN_V4_LOCK_PATH.exists():
+        return False, {"error": f"lock file not found: {FROZEN_V4_LOCK_PATH}"}
+    for p in (MANIFEST_PATH, FAMILIES_PATH, TEST_RAW_PATH, REJECTED_PATH):
         if not p.exists():
             return False, {"error": f"required file missing: {p}"}
 
+    with FROZEN_V4_LOCK_PATH.open(encoding="utf-8") as fh:
+        lock = json.load(fh)
     with MANIFEST_PATH.open(encoding="utf-8") as fh:
         manifest = json.load(fh)
 
-    sha_lock = manifest.get("immutability", {}).get("sha_lock", "")
-    if not (isinstance(sha_lock, str) and len(sha_lock) == 64):
-        return False, {"error": "immutability.sha_lock missing or not 64 hex chars"}
-
+    recomputed = {
+        "manifest": hashlib.sha256(_read_bytes(MANIFEST_PATH)).hexdigest(),
+        "test_raw": hashlib.sha256(_read_bytes(TEST_RAW_PATH)).hexdigest(),
+        "families": hashlib.sha256(_read_bytes(FAMILIES_PATH)).hexdigest(),
+        "rejected": hashlib.sha256(_read_bytes(REJECTED_PATH)).hexdigest(),
+    }
     h = hashlib.sha256()
     for p in (FAMILIES_PATH, TEST_RAW_PATH, REJECTED_PATH):
         h.update(_read_bytes(p))
-    recomputed = h.hexdigest()
+    recomputed_lock = h.hexdigest()
 
-    if recomputed != sha_lock:
-        return False, {
-            "sha_lock": sha_lock,
-            "recomputed": recomputed,
-            "error": "SHA lock mismatch",
-        }
-    return True, {"sha_lock": sha_lock, "recomputed": recomputed}
-
-
-# ---------------------------------------------------------------------------
-# Check 2: Pairwise disjoint (zero leakage)
-# ---------------------------------------------------------------------------
-
-def check2_pairwise_disjoint() -> Tuple[bool, dict]:
-    """Run FamilyRegistry.assert_pairwise_disjoint with P2 replay whitelist."""
-    if not REGISTRY_PATH.exists():
-        return False, {"error": f"registry not found: {REGISTRY_PATH}"}
-    registry = FamilyRegistry.from_path(REGISTRY_PATH)
-    try:
-        registry.assert_pairwise_disjoint(
-            ["frozen_v3", "p3_validation", "p3_train", "p3_train_replay"],
-            whitelist=[("p3_train_replay", "p2_train")],
+    errors: list[str] = []
+    for key in ("manifest", "test_raw", "families", "rejected"):
+        lock_key = f"{key}_sha256"
+        if lock.get(lock_key) != recomputed[key]:
+            errors.append(
+                f"{lock_key}: lock={lock.get(lock_key)} actual={recomputed[key]}"
+            )
+    if lock.get("sha_lock") != recomputed_lock:
+        errors.append(
+            f"sha_lock: lock={lock.get('sha_lock')} actual={recomputed_lock}"
         )
-    except AssertionError as e:
-        return False, {"overlap": str(e)}
-    # Snapshot counts for the report
-    counts = {
-        tag: len(registry.families_with_usage(tag))
-        for tag in ("frozen_v3", "p3_validation", "p3_train", "p3_train_replay")
+    # Cross-check manifest's individual SHAs (test_raw/families/rejected)
+    if manifest.get("test_raw_sha256") != recomputed["test_raw"]:
+        errors.append(
+            f"manifest.test_raw_sha256={manifest.get('test_raw_sha256')} "
+            f"actual={recomputed['test_raw']}"
+        )
+    if manifest.get("families_sha256") != recomputed["families"]:
+        errors.append(
+            f"manifest.families_sha256={manifest.get('families_sha256')} "
+            f"actual={recomputed['families']}"
+        )
+    if manifest.get("rejected_sha256") != recomputed["rejected"]:
+        errors.append(
+            f"manifest.rejected_sha256={manifest.get('rejected_sha256')} "
+            f"actual={recomputed['rejected']}"
+        )
+
+    if errors:
+        return False, {"errors": errors, "recomputed": recomputed}
+    return True, {
+        "sha_lock": lock.get("sha_lock"),
+        "recomputed_lock": recomputed_lock,
+        "manifest_sha256": recomputed["manifest"],
+        "test_raw_sha256": recomputed["test_raw"],
+        "families_sha256": recomputed["families"],
+        "rejected_sha256": recomputed["rejected"],
     }
-    counts["whitelist"] = [("p3_train_replay", "p2_train")]
-    return True, counts
+
+
+# ---------------------------------------------------------------------------
+# Check 2: Family Isolation Gate (Issue #14 Wave 2-B P1.3)
+# ---------------------------------------------------------------------------
+
+def _load_all_family_sets() -> "dict[str, set[str]]":
+    """Load all family sets used by the isolation check.
+
+    Sets:
+      - formal_train: families actually present in balanced + repair train.jsonl
+        (the real formal train data; NOT the stale family-partition.json
+        assignment, because v4 claimed some p3_train_new families)
+      - validation_v2: validation-v2/families.json
+      - frozen_v4: frozen-eval/v4/families.json
+      - historical_frozen: v1 + v3 + p2 frozen-eval-v2 families
+      - historical_validation: p2 stage{1,2,3} validation + curriculum-v2
+      - p2_train: registry tag p2_train (for whitelist verification)
+      - p3_train_replay: family-partition.json p3_train_replay (whitelist)
+    """
+    sets: "dict[str, set[str]]" = {}
+
+    # formal_train from actual train.jsonl files (the real formal train data)
+    sets["formal_train"] = (
+        _load_family_ids_from_jsonl(BALANCED_TRAIN_PATH)
+        | _load_family_ids_from_jsonl(REPAIR_TRAIN_PATH)
+    )
+
+    # p3_train_replay from family-partition.json (for whitelist verification)
+    if FAMILY_PARTITION_PATH.exists():
+        with FAMILY_PARTITION_PATH.open(encoding="utf-8") as fh:
+            part = json.load(fh)
+        sets["p3_train_replay"] = set(
+            part.get("p3_train_replay", {}).get("family_ids", [])
+        )
+    else:
+        sets["p3_train_replay"] = set()
+
+    # validation-v2 families
+    sets["validation_v2"] = _load_family_set(VALIDATION_V2_FAMILIES_PATH)
+
+    # frozen-v4 families
+    sets["frozen_v4"] = _load_family_set(FAMILIES_PATH)
+
+    # Historical frozen families (v1, v3, p2 frozen-eval-v2)
+    hist_frozen: set[str] = set()
+    hist_frozen |= _load_family_set(
+        _ROOT / "data" / "frozen-eval" / "v1" / "families.json"
+    )
+    hist_frozen |= _load_family_set(
+        _ROOT / "data" / "frozen-eval" / "v3" / "families.json"
+    )
+    hist_frozen |= _load_family_set(
+        _ROOT / "data" / "p2-curriculum" / "frozen-eval-v2" / "families.json"
+    )
+    sets["historical_frozen"] = hist_frozen
+
+    # Historical validation families
+    hist_val: set[str] = set()
+    # P2 curriculum stage validation files (extract family_id from JSONL)
+    for stage in ("stage1-code", "stage2-boundary", "stage3-repair"):
+        hist_val |= _load_family_ids_from_jsonl(
+            _ROOT / "data" / "p2-curriculum" / stage / "validation.jsonl"
+        )
+    # P2 stage3-repair-v3 validation
+    hist_val |= _load_family_ids_from_jsonl(
+        _ROOT / "data" / "p2-curriculum" / "stage3-repair-v3" / "validation.jsonl"
+    )
+    # curriculum-v2 validation_families
+    cv2_part = _ROOT / "data" / "curriculum-v2" / "family-partition.json"
+    if cv2_part.exists():
+        with cv2_part.open(encoding="utf-8") as fh:
+            cv2 = json.load(fh)
+        for fid in cv2.get("validation_families", []):
+            if isinstance(fid, str):
+                hist_val.add(fid)
+    sets["historical_validation"] = hist_val
+
+    # p2_train from registry (for whitelist verification)
+    if REGISTRY_PATH.exists():
+        registry = FamilyRegistry.from_path(REGISTRY_PATH)
+        sets["p2_train"] = set(registry.families_with_usage("p2_train"))
+    else:
+        sets["p2_train"] = set()
+
+    return sets
+
+
+def check2_family_isolation() -> Tuple[bool, dict]:
+    """Verify pairwise disjoint family sets with explicit whitelist (Issue #14).
+
+    The following 5 sets must be pairwise disjoint:
+      - formal_train (families in balanced + repair train.jsonl)
+      - validation_v2 (validation-v2/families.json)
+      - frozen_v4 (frozen-eval/v4/families.json)
+      - historical_frozen (v1 + v3 + p2-frozen-v2)
+      - historical_validation (p2 stage validation + curriculum-v2)
+
+    Whitelist (explicitly verified, NOT a generic 3-way intersection):
+      - p3_train_replay ⊆ p2_train (replay families are allowed to come
+        from P2 train, every other overlap is forbidden)
+      - formal_train ∩ p2_train must be a subset of p3_train_replay
+        (i.e. the only allowed overlap between formal train and p2_train
+        is via the replay mechanism)
+    """
+    sets = _load_all_family_sets()
+
+    main_sets = {
+        "formal_train": sets["formal_train"],
+        "validation_v2": sets["validation_v2"],
+        "frozen_v4": sets["frozen_v4"],
+        "historical_frozen": sets["historical_frozen"],
+        "historical_validation": sets["historical_validation"],
+    }
+
+    # Pairwise disjoint check (5 sets, 10 pairs)
+    violations: list[dict] = []
+    keys = list(main_sets.keys())
+    for i in range(len(keys)):
+        for j in range(i + 1, len(keys)):
+            a, b = keys[i], keys[j]
+            overlap = main_sets[a] & main_sets[b]
+            if overlap:
+                violations.append({
+                    "pair": (a, b),
+                    "count": len(overlap),
+                    "samples": sorted(overlap)[:10],
+                })
+
+    # Explicit whitelist verification: p3_train_replay ⊆ p2_train
+    p3_replay = sets["p3_train_replay"]
+    p2_train = sets["p2_train"]
+    whitelist_intersection = p3_replay & p2_train
+    whitelist_complete = (whitelist_intersection == p3_replay)
+    # formal_train ∩ p2_train must be a subset of p3_train_replay
+    formal_p2_overlap = sets["formal_train"] & p2_train
+    formal_p2_clean = formal_p2_overlap <= p3_replay
+
+    counts = {k: len(v) for k, v in main_sets.items()}
+    counts["p3_train_replay"] = len(p3_replay)
+    counts["p2_train"] = len(p2_train)
+    counts["whitelist_intersection"] = len(whitelist_intersection)
+    counts["formal_train_p2_overlap"] = len(formal_p2_overlap)
+
+    passed = (
+        len(violations) == 0
+        and whitelist_complete
+        and formal_p2_clean
+    )
+    details = {
+        "counts": counts,
+        "violations": violations,
+        "whitelist": {
+            "pair": ("p3_train_replay", "p2_train"),
+            "replay_count": len(p3_replay),
+            "intersection_count": len(whitelist_intersection),
+            "all_replay_in_p2_train": whitelist_complete,
+            "formal_train_p2_overlap_clean": formal_p2_clean,
+            "formal_train_p2_overlap_count": len(formal_p2_overlap),
+        },
+    }
+    return passed, details
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +574,7 @@ def check4_silent_truncation_zero() -> Tuple[bool, dict]:
 # ---------------------------------------------------------------------------
 
 def check5_canary_all_fail() -> Tuple[bool, dict]:
-    """Verify all canary samples in frozen v3 test_raw have verified=False."""
+    """Verify all canary samples in frozen v4 test_raw have verified=False."""
     if not TEST_RAW_PATH.exists():
         return False, {"error": f"test_raw not found: {TEST_RAW_PATH}"}
     records = _read_jsonl(TEST_RAW_PATH)
@@ -838,15 +1074,288 @@ def check14_composite_evaluator_complete() -> Tuple[bool, dict]:
 
 
 # ---------------------------------------------------------------------------
+# Check 15: Frozen v4 Coverage Gate (Issue #14 Wave 2-B P1.2)
+# ---------------------------------------------------------------------------
+
+# Coverage target ranges (inclusive)
+V4_FAMILY_RANGE = (80, 100)
+V4_FORMAL_SAMPLE_RANGE = (360, 700)
+V4_RATIO_RANGES = {
+    "code": (0.25, 0.30),
+    "boundary": (0.15, 0.20),
+    "static_repair": (0.25, 0.30),
+    "execution_repair": (0.25, 0.30),
+}
+CANARY_VARIANT_TYPES = ("canary", "canary_repair")
+FORMAL_VARIANT_TYPES = ("code", "boundary", "static_repair", "execution_repair")
+
+
+def check15_v4_coverage_gate() -> Tuple[bool, dict]:
+    """Verify Frozen v4 meets Issue #14 P1.2 coverage requirements.
+
+    Checks:
+      - families: 80-100
+      - formal samples (canary excluded): 360-700
+      - Code: 25-30%, Boundary: 15-20%, Static Repair: 25-30%, Exec Repair: 25-30%
+      - canary excluded from formal denominator
+      - all canaries fail (verified=False)
+      - all formal references pass (verified=True)
+      - all repair broken_code fails at least one test (broken_code != target_code)
+      - all execution_feedback non-empty (for execution_repair)
+    """
+    if not TEST_RAW_PATH.exists():
+        return False, {"error": f"test_raw not found: {TEST_RAW_PATH}"}
+    if not FAMILIES_PATH.exists():
+        return False, {"error": f"families not found: {FAMILIES_PATH}"}
+
+    records = _read_jsonl(TEST_RAW_PATH)
+    v4_families = _load_family_set(FAMILIES_PATH)
+
+    canaries = [r for r in records if r.get("variant_type") in CANARY_VARIANT_TYPES]
+    formal = [r for r in records if r.get("variant_type") in FORMAL_VARIANT_TYPES]
+
+    variant_counts = {vt: 0 for vt in FORMAL_VARIANT_TYPES}
+    for r in formal:
+        vt = r.get("variant_type")
+        if vt in variant_counts:
+            variant_counts[vt] += 1
+
+    errors: list[str] = []
+
+    # Family count
+    fam_count = len(v4_families)
+    if not (V4_FAMILY_RANGE[0] <= fam_count <= V4_FAMILY_RANGE[1]):
+        errors.append(
+            f"family_count={fam_count} not in {V4_FAMILY_RANGE}"
+        )
+
+    # Formal sample count
+    formal_count = len(formal)
+    if not (V4_FORMAL_SAMPLE_RANGE[0] <= formal_count <= V4_FORMAL_SAMPLE_RANGE[1]):
+        errors.append(
+            f"formal_sample_count={formal_count} not in {V4_FORMAL_SAMPLE_RANGE}"
+        )
+
+    # Variant ratios
+    ratio_report: "dict[str, float]" = {}
+    if formal_count > 0:
+        for vt, (lo, hi) in V4_RATIO_RANGES.items():
+            r = variant_counts.get(vt, 0) / formal_count
+            ratio_report[vt] = r
+            if not (lo <= r <= hi):
+                errors.append(
+                    f"ratio {vt}={r:.2%} not in [{lo:.0%}, {hi:.0%}]"
+                )
+
+    # Canary excluded from formal denominator (sanity)
+    total_records = len(records)
+    if formal_count + len(canaries) != total_records:
+        errors.append(
+            f"formal({formal_count}) + canary({len(canaries)}) != "
+            f"total({total_records}) — variant_type mismatch"
+        )
+
+    # All canaries verified=False
+    canary_verified_true = sum(1 for c in canaries if c.get("verified") is True)
+    if canary_verified_true != 0:
+        errors.append(
+            f"canary_verified_true={canary_verified_true} (expected 0)"
+        )
+
+    # All formal verified=True
+    formal_verified_false = sum(1 for r in formal if r.get("verified") is not True)
+    if formal_verified_false != 0:
+        errors.append(
+            f"formal_verified_false={formal_verified_false} (expected 0)"
+        )
+
+    # All repair broken_code != target_code
+    repair_samples = [
+        r for r in formal
+        if r.get("variant_type") in ("static_repair", "execution_repair")
+    ]
+    broken_same_as_target = 0
+    broken_missing = 0
+    for r in repair_samples:
+        broken = r.get("broken_code")
+        target = r.get("target_code")
+        if broken is None:
+            broken_missing += 1
+        elif broken == target:
+            broken_same_as_target += 1
+    if broken_missing > 0:
+        errors.append(f"repair broken_code missing={broken_missing}")
+    if broken_same_as_target > 0:
+        errors.append(
+            f"repair broken_code == target_code count={broken_same_as_target}"
+        )
+
+    # All execution_repair execution_feedback non-empty
+    exec_repair = [
+        r for r in formal if r.get("variant_type") == "execution_repair"
+    ]
+    exec_feedback_empty = sum(
+        1 for r in exec_repair if not (r.get("execution_feedback") or "").strip()
+    )
+    if exec_feedback_empty > 0:
+        errors.append(
+            f"execution_repair execution_feedback empty={exec_feedback_empty}"
+        )
+
+    passed = len(errors) == 0
+    details = {
+        "family_count": fam_count,
+        "family_range": list(V4_FAMILY_RANGE),
+        "formal_sample_count": formal_count,
+        "formal_sample_range": list(V4_FORMAL_SAMPLE_RANGE),
+        "canary_count": len(canaries),
+        "variant_counts": variant_counts,
+        "variant_ratios": {k: round(v, 4) for k, v in ratio_report.items()},
+        "ratio_ranges": {
+            k: [lo, hi] for k, (lo, hi) in V4_RATIO_RANGES.items()
+        },
+        "canary_verified_true": canary_verified_true,
+        "formal_verified_false": formal_verified_false,
+        "repair_sample_count": len(repair_samples),
+        "broken_code_missing": broken_missing,
+        "broken_same_as_target": broken_same_as_target,
+        "exec_repair_count": len(exec_repair),
+        "exec_feedback_empty": exec_feedback_empty,
+        "errors": errors,
+    }
+    return passed, details
+
+
+# ---------------------------------------------------------------------------
+# Check 16: Validation v2 Gate (Issue #14 Wave 2-B P1.4)
+# ---------------------------------------------------------------------------
+
+VAL_V2_TARGET_PER_CATEGORY = 45
+VAL_V2_TOTAL_SAMPLES = 180
+
+
+def check16_validation_v2_gate() -> Tuple[bool, dict]:
+    """Verify Validation v2 meets Issue #14 P1.4 requirements.
+
+    Checks:
+      - 180 samples total
+      - 45 each of Code, Boundary, Static Repair, Execution Repair
+      - all verified=True
+      - all hidden_tests present (non-empty)
+      - repair broken_code genuinely broken (different from target_code)
+      - execution_feedback genuine (non-empty for execution_repair)
+      - SHA locked (validation.jsonl SHA matches frozen-v4-lock.json)
+    """
+    if not VALIDATION_V2_PATH.exists():
+        return False, {"error": f"validation.jsonl not found: {VALIDATION_V2_PATH}"}
+    if not FROZEN_V4_LOCK_PATH.exists():
+        return False, {"error": f"lock file not found: {FROZEN_V4_LOCK_PATH}"}
+
+    records = _read_jsonl(VALIDATION_V2_PATH)
+    with FROZEN_V4_LOCK_PATH.open(encoding="utf-8") as fh:
+        lock = json.load(fh)
+
+    errors: list[str] = []
+
+    # Total count
+    total = len(records)
+    if total != VAL_V2_TOTAL_SAMPLES:
+        errors.append(f"total_samples={total} expected {VAL_V2_TOTAL_SAMPLES}")
+
+    # Per-variant counts
+    variant_counts: "dict[str, int]" = {}
+    for r in records:
+        vt = r.get("variant_type", "unknown")
+        variant_counts[vt] = variant_counts.get(vt, 0) + 1
+    for vt in FORMAL_VARIANT_TYPES:
+        actual = variant_counts.get(vt, 0)
+        if actual != VAL_V2_TARGET_PER_CATEGORY:
+            errors.append(
+                f"variant {vt} count={actual} expected {VAL_V2_TARGET_PER_CATEGORY}"
+            )
+
+    # All verified=True
+    verified_false = sum(1 for r in records if r.get("verified") is not True)
+    if verified_false != 0:
+        errors.append(f"verified_false={verified_false} (expected 0)")
+
+    # All hidden_tests present
+    hidden_missing = sum(1 for r in records if not (r.get("hidden_tests") or "").strip())
+    if hidden_missing != 0:
+        errors.append(f"hidden_tests_missing={hidden_missing} (expected 0)")
+
+    # Repair broken_code genuinely broken
+    repair_samples = [
+        r for r in records
+        if r.get("variant_type") in ("static_repair", "execution_repair")
+    ]
+    broken_same_as_target = 0
+    broken_missing = 0
+    for r in repair_samples:
+        broken = r.get("broken_code")
+        target = r.get("target_code")
+        if broken is None:
+            broken_missing += 1
+        elif broken == target:
+            broken_same_as_target += 1
+    if broken_missing > 0:
+        errors.append(f"repair broken_code missing={broken_missing}")
+    if broken_same_as_target > 0:
+        errors.append(
+            f"repair broken_code == target_code count={broken_same_as_target}"
+        )
+
+    # execution_feedback non-empty for execution_repair
+    exec_repair = [
+        r for r in records if r.get("variant_type") == "execution_repair"
+    ]
+    exec_feedback_empty = sum(
+        1 for r in exec_repair if not (r.get("execution_feedback") or "").strip()
+    )
+    if exec_feedback_empty > 0:
+        errors.append(
+            f"execution_repair execution_feedback empty={exec_feedback_empty}"
+        )
+
+    # SHA locked
+    actual_sha = hashlib.sha256(_read_bytes(VALIDATION_V2_PATH)).hexdigest()
+    expected_sha = lock.get("validation_v2", {}).get("validation_jsonl_sha256", "")
+    sha_match = (actual_sha == expected_sha)
+    if not sha_match:
+        errors.append(
+            f"validation.jsonl SHA mismatch: lock={expected_sha} actual={actual_sha}"
+        )
+
+    passed = len(errors) == 0
+    details = {
+        "total_samples": total,
+        "expected_total": VAL_V2_TOTAL_SAMPLES,
+        "variant_counts": variant_counts,
+        "expected_per_category": VAL_V2_TARGET_PER_CATEGORY,
+        "verified_false": verified_false,
+        "hidden_tests_missing": hidden_missing,
+        "repair_sample_count": len(repair_samples),
+        "broken_code_missing": broken_missing,
+        "broken_same_as_target": broken_same_as_target,
+        "exec_repair_count": len(exec_repair),
+        "exec_feedback_empty": exec_feedback_empty,
+        "sha_match": sha_match,
+        "validation_jsonl_sha256": actual_sha,
+        "errors": errors,
+    }
+    return passed, details
+
+
+# ---------------------------------------------------------------------------
 # Verdict + report rendering
 # ---------------------------------------------------------------------------
 
 CHECK_NAMES = [
-    ("check1_frozen_v3_sha_locked", "Frozen v3 SHA locked"),
-    ("check2_pairwise_disjoint", "Pairwise disjoint"),
+    ("check1_frozen_v4_sha_locked", "Frozen v4 SHA locked"),
+    ("check2_family_isolation", "Family isolation (pairwise disjoint)"),
     ("check3_assistant_retention", "Assistant retention = 100%"),
     ("check4_silent_truncation_zero", "Silent truncation = 0"),
-    ("check5_canary_all_fail", "Canary all fail"),
+    ("check5_canary_all_fail", "Canary all fail (v4)"),
     ("check6a_cpu_smoke", "CPU smoke (mandatory)"),
     ("check6b_gpu_smoke", "GPU smoke (deferrable)"),
     ("check7_output_dirs_dont_exist", "Output dirs don't exist"),
@@ -857,6 +1366,8 @@ CHECK_NAMES = [
     ("check12_candidate_ratio_within_tolerance", "Candidate ratio within ±3pp tolerance"),
     ("check13_all_buckets_non_empty", "All required buckets non-empty"),
     ("check14_composite_evaluator_complete", "Composite evaluator complete (5 components)"),
+    ("check15_v4_coverage_gate", "Frozen v4 coverage gate"),
+    ("check16_validation_v2_gate", "Validation v2 gate"),
 ]
 
 
@@ -896,20 +1407,23 @@ def compute_verdict(results: list[Tuple[bool, dict]]) -> str:
 
 def _format_details_short(name: str, passed: bool, details: dict) -> str:
     """One-line summary of the details for the table."""
-    if name == "check1_frozen_v3_sha_locked":
+    if name == "check1_frozen_v4_sha_locked":
         if passed:
             return f"sha_lock={details['sha_lock'][:16]}..."
-        return f"error={details.get('error', 'mismatch')}"
-    if name == "check2_pairwise_disjoint":
+        return f"errors={details.get('errors', [details.get('error', 'mismatch')])[:2]}"
+    if name == "check2_family_isolation":
         if passed:
+            counts = details.get("counts", {})
+            wl = details.get("whitelist", {})
             return (
-                f"frozen_v3={details.get('frozen_v3')} "
-                f"p3_val={details.get('p3_validation')} "
-                f"p3_train={details.get('p3_train')} "
-                f"replay={details.get('p3_train_replay')} "
-                f"wl=p3_train_replay∩p2_train"
+                f"formal={counts.get('formal_train', 0)} "
+                f"val_v2={counts.get('validation_v2', 0)} "
+                f"frozen_v4={counts.get('frozen_v4', 0)} "
+                f"hist_frozen={counts.get('historical_frozen', 0)} "
+                f"hist_val={counts.get('historical_validation', 0)} "
+                f"wl=p3_train_replay∩p2_train({wl.get('intersection_count', 0)})"
             )
-        return f"overlap={details.get('overlap', 'unknown')}"
+        return f"violations={details.get('violations', [])[:2]}"
     if name == "check3_assistant_retention":
         return f"{details.get('retained')}/{details.get('checked')} samples"
     if name == "check4_silent_truncation_zero":
@@ -976,6 +1490,27 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
         if passed:
             return f"5 components present, compute_ok"
         return f"missing={details.get('missing_fields', [])} violations={details.get('config_violations', [])}"
+    if name == "check15_v4_coverage_gate":
+        if passed:
+            ratios = details.get("variant_ratios", {})
+            return (
+                f"fam={details.get('family_count')} "
+                f"formal={details.get('formal_sample_count')} "
+                f"canary={details.get('canary_count')} "
+                f"code={ratios.get('code', 0):.2%} "
+                f"bdry={ratios.get('boundary', 0):.2%} "
+                f"sr={ratios.get('static_repair', 0):.2%} "
+                f"er={ratios.get('execution_repair', 0):.2%}"
+            )
+        return f"errors={details.get('errors', [])[:2]}"
+    if name == "check16_validation_v2_gate":
+        if passed:
+            return (
+                f"total={details.get('total_samples')} "
+                f"variants={details.get('variant_counts', {})} "
+                f"sha_match={details.get('sha_match')}"
+            )
+        return f"errors={details.get('errors', [])[:2]}"
     return json.dumps(details, ensure_ascii=False)[:80]
 
 
@@ -1233,10 +1768,10 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    """Run all 12 checks, print summary, write report. Returns 0/1 exit code."""
+    """Run all checks, print summary, write report. Returns 0/1 exit code."""
     check_fns = [
-        check1_frozen_v3_sha_locked,
-        check2_pairwise_disjoint,
+        check1_frozen_v4_sha_locked,
+        check2_family_isolation,
         check3_assistant_retention,
         check4_silent_truncation_zero,
         check5_canary_all_fail,
@@ -1250,6 +1785,8 @@ def main() -> int:
         check12_candidate_ratio_within_tolerance,
         check13_all_buckets_non_empty,
         check14_composite_evaluator_complete,
+        check15_v4_coverage_gate,
+        check16_validation_v2_gate,
     ]
     results: list[Tuple[bool, dict]] = []
     total_checks = len(CHECK_NAMES)

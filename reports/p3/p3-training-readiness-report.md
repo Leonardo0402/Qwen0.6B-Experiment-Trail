@@ -1,30 +1,32 @@
 # P3 Training Readiness Gate Report
 
-**Generated**: 2026-07-05T12:42:16.728953+00:00
+**Generated**: 2026-07-05T16:10:34.698900+00:00
 **Branch**: feat/p3-capability-expansion-v2
 **Scope**: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 
 ## Verdict: GO_FOR_P3_PILOT_ONLY
 
-## 15 PASS Checks
+## 17 PASS Checks
 
 | # | Check | Status | Details |
 |---|---|---|---|
-| 1 | Frozen v3 SHA locked | PASS | sha_lock=a27f36bf5558fbae... |
-| 2 | Pairwise disjoint | PASS | frozen_v3=100 p3_val=90 p3_train=219 replay=206 wl=p3_train_replay∩p2_train |
+| 1 | Frozen v4 SHA locked | PASS | sha_lock=4405a5885336960c... |
+| 2 | Family isolation (pairwise disjoint) | PASS | formal=345 val_v2=45 frozen_v4=100 hist_frozen=109 hist_val=74 wl=p3_train_replay∩p2_train(206) |
 | 3 | Assistant retention = 100% | PASS | 1112/1112 samples |
 | 4 | Silent truncation = 0 | PASS | real_silent=0 potential=15 / 1112 (preserve_assistant) |
-| 5 | Canary all fail | PASS | 100/100 verified=False |
+| 5 | Canary all fail (v4) | PASS | 100/100 verified=False |
 | 6 | CPU smoke (mandatory) | PASS | smoke=ok numpy=True sum=49995000 |
 | 7 | GPU smoke (deferrable) | PASS | bf16=True smoke=True device=cuda |
 | 8 | Output dirs don't exist | PASS | 2 paths checked, none exist |
-| 9 | CPU CI green | PASS | 83/83 tests pass (rc=0) |
+| 9 | CPU CI green | PASS | 105/105 tests pass (rc=0) |
 | 10 | P3 baseline lock present | PASS | 3/3 models, all fields present |
 | 11 | Train capacity per-candidate (2300-3100) | PASS | balanced=622[PILOT_ONLY] repair=490[PILOT_ONLY] impact=PILOT_ONLY |
 | 12 | verified ⟺ verification subfields | PASS | 0/1112 inconsistent |
 | 13 | Candidate ratio within ±3pp tolerance | PASS | balanced={'code': 188, 'execution_repair': 188, 'static_repair': 125, 'boundary': 121} repair={'code': 74, 'execution_repair': 197, 'static_repair': 145, 'boundary': 74} tol=±3pp |
 | 14 | All required buckets non-empty | PASS | all 8 buckets non-empty |
 | 15 | Composite evaluator complete (5 components) | PASS | 5 components present, compute_ok |
+| 16 | Frozen v4 coverage gate | PASS | fam=100 formal=365 canary=100 code=27.40% bdry=17.81% sr=27.40% er=27.40% |
+| 17 | Validation v2 gate | PASS | total=180 variants={'code': 45, 'boundary': 45, 'execution_repair': 45, 'static_repair': 45} sha_match=True |
 
 ## Additional Evaluations
 
