@@ -129,6 +129,18 @@ SINGLE_FAMILY_PERCENT_CAP = 1.0  # 1%
 # Valid capacity verdicts from the formal dataset builder
 VALID_CAPACITY_VERDICTS = ("FORMAL_CAPACITY_FEASIBLE", "FORMAL_CAPACITY_AT_RISK")
 
+# Candidate bucket targets (mirror p3_formal_dataset_builder.py CANDIDATES dict)
+# Used for pool-based capacity fallback in check20.
+_FORMAL_CANDIDATE_TARGETS: dict = {
+    "balanced": {
+        "code": 750, "boundary": 500, "static_repair": 500, "execution_repair": 750,
+    },
+    "repair": {
+        "code": 375, "boundary": 375, "static_repair": 750, "execution_repair": 1000,
+    },
+}
+_FORMAL_BUCKETS = ("code", "boundary", "static_repair", "execution_repair")
+
 
 # ---------------------------------------------------------------------------
 # Helper: SKIP result constructor
@@ -761,23 +773,73 @@ def check19_per_family_cap_enforcement() -> Tuple[bool, dict]:
 def check20_capacity_verdict() -> Tuple[bool, dict]:
     """Verify formal dataset builder's capacity assessment verdict.
 
-    SKIP if formal dataset manifests don't exist yet.
-    If they exist, verify the verdict is FORMAL_CAPACITY_FEASIBLE or
-    FORMAL_CAPACITY_AT_RISK (not MBPP_FAMILY_OR_VARIANT_LIMIT).
+    When formal dataset manifests exist, read the capacity_assessment from
+    them (normal post-build path).
+
+    When formal dataset manifests do NOT exist but the pool manifest exists,
+    compute capacity directly from the pool's bucket_counts (pre-build path).
+    This allows the gate to return MBPP_FAMILY_OR_VARIANT_LIMIT without
+    requiring the dataset builder to have run -- which is critical when the
+    pool is already known to be insufficient (the builder exits early without
+    producing manifests).
 
     Sets ``capacity_status`` in details for verdict computation:
-      - "SKIP" if manifests not built
-      - "LIMIT" if any verdict is MBPP_FAMILY_OR_VARIANT_LIMIT
+      - "SKIP" if manifests not built AND pool capacity is sufficient
+        (datasets still need to be built)
+      - "LIMIT" if any candidate's max_achievable < 2300
       - "OK" if all verdicts are FEASIBLE or AT_RISK
     """
     if not _formal_manifests_exist():
-        return _skip("formal dataset manifests not built yet", capacity_status="SKIP")
+        # Fallback: compute capacity from pool manifest's bucket_counts.
+        if not FORMAL_POOL_MANIFEST_PATH.exists():
+            return _skip("pool manifest not built yet", capacity_status="SKIP")
+
+        with FORMAL_POOL_MANIFEST_PATH.open(encoding="utf-8") as fh:
+            pool_manifest = json.load(fh)
+        pool_buckets = pool_manifest.get("bucket_counts", {})
+        if not pool_buckets:
+            return _skip("pool manifest has no bucket_counts",
+                         capacity_status="SKIP")
+
+        # Compute max_achievable for each candidate.
+        details_per: dict = {}
+        capacity_status = "OK"
+        notes: list[str] = []
+        for name, targets in _FORMAL_CANDIDATE_TARGETS.items():
+            per_bucket_max = {
+                v: min(targets[v], pool_buckets.get(v, 0))
+                for v in _FORMAL_BUCKETS
+            }
+            max_achievable = sum(per_bucket_max.values())
+            details_per[name] = {
+                "max_achievable_total": max_achievable,
+                "per_bucket_max": per_bucket_max,
+                "source": "pool_fallback",
+            }
+            if max_achievable < MIN_TRAIN_SAMPLES_FOR_FULL:
+                notes.append(
+                    f"{name}: max_achievable={max_achievable} < "
+                    f"{MIN_TRAIN_SAMPLES_FOR_FULL} (pool-based fallback)"
+                )
+                capacity_status = "LIMIT"
+
+        # passed=True even when LIMIT: the check correctly identified the
+        # capacity issue. capacity_status="LIMIT" drives the verdict, not
+        # has_fail. Setting passed=False would trigger FIX_FIRST which is
+        # wrong for a capacity insufficiency.
+        return True, {
+            "notes": notes,
+            "per_candidate": details_per,
+            "capacity_status": capacity_status,
+            "source": "pool_fallback",
+        }
 
     manifests = [
         ("balanced", FORMAL_BALANCED_MANIFEST_PATH),
         ("repair", FORMAL_REPAIR_MANIFEST_PATH),
     ]
-    errors: list[str] = []
+    errors: list[str] = []  # genuine check failures (unexpected verdicts)
+    notes: list[str] = []   # capacity insufficiency notes (not failures)
     details_per: dict = {}
     capacity_status = "OK"
 
@@ -791,7 +853,9 @@ def check20_capacity_verdict() -> Tuple[bool, dict]:
         max_achievable = ca.get("max_achievable_total", 0)
 
         if verdict == "MBPP_FAMILY_OR_VARIANT_LIMIT":
-            errors.append(
+            # Capacity insufficiency is NOT a check failure -- it's a
+            # capacity_status="LIMIT" that drives the verdict.
+            notes.append(
                 f"{name}: verdict={verdict} (capacity insufficient, "
                 f"max_achievable={max_achievable} < {MIN_TRAIN_SAMPLES_FOR_FULL})"
             )
@@ -813,9 +877,12 @@ def check20_capacity_verdict() -> Tuple[bool, dict]:
     if not details_per:
         return _skip("formal dataset manifests exist but are empty", capacity_status="SKIP")
 
+    # passed=False only for genuine errors (unexpected verdicts), not for
+    # MBPP_FAMILY_OR_VARIANT_LIMIT which is a valid capacity assessment.
     passed = len(errors) == 0
     return passed, {
         "errors": errors,
+        "notes": notes,
         "per_candidate": details_per,
         "capacity_status": capacity_status,
     }
@@ -888,10 +955,13 @@ def compute_verdict(results: list[Tuple[bool, dict]]) -> str:
 
     if has_fail:
         return "FIX_FIRST"
-    if capacity_skip:
-        return "PENDING_DATASET_BUILD"
+    # LIMIT takes priority over SKIP: if we definitively know capacity is
+    # insufficient (e.g. from pool bucket_counts), MBPP_FAMILY_OR_VARIANT_LIMIT
+    # is the correct terminal state -- not PENDING_DATASET_BUILD.
     if capacity_limit:
         return "MBPP_FAMILY_OR_VARIANT_LIMIT"
+    if capacity_skip:
+        return "PENDING_DATASET_BUILD"
     return "GO_FOR_P3_TRAINING"
 
 
@@ -995,15 +1065,20 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
         return f"errors={details.get('errors', [])[:2]}"
 
     if name == "check20_capacity_verdict":
-        if passed:
-            per = details.get("per_candidate", {})
-            parts = [
-                f"{k}: {v.get('verdict', '?')}"
-                f"(max={v.get('max_achievable_total', 0)})"
-                for k, v in per.items()
-            ]
-            return "; ".join(parts) + f" status={details.get('capacity_status', '?')}"
-        return f"errors={details.get('errors', [])[:2]}"
+        per = details.get("per_candidate", {})
+        source = details.get("source", "manifest")
+        parts = []
+        for k, v in per.items():
+            verdict = v.get("verdict", "?")
+            max_a = v.get("max_achievable_total", 0)
+            if source == "pool_fallback":
+                parts.append(f"{k}: max={max_a}")
+            else:
+                parts.append(f"{k}: {verdict}(max={max_a})")
+        status = details.get("capacity_status", "?")
+        if parts:
+            return "; ".join(parts) + f" status={status} src={source}"
+        return f"status={status}"
 
     return json.dumps(details, ensure_ascii=False)[:80]
 

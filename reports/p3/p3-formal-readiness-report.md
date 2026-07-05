@@ -1,11 +1,11 @@
 # P3 Formal Readiness Gate v2 Report
 
-**Generated**: 2026-07-05T18:36:00.081549+00:00
+**Generated**: 2026-07-05T22:57:06.019147+00:00
 **Branch**: feat/p3-capability-expansion-v2
 **Wave**: 5-J (Issue #14)
 **Scope**: Formal training data + configs + infrastructure readiness.
 
-## Verdict: PENDING_DATASET_BUILD
+## Verdict: MBPP_FAMILY_OR_VARIANT_LIMIT
 
 ## 21 Checks (check6 split into 6a/6b)
 
@@ -28,10 +28,10 @@
 | 15 | Composite evaluator complete (5 comp) | PASS | 5 components present, compute_ok |
 | 16 | Frozen v4 coverage gate | PASS | fam=100 formal=365 canary=100 code=27.40% bdry=17.81% sr=27.40% er=27.40% |
 | 17 | Validation v2 gate | PASS | total=180 variants={'code': 45, 'boundary': 45, 'execution_repair': 45, 'static_repair': 45} sha_match=True |
-| 18 | Formal pool SHA lock | PASS | sha=cd72eb63969b6998... samples=162 families=25 |
+| 18 | Formal pool SHA lock | PASS | sha=c6186afd49df4fa1... samples=2544 families=403 |
 | 19 | Formal config validity | PASS | 2 configs valid (independent, null adapter, 2 epochs) |
 | 20 | Per-family cap enforcement (formal) | SKIP | SKIP: formal train datasets not built yet |
-| 21 | Capacity verdict (formal builder) | SKIP | SKIP: formal dataset manifests not built yet |
+| 21 | Capacity verdict (formal builder) | PASS | balanced: max=2201; repair: max=1928 status=LIMIT src=pool_fallback |
 
 ## SKIP Summary
 
@@ -45,7 +45,6 @@ SKIP does not fail the gate. Run the formal dataset builder, then re-run this ga
 - **Check 13 (Candidate ratio +/-3pp (formal))**: SKIP: formal train datasets not built yet
 - **Check 14 (All buckets non-empty (formal))**: SKIP: formal train datasets not built yet
 - **Check 20 (Per-family cap enforcement (formal))**: SKIP: formal train datasets not built yet
-- **Check 21 (Capacity verdict (formal builder))**: SKIP: formal dataset manifests not built yet
 
 ## Verdict Logic
 
@@ -56,12 +55,10 @@ SKIP does not fail the gate. Run the formal dataset builder, then re-run this ga
 
 ## Conclusion
 
-**PENDING_DATASET_BUILD** -- infrastructure checks PASS but formal datasets not built yet.
+**MBPP_FAMILY_OR_VARIANT_LIMIT** -- all checks PASS but at least one candidate's formal capacity < 2300.
 
-The formal data/config/infrastructure is ready. Next steps:
-1. Run the formal pool builder: `py -3.11 scripts/p3_formal_pool_builder.py`
-2. Run the formal dataset builder: `py -3.11 scripts/p3_formal_dataset_builder.py --candidate both`
-3. Re-run this gate: `py -3.11 scripts/p3_formal_readiness_gate.py`
-
-After datasets are built, checks 3/4/10/11/12/13/19/20 will run (no longer SKIP) and the verdict
-will be determined by the actual data quality and capacity.
+The MBPP family/variant supply is insufficient for formal training at the 2300-sample threshold.
+Options:
+- Expand the candidate pool (more families or more variants per family).
+- Accept PILOT_ONLY training with reduced capacity (results must NOT be reported as formal capability).
+- Re-run the formal dataset builder after pool expansion.

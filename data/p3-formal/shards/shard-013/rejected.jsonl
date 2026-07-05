@@ -1,0 +1,98 @@
+{"family_id": "mbpp_fam_803", "sample_id": "mbpp_803_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:37:13.334753+00:00"}
+{"family_id": "mbpp_fam_803", "sample_id": "mbpp_803_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:37:13.334753+00:00"}
+{"family_id": "mbpp_fam_803", "sample_id": "mbpp_803_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:37:18.230916+00:00"}
+{"family_id": "mbpp_fam_805", "sample_id": "mbpp_805_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:38:05.922773+00:00"}
+{"family_id": "mbpp_fam_805", "sample_id": "mbpp_805_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:38:05.922773+00:00"}
+{"family_id": "mbpp_fam_805", "sample_id": "mbpp_805_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:38:10.819332+00:00"}
+{"family_id": "mbpp_fam_806", "sample_id": "mbpp_806_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:04.020403+00:00"}
+{"family_id": "mbpp_fam_806", "sample_id": "mbpp_806_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:04.020403+00:00"}
+{"family_id": "mbpp_fam_806", "sample_id": "mbpp_806_sr_initialization_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:04.020403+00:00"}
+{"family_id": "mbpp_fam_806", "sample_id": "mbpp_806_er_initialization_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:04.020403+00:00"}
+{"family_id": "mbpp_fam_806", "sample_id": "mbpp_806_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:39:09.092726+00:00"}
+{"family_id": "mbpp_fam_807", "sample_id": "mbpp_807_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:53.802791+00:00"}
+{"family_id": "mbpp_fam_807", "sample_id": "mbpp_807_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:39:53.802791+00:00"}
+{"family_id": "mbpp_fam_807", "sample_id": "mbpp_807_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:39:58.796383+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:40:36.776271+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_sr_aggregation_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:40:36.776271+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_er_aggregation_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:40:36.776271+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:40:41.674242+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_sr_condition_error", "bucket": "static_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:40:51.646140+00:00"}
+{"family_id": "mbpp_fam_809", "sample_id": "mbpp_809_er_condition_error_er_condition_error", "bucket": "execution_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:41:09.118479+00:00"}
+{"family_id": "mbpp_fam_812", "sample_id": null, "bucket": "none", "reason": "no source sample in canonical pool", "timestamp": "2026-07-05T21:41:16.896381+00:00"}
+{"family_id": "mbpp_fam_815", "sample_id": "mbpp_815_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:41:26.922259+00:00"}
+{"family_id": "mbpp_fam_815", "sample_id": "mbpp_815_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:41:26.922259+00:00"}
+{"family_id": "mbpp_fam_815", "sample_id": "mbpp_815_sr_initialization_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:41:26.922259+00:00"}
+{"family_id": "mbpp_fam_815", "sample_id": "mbpp_815_er_initialization_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:41:26.922259+00:00"}
+{"family_id": "mbpp_fam_815", "sample_id": "mbpp_815_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:41:31.936424+00:00"}
+{"family_id": "mbpp_fam_816", "sample_id": "mbpp_816_sr_return_value_error_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:42:15.091221+00:00"}
+{"family_id": "mbpp_fam_816", "sample_id": "mbpp_816_sr_return_value_error_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:42:20.196358+00:00"}
+{"family_id": "mbpp_fam_817", "sample_id": "mbpp_817_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:42:42.853667+00:00"}
+{"family_id": "mbpp_fam_817", "sample_id": "mbpp_817_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:42:42.853667+00:00"}
+{"family_id": "mbpp_fam_817", "sample_id": "mbpp_817_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:42:47.906456+00:00"}
+{"family_id": "mbpp_fam_82", "sample_id": "mbpp_82_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:43:33.199256+00:00"}
+{"family_id": "mbpp_fam_82", "sample_id": "mbpp_82_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:43:33.199256+00:00"}
+{"family_id": "mbpp_fam_820", "sample_id": "mbpp_820_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:44:15.138080+00:00"}
+{"family_id": "mbpp_fam_820", "sample_id": "mbpp_820_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:44:15.138080+00:00"}
+{"family_id": "mbpp_fam_820", "sample_id": "mbpp_820_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:44:20.091354+00:00"}
+{"family_id": "mbpp_fam_821", "sample_id": null, "bucket": "none", "reason": "no source sample in canonical pool", "timestamp": "2026-07-05T21:45:01.145890+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:45:15.743693+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:45:15.743693+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_sr_branch_deletion", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:45:15.743693+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_er_branch_deletion", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:45:15.743693+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:45:20.741751+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_sr_condition_error", "bucket": "static_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:45:40.424178+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_sr_initialization_error", "bucket": "static_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:45:50.324798+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_er_condition_error", "bucket": "execution_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:46:00.196998+00:00"}
+{"family_id": "mbpp_fam_822", "sample_id": "mbpp_822_er_initialization_error", "bucket": "execution_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:46:10.166827+00:00"}
+{"family_id": "mbpp_fam_824", "sample_id": "mbpp_824_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:46:20.463212+00:00"}
+{"family_id": "mbpp_fam_824", "sample_id": "mbpp_824_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:46:20.463212+00:00"}
+{"family_id": "mbpp_fam_824", "sample_id": "mbpp_824_boundary_sr_branch_deletion", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:46:20.463212+00:00"}
+{"family_id": "mbpp_fam_824", "sample_id": "mbpp_824_boundary_er_branch_deletion", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:46:20.463212+00:00"}
+{"family_id": "mbpp_fam_824", "sample_id": "mbpp_824_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:46:25.437010+00:00"}
+{"family_id": "mbpp_fam_825", "sample_id": "mbpp_825_er_return_value_error_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:47:10.783355+00:00"}
+{"family_id": "mbpp_fam_825", "sample_id": "mbpp_825_er_return_value_error_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:47:10.783355+00:00"}
+{"family_id": "mbpp_fam_825", "sample_id": "mbpp_825_er_return_value_error_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:47:15.644847+00:00"}
+{"family_id": "mbpp_fam_826", "sample_id": "mbpp_826_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:47:47.660303+00:00"}
+{"family_id": "mbpp_fam_826", "sample_id": "mbpp_826_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:47:47.660303+00:00"}
+{"family_id": "mbpp_fam_826", "sample_id": "mbpp_826_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:47:52.476692+00:00"}
+{"family_id": "mbpp_fam_827", "sample_id": "mbpp_827_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:48:40.654331+00:00"}
+{"family_id": "mbpp_fam_827", "sample_id": "mbpp_827_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:48:40.654331+00:00"}
+{"family_id": "mbpp_fam_827", "sample_id": "mbpp_827_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:48:46.172396+00:00"}
+{"family_id": "mbpp_fam_829", "sample_id": "mbpp_829_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:49:37.885206+00:00"}
+{"family_id": "mbpp_fam_829", "sample_id": "mbpp_829_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:49:37.885206+00:00"}
+{"family_id": "mbpp_fam_829", "sample_id": "mbpp_829_sr_index_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:49:37.885206+00:00"}
+{"family_id": "mbpp_fam_829", "sample_id": "mbpp_829_er_index_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:49:37.885206+00:00"}
+{"family_id": "mbpp_fam_829", "sample_id": "mbpp_829_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:49:42.914446+00:00"}
+{"family_id": "mbpp_fam_83", "sample_id": "mbpp_83_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:50:35.116858+00:00"}
+{"family_id": "mbpp_fam_83", "sample_id": "mbpp_83_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:50:35.116858+00:00"}
+{"family_id": "mbpp_fam_83", "sample_id": "mbpp_83_sr_return_value_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:50:35.116858+00:00"}
+{"family_id": "mbpp_fam_83", "sample_id": "mbpp_83_er_return_value_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:50:35.116858+00:00"}
+{"family_id": "mbpp_fam_830", "sample_id": "mbpp_830_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:51:29.749300+00:00"}
+{"family_id": "mbpp_fam_830", "sample_id": "mbpp_830_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:51:29.749300+00:00"}
+{"family_id": "mbpp_fam_830", "sample_id": "mbpp_830_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:51:34.794277+00:00"}
+{"family_id": "mbpp_fam_833", "sample_id": "mbpp_833_er_type_error_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:52:07.655486+00:00"}
+{"family_id": "mbpp_fam_833", "sample_id": "mbpp_833_er_type_error_sr_type_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:52:07.655486+00:00"}
+{"family_id": "mbpp_fam_833", "sample_id": "mbpp_833_er_type_error_er_type_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:52:07.655486+00:00"}
+{"family_id": "mbpp_fam_833", "sample_id": "mbpp_833_er_type_error_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:52:12.682740+00:00"}
+{"family_id": "mbpp_fam_835", "sample_id": "mbpp_835_boundary_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:52:47.964242+00:00"}
+{"family_id": "mbpp_fam_835", "sample_id": "mbpp_835_boundary_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:52:47.964242+00:00"}
+{"family_id": "mbpp_fam_835", "sample_id": "mbpp_835_boundary_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:52:52.891132+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:53:30.748666+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:53:30.748666+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_sr_return_value_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:53:30.748666+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_er_return_value_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:53:30.748666+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:53:35.618999+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_sr_off_by_one", "bucket": "static_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:54:02.731248+00:00"}
+{"family_id": "mbpp_fam_842", "sample_id": "mbpp_842_er_off_by_one", "bucket": "execution_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:54:20.056054+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:54:34.438826+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:54:34.438826+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_sr_branch_deletion", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:54:34.438826+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_er_branch_deletion", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:54:34.438826+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:54:39.278392+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_sr_condition_error", "bucket": "static_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:54:59.050129+00:00"}
+{"family_id": "mbpp_fam_845", "sample_id": "mbpp_845_er_condition_error", "bucket": "execution_repair", "reason": "verification failed", "timestamp": "2026-07-05T21:55:16.463933+00:00"}
+{"family_id": "mbpp_fam_846", "sample_id": "mbpp_846_code_pubex", "bucket": "code", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:55:33.920472+00:00"}
+{"family_id": "mbpp_fam_846", "sample_id": "mbpp_846_boundary_v2", "bucket": "boundary", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:55:33.920472+00:00"}
+{"family_id": "mbpp_fam_846", "sample_id": "mbpp_846_sr_initialization_error", "bucket": "static_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:55:33.920472+00:00"}
+{"family_id": "mbpp_fam_846", "sample_id": "mbpp_846_er_initialization_error", "bucket": "execution_repair", "reason": "per-family quota (2/bucket) exceeded", "timestamp": "2026-07-05T21:55:33.920472+00:00"}
+{"family_id": "mbpp_fam_846", "sample_id": "mbpp_846_code_sig", "bucket": "code", "reason": "dedup: duplicate full content signature", "timestamp": "2026-07-05T21:55:38.749668+00:00"}
