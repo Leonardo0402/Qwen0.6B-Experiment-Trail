@@ -210,13 +210,17 @@ class TestMbppRecordToSample:
                                        "assert add(0, 0) == 0"])
         assert mbpp_record_to_sample(rec).hidden_tests == ""
 
-    def test_verified_is_true(self) -> None:
-        assert mbpp_record_to_sample(_mbpp_record()).verified is True
+    def test_verified_is_false_by_default(self) -> None:
+        # P3: importer must NOT claim verification -- default verified=False
+        # until scripts/verify_imported_mbpp.py runs the real checks.
+        assert mbpp_record_to_sample(_mbpp_record()).verified is False
 
     def test_verification_flags(self) -> None:
         v = mbpp_record_to_sample(_mbpp_record()).verification
-        assert v.syntax_ok is True
-        assert v.pytest_ok is True
+        # All-false preset: no compile / pytest / ruff / timeout claim until
+        # the standalone verifier runs (P3 import+verify split).
+        assert v.syntax_ok is False
+        assert v.pytest_ok is False
         assert v.ruff_ok is False
         assert v.timeout is False
 
@@ -288,36 +292,54 @@ class TestBuildManifest:
     def _make(self, **kwargs) -> dict:
         defaults = dict(
             source="google-research-datasets/mbpp",
+            source_revision="main",
+            dataset_fingerprint=None,
             split="train",
             sample_count=10,
-            sha256="abc123",
+            normalized_sha256="abc123",
+            normalized_file="normalized/train.jsonl",
             license="Apache-2.0",
             imported_at="2026-01-01T00:00:00+00:00",
+            benchmark_contaminated=False,
+            standard_mbpp_test_claims_disallowed=False,
         )
         defaults.update(kwargs)
         return build_manifest(**defaults)
 
     def test_required_keys(self) -> None:
         m = self._make()
-        for k in ("source", "split", "sample_count", "sha256",
-                  "license", "imported_at"):
+        for k in ("source", "source_revision", "split", "sample_count",
+                  "normalized_sha256", "normalized_file",
+                  "license", "imported_at", "benchmark_contaminated",
+                  "standard_mbpp_test_claims_disallowed",
+                  "dataset_fingerprint"):
             assert k in m, f"missing key: {k}"
 
     def test_values_preserved(self) -> None:
         m = self._make(
             source="google-research-datasets/mbpp",
+            source_revision="main",
+            dataset_fingerprint="fp-abc",
             split="train",
             sample_count=374,
-            sha256="deadbeef",
+            normalized_sha256="deadbeef",
+            normalized_file="normalized/train.jsonl",
             license="Apache-2.0",
             imported_at="2026-07-02T00:00:00+00:00",
+            benchmark_contaminated=False,
+            standard_mbpp_test_claims_disallowed=False,
         )
         assert m["source"] == "google-research-datasets/mbpp"
+        assert m["source_revision"] == "main"
+        assert m["dataset_fingerprint"] == "fp-abc"
         assert m["split"] == "train"
         assert m["sample_count"] == 374
-        assert m["sha256"] == "deadbeef"
+        assert m["normalized_sha256"] == "deadbeef"
+        assert m["normalized_file"] == "normalized/train.jsonl"
         assert m["license"] == "Apache-2.0"
         assert m["imported_at"] == "2026-07-02T00:00:00+00:00"
+        assert m["benchmark_contaminated"] is False
+        assert m["standard_mbpp_test_claims_disallowed"] is False
 
     def test_imported_at_is_iso_parseable(self) -> None:
         ts = datetime.now(timezone.utc).isoformat()
@@ -365,12 +387,17 @@ class TestWriteHelpers:
         sha = compute_sha256(p)
         m = build_manifest(
             source="google-research-datasets/mbpp",
+            source_revision="main",
+            dataset_fingerprint=None,
             split="train",
             sample_count=len(samples),
-            sha256=sha,
+            normalized_sha256=sha,
+            normalized_file="normalized/train.jsonl",
             license="Apache-2.0",
             imported_at=datetime.now(timezone.utc).isoformat(),
+            benchmark_contaminated=False,
+            standard_mbpp_test_claims_disallowed=False,
         )
         assert m["sample_count"] == 3
-        assert m["sha256"] == sha
-        assert len(m["sha256"]) == 64  # hex digest length
+        assert m["normalized_sha256"] == sha
+        assert len(m["normalized_sha256"]) == 64  # hex digest length

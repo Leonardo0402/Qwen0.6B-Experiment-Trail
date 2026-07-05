@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-04T17:58:18.367833+00:00",
+  "generator": "build_repair_specialist.py",
+  "candidate_type": "repair_specialist",
+  "seed": 42,
+  "target_ratios": {
+    "code": 0.15,
+    "boundary": 0.15,
+    "static_repair": 0.3,
+    "execution_repair": 0.4
+  },
+  "actual_ratios": {
+    "code": 0.1779,
+    "boundary": 0.0,
+    "static_repair": 0.3486,
+    "execution_repair": 0.4736
+  },
+  "ratio_tolerance_pp": 3,
+  "ratio_within_tolerance": false,
+  "train": {
+    "count": 416,
+    "variant_distribution": {
+      "code": 74,
+      "boundary": 0,
+      "static_repair": 145,
+      "execution_repair": 197
+    },
+    "family_count": 215,
+    "sha256": "cea76fa5df52f02cf82632c5612eb5e5998cc99ed1b58587d4b496a303a49570"
+  },
+  "validation": {
+    "count": 90,
+    "family_count": 90,
+    "sha256": "1f1d38c1a11b4cac2e8e18a8be5ed5dc6e3d20b08f622dfa5358a4f056230985"
+  },
+  "families": {
+    "train_family_count": 215,
+    "validation_family_count": 90,
+    "total_family_count": 305,
+    "train_validation_disjoint": true
+  },
+  "pool_source": {
+    "path": "data/p3-curriculum/canonical-pool.jsonl",
+    "total_pool_samples": 782,
+    "samples_selected": 416,
+    "samples_rejected": 366,
+    "unverified_excluded": 132
+  },
+  "deviations": {
+    "verified_backfill_applied": true,
+    "history": {
+      "description": "P2-replay-derived samples in canonical pool previously had verified=False with all-False verification subfields; the old build script force-set verified=True via model_copy(update={'verified': True}) to satisfy hard gate 8. Issue #10 Fix 1 backfilled real verification subfields via scripts/backfill_canonical_pool_verification.py and removed the normalization hack from this builder.",
+      "samples_previously_overridden": "unknown (pre-Fix-1)",
+      "verification_subfields_preserved": true,
+      "upstream_task": "Issue #10 Fix 1",
+      "review_status": "PILOT ONLY -- train count may drop below target if verified pool is insufficient for a variant_type bucket"
+    }
+  }
+}

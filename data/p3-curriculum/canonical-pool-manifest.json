@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-04T15:17:29.345979+00:00",
+  "generator": "build_sample_pool.py",
+  "sources": {
+    "p2_stage1_code": {
+      "path": "data/p2-curriculum/stage1-code/train.jsonl",
+      "loaded": 84,
+      "after_filter": 79
+    },
+    "p2_stage2_boundary": {
+      "path": "data/p2-curriculum/stage2-boundary/train.jsonl",
+      "loaded": 280,
+      "after_filter": 254
+    },
+    "p2_stage3_repair": {
+      "path": "data/p2-curriculum/stage3-repair/train.jsonl",
+      "loaded": 560,
+      "after_filter": 511
+    },
+    "p3_verified_test": {
+      "path": "data/external/mbpp/verified/test.jsonl",
+      "loaded": 365,
+      "after_filter": 219
+    }
+  },
+  "total_loaded": 1289,
+  "total_after_family_filter": 1063,
+  "total_after_dedup": 789,
+  "duplicates_removed": 274,
+  "total_after_cap": 782,
+  "families_capped": 5,
+  "samples_dropped_by_cap": 7,
+  "per_family_cap": 7,
+  "family_count": 408,
+  "partition_family_count": 425,
+  "variant_distribution": {
+    "code": 281,
+    "boundary": 125,
+    "static_repair": 148,
+    "execution_repair": 228
+  },
+  "bug_type_distribution": {
+    "none": 406,
+    "aggregation_error": 21,
+    "return_value_error": 132,
+    "type_error": 30,
+    "condition_error": 61,
+    "off_by_one": 35,
+    "branch_deletion": 57,
+    "initialization_error": 31,
+    "index_error": 9
+  },
+  "family_distribution": {
+    "min_samples_per_family": 1,
+    "max_samples_per_family": 7,
+    "mean_samples_per_family": 1.9166666666666667,
+    "median_samples_per_family": 1.0
+  },
+  "pool_sha256": "ded692e43831e20010e12b7bf6909f82421310f7570fc09b2c753029c9ea6401"
+}

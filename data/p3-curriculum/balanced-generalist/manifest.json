@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-04T17:58:11.552188+00:00",
+  "generator": "build_balanced_generalist.py",
+  "candidate_type": "balanced_generalist",
+  "seed": 42,
+  "target_ratios": {
+    "code": 0.3,
+    "boundary": 0.2,
+    "static_repair": 0.2,
+    "execution_repair": 0.3
+  },
+  "actual_ratios": {
+    "code": 0.37524950099800397,
+    "boundary": 0.0,
+    "static_repair": 0.249500998003992,
+    "execution_repair": 0.37524950099800397
+  },
+  "ratio_tolerance_pp": 3,
+  "ratio_within_tolerance": false,
+  "train": {
+    "count": 501,
+    "target_count": 626,
+    "variant_distribution": {
+      "code": 188,
+      "boundary": 0,
+      "static_repair": 125,
+      "execution_repair": 188
+    },
+    "family_count": 301,
+    "sha256": "83951a40dc2d5a574b83f125f367b803e20f2cfdde630dc8ee45fe8c95b12cb9"
+  },
+  "validation": {
+    "count": 90,
+    "family_count": 90,
+    "sha256": "1f1d38c1a11b4cac2e8e18a8be5ed5dc6e3d20b08f622dfa5358a4f056230985"
+  },
+  "families": {
+    "train_family_count": 301,
+    "validation_family_count": 90,
+    "total_family_count": 391,
+    "train_validation_disjoint": true
+  },
+  "pool_source": {
+    "path": "data/p3-curriculum/canonical-pool.jsonl",
+    "total_pool_samples": 782,
+    "samples_selected": 501,
+    "samples_rejected": 281,
+    "unverified_excluded": 132
+  },
+  "deviations": {
+    "verified_backfill_applied": true,
+    "history": {
+      "description": "P2-replay-derived samples in canonical pool previously had verified=False with all-False verification subfields; the old build script force-set verified=True via model_copy(update={'verified': True}) to satisfy hard gate 8. Issue #10 Fix 1 backfilled real verification subfields via scripts/backfill_canonical_pool_verification.py and removed the normalization hack from this builder.",
+      "samples_previously_overridden": "unknown (pre-Fix-1)",
+      "verification_subfields_preserved": true,
+      "upstream_task": "Issue #10 Fix 1",
+      "review_status": "PILOT ONLY -- train count may drop below target if verified pool is insufficient for a variant_type bucket"
+    }
+  }
+}

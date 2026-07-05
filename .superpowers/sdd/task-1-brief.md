@@ -1,97 +1,74 @@
-# Task 1: Fix compare_p2_evals.py silent-skip bug
+# Task 1 Brief: Lock Historical Baseline
 
-## Location
-- File: `scripts/compare_p2_evals.py`
-- Working directory: `e:\agent\Qwen\qwen3-code-lab`
-- Current git branch: `feat/p2.2-ci-router-validation`
+## Context
+- Project: e:\agent\Qwen\qwen3-code-lab (Qwen3-0.6B code training lab)
+- Branch: feat/p3-capability-expansion-v2 (just created from main @ 42a489c)
+- This is the FIRST task of P3 Capability Expansion v2 (Issue #9)
+- Per user directive: baseline lock must be created BEFORE any data build or training config change
+- Plan file: .superpowers/sdd/p3-plan.md (Global Constraints apply)
 
-## The Bug
+## Goal
+Create `reports/p3/p3-baseline-lock.json` recording immutable historical baselines for 3 models:
+1. Base Qwen3-0.6B (the foundation model, no adapter)
+2. Stage3-Independent (P2 repair baseline)
+3. Stage3-v3-Antiforget (P2 balanced candidate)
 
-The file's `MODELS` list (lines 8-14) uses these keys:
-```python
-MODELS = [
-    ("full576-base", "Base"),
-    ("full576-stage2-boundary", "Stage2-v2"),
-    ("full576-stage3-repair", "Stage3-v2-Continual"),
-    ("full576-independent-stage3", "Stage3-Independent"),
-    ("full576-stage3-v3-antiforget", "Stage3-v3-Antiforget"),
-]
-```
+## Required Fields (per model)
+- `model_name`: human-readable name (e.g. "Base Qwen3-0.6B", "Stage3-Independent", "Stage3-v3-Antiforget")
+- `adapter_path`: relative path from repo root (e.g. "models/Qwen3-0.6B" for Base, "adapters/code-lora-v3-stage3-independent" for adapter)
+- `weight_sha256`: SHA256 of adapter weights file (adapter_model.safetensors or similar). For Base model, use the config SHA256 or a sentinel like "BASE_MODEL_NO_ADAPTER" if no adapter weights exist locally (DO NOT compute SHA of the full base model — it's too large; record the model dir path and note "base model, no adapter weights")
+- `config_sha256`: SHA256 of adapter_config.json (for adapters) or model config.json (for Base)
+- `training_config_sha256`: SHA256 of the training config YAML used to produce this adapter (look in configs/ directory). For Base, use "BASE_MODEL_NO_TRAINING_CONFIG"
+- `historical_eval_set_sha256`: SHA256 of frozen-eval-v2 test_raw.jsonl (from data/p2-curriculum/frozen-eval-v2/manifest.json field `test_sha256`)
+- `historical_held_out_metrics`: dict of metrics from reports/p2/ for this model on frozen-eval-v2 (e.g. overall_pass, codegen_pass1, static_repair, execution_repair). Look in reports/p2/*.json for per-model eval results. If exact metrics not found, record what's available and note the source file.
+- `created_at`: ISO 8601 timestamp
 
-The `results` dict in `main()` is populated with these full keys (line 62: `results[name] = {...}` where `name` comes from `MODELS`).
+## Top-level fields
+- `issue`: 9
+- `branch`: "feat/p3-capability-expansion-v2"
+- `purpose`: "Lock P2 historical baselines for P3 same-config comparison. Must not be modified after P3 training starts."
+- `frozen_eval_v2_manifest`: path to the v2 manifest
+- `frozen_eval_v2_sha256`: from v2 manifest
+- `created_at`: ISO 8601 timestamp
+- `models`: list of 3 model records above
 
-However, the "Stage3 vs Base" delta section at lines 101-116 checks for the OLD (pre-rename) keys:
+## Discovery Steps (implementer should do)
+1. Find adapter directories: `adapters/` likely has code-lora-v3-* subdirs. Use Glob to find.
+2. For Base model: path is likely `models/Qwen3-0.6B` (check if exists; if not, note path from configs).
+3. Find training configs: `configs/` directory, look for stage3-independent and stage3-v3-antiforget configs.
+4. Read data/p2-curriculum/frozen-eval-v2/manifest.json to get test_sha256.
+5. Find historical metrics: Glob reports/p2/*.json, read files to extract per-model metrics. Key files likely: full576-comparison.json, router-analysis.json, or per-model eval JSONs.
+6. Compute SHA256 of adapter_model.safetensors (or .bin) and adapter_config.json for each adapter.
+7. Compute SHA256 of training config YAMLs.
 
-```python
-# Per-family delta (Stage3 vs Base)
-if "base" in results and "stage3-repair" in results:    # line 102 — ALWAYS FALSE
-    base_fp = results["base"]["family_pass"]            # line 103 — never reached
-    s3_fp = results["stage3-repair"]["family_pass"]     # line 104 — never reached
-    improved = []
-    regressed = []
-    for f in base_fp:
-        if f in s3_fp:
-            if s3_fp[f] and not base_fp[f]:
-                improved.append(f)
-            elif not s3_fp[f] and base_fp[f]:
-                regressed.append(f)
-    print(f"\nStage3 vs Base:")
-    print(f"  New passing families: {len(improved)}")
-    print(f"  Regressed families:   {len(regressed)}")
-    print(f"  Net improvement:      {len(improved) - len(regressed)}")
-```
+## Tests (tests/test_p3_baseline_lock.py)
+- Test file loads reports/p3/p3-baseline-lock.json
+- Test: 3 models present with correct names
+- Test: each model has all required fields (non-empty)
+- Test: weight_sha256 is 64-char hex string OR "BASE_MODEL_NO_ADAPTER" sentinel
+- Test: config_sha256 is 64-char hex string
+- Test: historical_eval_set_sha256 matches data/p2-curriculum/frozen-eval-v2/manifest.json::test_sha256
+- Test: created_at is valid ISO 8601
 
-Because `"base"` and `"stage3-repair"` are NEVER keys in `results` (the real keys are `"full576-base"` and `"full576-stage3-repair"`), the `if` guard is always `False` and the entire delta block silently skips. The user sees no output between "Family-Level Pass Comparison" and "Error Category Analysis" — a silent failure.
+## Constraints
+- DO NOT modify any existing files outside reports/p3/ and tests/
+- DO NOT compute SHA of base model weights (too large, ~600MB-1GB). Use sentinel "BASE_MODEL_NO_ADAPTER" for weight_sha256 of Base, and use config.json SHA for config_sha256.
+- DO NOT run training or evaluation. This is a read-only lock task.
+- File must be valid JSON (pretty-printed, 2-space indent).
+- Use Python's hashlib for SHA256 computation.
+- For adapter weight files: compute SHA256 by reading in chunks (8192 bytes) to handle large files.
 
-## Required Fix (minimal, surgical)
+## Report File
+Write your full report to: .superpowers/sdd/task-1-report.md
+Return only: status (DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT), commit hash, one-line test summary, concerns.
 
-1. On line 102, change the `if` guard keys:
-   - `"base"` → `"full576-base"`
-   - `"stage3-repair"` → `"full576-stage3-repair"`
+## Commit
+- Stage: reports/p3/p3-baseline-lock.json, tests/test_p3_baseline_lock.py
+- Commit message: "feat(p3): lock historical baselines for P3 comparison"
+- Single commit.
 
-2. On line 103, change `results["base"]` → `results["full576-base"]`
+## Working Directory
+e:\agent\Qwen\qwen3-code-lab
 
-3. On line 104, change `results["stage3-repair"]` → `results["full576-stage3-repair"]`
-
-4. On line 113, change the print label `"Stage3 vs Base:"` → `"Stage3-v2-Continual vs Base:"` (matches the label in MODELS for clarity).
-
-## Explicitly NOT in scope
-
-- Do NOT extend the section to compare other Stage3 variants (Independent, Antiforget) vs Base. The Full-576 markdown report (separate task) will cover those comparisons via `compute_paired_stats.py`.
-- Do NOT add per-family delta info to the JSON output (`full576-comparison.json`). That information lives in `paired-stats.json`.
-- Do NOT touch any other section of the file (per-task-type, family-level pass, error category analysis, JSON save).
-- Do NOT reformat, reorder, or rename anything outside the four lines listed above.
-
-## Verification
-
-After the fix, run:
-```
-D:\Anaconda\envs\qwen3-code-lab\python.exe scripts\compare_p2_evals.py
-```
-
-Expected behavior (currently the 5 `full576-*.json` eval files don't exist yet, so the script will print "skipping" for each — that's fine). The fix is verified by:
-
-1. Reading the patched file and confirming lines 102-104 use `full576-base` / `full576-stage3-repair` and line 113 uses the new label.
-2. Confirming there is NO silent skip — i.e., when the eval files DO exist, the section will execute. (You can construct a tiny synthetic test by creating two minimal fake eval JSONs in a temp dir, but that is optional — the key fix is the key-name correction.)
-3. Optional: add an assertion-style sanity check by running the script in dry mode (no eval files) and confirming it doesn't crash.
-
-## Test file
-
-There is no existing test file for `compare_p2_evals.py`. Do NOT create one — the fix is mechanical (4 line edits) and the script is a reporting utility, not a library function. The Full-576 report task will exercise the script end-to-end after evaluations complete.
-
-## Commit message
-
-```
-fix(scripts): correct silent-skip keys in compare_p2_evals Stage3-vs-Base section
-
-The MODELS list was renamed to use full576-* prefixes but the
-"Stage3 vs Base" delta block still checked the old keys "base" and
-"stage3-repair", causing the entire section to silently skip.
-```
-
-## Self-review checklist
-
-- [ ] Only lines 102, 103, 104, 113 changed (no other lines touched)
-- [ ] No reformatting of surrounding code
-- [ ] Print label matches the MODELS label for `full576-stage3-repair` ("Stage3-v2-Continual")
-- [ ] Script still runs without error when eval files are missing
+## Git Branch
+feat/p3-capability-expansion-v2 (already checked out)

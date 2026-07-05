@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-07-04T14:27:53.122261+00:00",
+  "schema_version": 1,
+  "frozen_version": "v3",
+  "frozen_family_count": 100,
+  "total_sample_count": 300,
+  "variant_breakdown": {
+    "code": 100,
+    "boundary": 100,
+    "static_repair": 0,
+    "execution_repair": 0,
+    "canary": 100
+  },
+  "test_raw_sha256": "764ba24e7fed54abadb7090a831ccae5a39a103174c1842fb1bfbcd8bb5174b3",
+  "families_sha256": "aa4996c71ec0fbc6ae68b3473fbf0974065505b9051ee512b9889f713f0bb7c6",
+  "rejected_count": 120,
+  "rejected_sha256": "decb49206e58a31203064f375166cffe5d5387e836fa8b50914ed13548cc51fb",
+  "freeze_decision": "freeze_100",
+  "freeze_decision_note": "Froze first 100 of 120 qualified families (surplus 20 reverted to available pool).",
+  "immutability": {
+    "write_once": true,
+    "any_change_requires": "v4",
+    "sha_lock": "a27f36bf5558fbaeff4ee98c906d8e2ecba25794a93adb4d535585d733d8fd09"
+  }
+}

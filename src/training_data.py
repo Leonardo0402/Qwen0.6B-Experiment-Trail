@@ -5,6 +5,7 @@ Provides:
   - build_assistant_only_features(): tokenize ChatML with assistant-only labels
   - AssistantOnlyCollator: dynamic padding collator that preserves assistant masks
   - compute_token_audit(): per-sample token length audit
+  - assert_not_frozen_v3(): refuse to load training data from frozen v3 eval dir
 
 Label mask policy:
   System Token     -> -100
@@ -16,10 +17,36 @@ Label mask policy:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import torch
 from torch.utils.data import Dataset
+
+
+# ---------------------------------------------------------------------------
+# Frozen v3 eval-directory hard block (Task 8 / P3 plan)
+# ---------------------------------------------------------------------------
+
+_ROOT = Path(__file__).resolve().parent.parent
+FROZEN_V3_DIR = _ROOT / "data" / "frozen-eval" / "v3"
+
+
+def assert_not_frozen_v3(path: "Path | str") -> None:
+    """Refuse to load training data from the frozen v3 eval directory.
+
+    The frozen v3 directory is write-once and reserved for evaluation only.
+    Call this at the top of any training-data-loading entry point to ensure
+    frozen v3 samples can never leak into a training pass.
+    """
+    p = Path(path).resolve()
+    frozen = FROZEN_V3_DIR.resolve()
+    if p == frozen or frozen in p.parents:
+        raise ValueError(
+            f"Training data loader refuses to read from frozen v3 eval "
+            f"directory: {p}. This directory is write-once and reserved for "
+            f"evaluation only. Use data/p3-curriculum/ for training data."
+        )
 
 
 # ---------------------------------------------------------------------------
