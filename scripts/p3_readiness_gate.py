@@ -114,7 +114,8 @@ def _read_jsonl(path: Path) -> list[dict]:
 
 
 def _read_bytes(path: Path) -> bytes:
-    return path.read_bytes()
+    """Read file bytes with CRLF normalized to LF for cross-platform SHA consistency."""
+    return path.read_bytes().replace(b"\r\n", b"\n")
 
 
 def _count_variant_types(path: Path) -> "dict[str, int]":

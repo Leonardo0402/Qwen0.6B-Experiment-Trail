@@ -310,9 +310,15 @@ class SamplePool:
 
     @staticmethod
     def compute_sha256(path: Path) -> str:
-        """Read entire file as bytes and compute SHA256 hex digest."""
+        """Read entire file as bytes, normalize CRLF to LF, compute SHA256 hex digest.
+
+        CRLF→LF normalization ensures cross-platform SHA consistency (Windows
+        checkout with ``core.autocrlf=true`` produces CRLF; Linux CI produces LF).
+        """
         h = hashlib.sha256()
         with path.open("rb") as fh:
-            for chunk in iter(lambda: fh.read(65536), b""):
-                h.update(chunk)
+            data = fh.read()
+        # Normalize CRLF to LF for cross-platform consistency
+        data = data.replace(b"\r\n", b"\n")
+        h.update(data)
         return h.hexdigest()

@@ -101,10 +101,12 @@ def _load_jsonl(path: Path) -> list[dict]:
 
 
 def _sha256_file(path: Path) -> str:
+    """SHA256 hex digest with CRLF normalized to LF for cross-platform consistency."""
     h = hashlib.sha256()
     with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(65536), b""):
-            h.update(chunk)
+        data = fh.read()
+    # Normalize CRLF to LF for cross-platform consistency
+    h.update(data.replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 

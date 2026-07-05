@@ -104,10 +104,13 @@ class CheckpointEvaluatorCallback(TrainerCallback):
             )
 
         # Record Tier 1 entry
-        import torch
-        gpu_mem_mb = 0.0
-        if torch.cuda.is_available():
-            gpu_mem_mb = torch.cuda.memory_allocated(0) / (1024 ** 2)
+        try:
+            import torch
+            gpu_mem_mb = 0.0
+            if torch.cuda.is_available():
+                gpu_mem_mb = torch.cuda.memory_allocated(0) / (1024 ** 2)
+        except ImportError:
+            gpu_mem_mb = 0.0
 
         entry = {
             "step": state.global_step,

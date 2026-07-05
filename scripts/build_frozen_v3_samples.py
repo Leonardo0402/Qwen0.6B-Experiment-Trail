@@ -364,20 +364,25 @@ def compute_sha_lock(
     Per the brief's chicken-and-egg resolution: ``sha_lock`` is computed over
     the 3 non-manifest files (families.json + test_raw.jsonl + rejected.jsonl).
     The manifest's own ``immutability.sha_lock`` field stores this value.
+
+    CRLF→LF normalization ensures cross-platform SHA consistency.
     """
     h = hashlib.sha256()
     for p in (families_path, test_raw_path, rejected_path):
         with p.open("rb") as fh:
-            h.update(fh.read())
+            data = fh.read()
+        # Normalize CRLF to LF for cross-platform consistency
+        h.update(data.replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 
 def sha256_file(path: Path) -> str:
-    """SHA256 hex digest of *path*'s raw bytes."""
+    """SHA256 hex digest of *path*'s raw bytes (CRLF normalized to LF)."""
     h = hashlib.sha256()
     with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(8192), b""):
-            h.update(chunk)
+        data = fh.read()
+    # Normalize CRLF to LF for cross-platform consistency
+    h.update(data.replace(b"\r\n", b"\n"))
     return h.hexdigest()
 
 
