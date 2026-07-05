@@ -162,12 +162,12 @@ class TestConfigSchema:
         ce = cfg["checkpoint_evaluator"]
         for tier in ("tier1", "tier2", "tier3"):
             assert tier in ce, f"missing {tier}"
-        # composite_score with 5 weights (Issue #12: + format_compliance_rate)
+        # composite_score with 5 weights (Issue #12: + hidden_pass_rate)
         cs = cfg["composite_score"]
         for w in [
             "code_generation_pass_at_1", "boundary_pass_at_1",
             "static_repair_success", "execution_repair_success",
-            "format_compliance_rate",
+            "hidden_pass_rate",
         ]:
             assert w in cs, f"missing composite weight: {w}"
         assert "hard_constraint" in cs
@@ -202,7 +202,7 @@ class TestConfigSchema:
         for w in [
             "code_generation_pass_at_1", "boundary_pass_at_1",
             "static_repair_success", "execution_repair_success",
-            "format_compliance_rate",
+            "hidden_pass_rate",
         ]:
             assert w in cs
         assert "hard_constraint" in cs
@@ -220,6 +220,50 @@ class TestConfigSchema:
 
 
 # ---------------------------------------------------------------------------
+# 1b. Issue #12 P0: Independent training contract tests
+# ---------------------------------------------------------------------------
+
+
+class TestConfigIndependentContract:
+    """Issue #12 P0: configs must be independent (not continual).
+
+    Prevents regression to:
+    - training_mode=continual
+    - initial_adapter pointing to P2 adapter
+    - num_train_epochs != 2
+    - wrong learning_rate
+    """
+
+    def test_balanced_independent_mode(self) -> None:
+        cfg = _load_yaml(BALANCED_CONFIG_PATH)
+        assert cfg["training_mode"] == "independent"
+        assert cfg["initial_adapter"] is None
+        assert cfg["num_train_epochs"] == 2
+        assert abs(cfg["learning_rate"] - 5e-5) < 1e-7
+
+    def test_repair_independent_mode(self) -> None:
+        cfg = _load_yaml(REPAIR_CONFIG_PATH)
+        assert cfg["training_mode"] == "independent"
+        assert cfg["initial_adapter"] is None
+        assert cfg["num_train_epochs"] == 2
+        assert abs(cfg["learning_rate"] - 3e-5) < 1e-7
+
+    def test_no_continual_regression(self) -> None:
+        """Neither config may use continual mode or load P2 adapter."""
+        for path in (BALANCED_CONFIG_PATH, REPAIR_CONFIG_PATH):
+            cfg = _load_yaml(path)
+            assert cfg["training_mode"] != "continual", (
+                f"{path.name}: training_mode must not be continual (Issue #12 P0)"
+            )
+            assert cfg["initial_adapter"] is None, (
+                f"{path.name}: initial_adapter must be null for independent (Issue #12 P0)"
+            )
+            assert cfg["num_train_epochs"] != 3, (
+                f"{path.name}: num_train_epochs must not be 3 (Issue #12 P0: 2)"
+            )
+
+
+# ---------------------------------------------------------------------------
 # 2. Composite-score weight tests
 # ---------------------------------------------------------------------------
 
@@ -233,16 +277,16 @@ class TestCompositeWeights:
             cs["boundary_pass_at_1"],
             cs["static_repair_success"],
             cs["execution_repair_success"],
-            cs["format_compliance_rate"],
+            cs["hidden_pass_rate"],
         ]
         # Sum to 1.0 within tolerance
         assert abs(sum(weights) - 1.0) < 0.01
-        # Issue #12: 27/18/18/27/10 (original 30/20/20/30 scaled by 0.9 + 10% fmt)
-        assert abs(cs["code_generation_pass_at_1"] - 0.27) < 0.01
-        assert abs(cs["boundary_pass_at_1"] - 0.18) < 0.01
-        assert abs(cs["static_repair_success"] - 0.18) < 0.01
-        assert abs(cs["execution_repair_success"] - 0.27) < 0.01
-        assert abs(cs["format_compliance_rate"] - 0.10) < 0.01
+        # Issue #12 P5: 30/15/20/25/10 (CodeGen/Boundary/Static/Exec/HiddenPass)
+        assert abs(cs["code_generation_pass_at_1"] - 0.30) < 0.01
+        assert abs(cs["boundary_pass_at_1"] - 0.15) < 0.01
+        assert abs(cs["static_repair_success"] - 0.20) < 0.01
+        assert abs(cs["execution_repair_success"] - 0.25) < 0.01
+        assert abs(cs["hidden_pass_rate"] - 0.10) < 0.01
 
     def test_config_ratio_weights_repair(self) -> None:
         cfg = _load_yaml(REPAIR_CONFIG_PATH)
@@ -252,15 +296,15 @@ class TestCompositeWeights:
             cs["boundary_pass_at_1"],
             cs["static_repair_success"],
             cs["execution_repair_success"],
-            cs["format_compliance_rate"],
+            cs["hidden_pass_rate"],
         ]
         assert abs(sum(weights) - 1.0) < 0.01
-        # Issue #12: 13/13/27/37/10 (original 15/15/30/40 scaled by 0.9 + 10% fmt)
-        assert abs(cs["code_generation_pass_at_1"] - 0.13) < 0.01
-        assert abs(cs["boundary_pass_at_1"] - 0.13) < 0.01
-        assert abs(cs["static_repair_success"] - 0.27) < 0.01
-        assert abs(cs["execution_repair_success"] - 0.37) < 0.01
-        assert abs(cs["format_compliance_rate"] - 0.10) < 0.01
+        # Issue #12 P5: 10/10/30/40/10 (CodeGen/Boundary/Static/Exec/HiddenPass)
+        assert abs(cs["code_generation_pass_at_1"] - 0.10) < 0.01
+        assert abs(cs["boundary_pass_at_1"] - 0.10) < 0.01
+        assert abs(cs["static_repair_success"] - 0.30) < 0.01
+        assert abs(cs["execution_repair_success"] - 0.40) < 0.01
+        assert abs(cs["hidden_pass_rate"] - 0.10) < 0.01
 
 
 # ---------------------------------------------------------------------------
@@ -323,25 +367,25 @@ class TestCompositeScoreCompute:
         assert abs(cs.compute(weights) - 1.0) < 1e-9
 
     def test_composite_score_compute_5component(self) -> None:
-        """Issue #12: 5-component Composite with format_compliance_rate."""
+        """Issue #12 P5: 5-component Composite with hidden_pass_rate."""
         cs = CompositeScore(
             code_generation_pass_at_1=0.5,
             boundary_pass_at_1=0.4,
             static_repair_success=0.6,
             execution_repair_success=0.7,
-            format_compliance_rate=0.9,
+            hidden_pass_rate=0.9,
         )
         weights = {
-            "code_generation_pass_at_1": 0.27,
-            "boundary_pass_at_1": 0.18,
-            "static_repair_success": 0.18,
-            "execution_repair_success": 0.27,
-            "format_compliance_rate": 0.10,
+            "code_generation_pass_at_1": 0.30,
+            "boundary_pass_at_1": 0.15,
+            "static_repair_success": 0.20,
+            "execution_repair_success": 0.25,
+            "hidden_pass_rate": 0.10,
         }
         result = cs.compute(weights)
         expected = (
-            0.5 * 0.27 + 0.4 * 0.18 + 0.6 * 0.18
-            + 0.7 * 0.27 + 0.9 * 0.10
+            0.5 * 0.30 + 0.4 * 0.15 + 0.6 * 0.20
+            + 0.7 * 0.25 + 0.9 * 0.10
         )
         assert abs(result - expected) < 1e-9
         assert 0.0 <= result <= 1.0

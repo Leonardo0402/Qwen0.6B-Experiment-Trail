@@ -305,6 +305,44 @@ def test_check11_verified_consistency_fail(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Check 12: Candidate ratio within tolerance (Issue #12 P6)
+# ---------------------------------------------------------------------------
+
+def test_check12_candidate_ratio_within_tolerance():
+    """Both candidates' variant_type ratios must be within ±3pp tolerance."""
+    passed, details = gate.check12_candidate_ratio_within_tolerance()
+    assert passed is True, f"ratio tolerance check failed: {details.get('violations', [])}"
+    assert details["tolerance_pp"] == 3
+    assert "balanced_counts" in details
+    assert "repair_counts" in details
+
+
+# ---------------------------------------------------------------------------
+# Check 13: All required buckets non-empty (Issue #12 P6)
+# ---------------------------------------------------------------------------
+
+def test_check13_all_buckets_non_empty():
+    """All 4 variant_type buckets must be non-empty for both candidates."""
+    passed, details = gate.check13_all_buckets_non_empty()
+    assert passed is True, f"empty buckets: {details.get('empty_buckets', [])}"
+    assert len(details["empty_buckets"]) == 0
+    assert set(details["required_buckets"]) == {"code", "boundary", "static_repair", "execution_repair"}
+
+
+# ---------------------------------------------------------------------------
+# Check 14: Composite evaluator complete (Issue #12 P6)
+# ---------------------------------------------------------------------------
+
+def test_check14_composite_evaluator_complete():
+    """CompositeScore must have all 5 components including hidden_pass_rate."""
+    passed, details = gate.check14_composite_evaluator_complete()
+    assert passed is True, f"composite evaluator incomplete: {details}"
+    assert len(details["missing_fields"]) == 0
+    assert len(details["config_violations"]) == 0
+    assert details["compute_test"] is not None
+
+
+# ---------------------------------------------------------------------------
 # Verdict logic (Fix 6: three-state)
 # ---------------------------------------------------------------------------
 
@@ -317,7 +355,7 @@ def test_compute_verdict_go():
         (True, {"real_silent_truncations": 0}),
         (True, {"all_failed": 100}),
         (True, {"smoke_passed": True}),  # 6a
-        (True, {"skipped": True, "reason": "CUDA not available"}),  # 6b
+        (True, {"smoke_passed": True, "bf16_supported": True}),  # 6b PASS
         (True, {"none_exist": True}),
         (True, {"passed": 70, "failed": 0}),
         (True, {"models": list(gate.EXPECTED_BASELINE_MODELS)}),
@@ -335,7 +373,7 @@ def test_compute_verdict_full_when_no_fail_no_capacity_warning():
         (True, {}),
         (True, {}),
         (True, {}),  # 6a
-        (True, {"skipped": True}),  # 6b
+        (True, {"smoke_passed": True, "bf16_supported": True}),  # 6b PASS
         (True, {}),
         (True, {}),
         (True, {}),
@@ -353,7 +391,7 @@ def test_compute_verdict_pilot_when_capacity_warning():
         (True, {}),
         (True, {}),
         (True, {}),  # 6a
-        (True, {"skipped": True}),  # 6b
+        (True, {"smoke_passed": True, "bf16_supported": True}),  # 6b PASS
         (True, {}),
         (True, {}),
         (True, {}),
@@ -376,6 +414,43 @@ def test_compute_verdict_fix_first():
         (True, {}),
     ]
     assert gate.compute_verdict(results) == "FIX_FIRST"
+
+
+def test_compute_verdict_pilot_pending_gpu_smoke():
+    """All non-GPU checks PASS but GPU smoke SKIP -> PILOT_PENDING_GPU_SMOKE."""
+    results = [
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),  # 6a
+        (True, {"skipped": True, "reason": "GPU smoke: CUDA not available"}),  # 6b SKIP
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {"total": 917, "verdict_impact": "PILOT_ONLY"}),
+    ]
+    assert gate.compute_verdict(results) == "PILOT_PENDING_GPU_SMOKE"
+
+
+def test_compute_verdict_pilot_pending_overrides_capacity_warning():
+    """GPU smoke SKIP takes precedence over capacity warning."""
+    results = [
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {"skipped": True, "reason": "GPU smoke: CUDA not available"}),
+        (True, {}),
+        (True, {}),
+        (True, {}),
+        (True, {"total": 917, "verdict_impact": "PILOT_ONLY"}),
+    ]
+    # PILOT_PENDING_GPU_SMOKE, not GO_FOR_P3_PILOT_ONLY
+    assert gate.compute_verdict(results) == "PILOT_PENDING_GPU_SMOKE"
 
 
 def test_compute_verdict_fix_first_when_any_fail():

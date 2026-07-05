@@ -1,12 +1,12 @@
 # P3 Training Readiness Gate Report
 
-**Generated**: 2026-07-05T06:25:26.967181+00:00
+**Generated**: 2026-07-05T12:42:16.728953+00:00
 **Branch**: feat/p3-capability-expansion-v2
 **Scope**: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 
 ## Verdict: GO_FOR_P3_PILOT_ONLY
 
-## 12 PASS Checks
+## 15 PASS Checks
 
 | # | Check | Status | Details |
 |---|---|---|---|
@@ -18,10 +18,13 @@
 | 6 | CPU smoke (mandatory) | PASS | smoke=ok numpy=True sum=49995000 |
 | 7 | GPU smoke (deferrable) | PASS | bf16=True smoke=True device=cuda |
 | 8 | Output dirs don't exist | PASS | 2 paths checked, none exist |
-| 9 | CPU CI green | PASS | 80/80 tests pass (rc=0) |
+| 9 | CPU CI green | PASS | 83/83 tests pass (rc=0) |
 | 10 | P3 baseline lock present | PASS | 3/3 models, all fields present |
 | 11 | Train capacity per-candidate (2300-3100) | PASS | balanced=622[PILOT_ONLY] repair=490[PILOT_ONLY] impact=PILOT_ONLY |
 | 12 | verified ⟺ verification subfields | PASS | 0/1112 inconsistent |
+| 13 | Candidate ratio within ±3pp tolerance | PASS | balanced={'code': 188, 'execution_repair': 188, 'static_repair': 125, 'boundary': 121} repair={'code': 74, 'execution_repair': 197, 'static_repair': 145, 'boundary': 74} tol=±3pp |
+| 14 | All required buckets non-empty | PASS | all 8 buckets non-empty |
+| 15 | Composite evaluator complete (5 components) | PASS | 5 components present, compute_ok |
 
 ## Additional Evaluations
 

@@ -1,32 +1,24 @@
 {
-  "generated_at": "2026-07-05T05:28:48.730013+00:00",
+  "generated_at": "2026-07-05T12:21:43.159024+00:00",
   "schema_version": 1,
   "frozen_version": "v4",
-  "base_version": "v3",
+  "base_version": "mbpp_verified_direct",
   "generator": "build_frozen_v4_samples.py",
   "frozen_family_count": 100,
-  "total_sample_count": 860,
+  "total_sample_count": 365,
   "variant_breakdown": {
     "code": 100,
-    "boundary": 100,
-    "canary": 100,
-    "static_repair": 265,
-    "execution_repair": 265,
-    "canary_repair": 30
+    "boundary": 65,
+    "static_repair": 100,
+    "execution_repair": 100,
+    "canary": 100
   },
-  "v3_content_preserved": true,
-  "v3_sample_count": 300,
-  "repair_buckets_added": true,
-  "repair_sample_counts": {
-    "static_repair": 265,
-    "execution_repair": 265,
-    "canary_repair": 30
-  },
-  "generation_environment": "Python 3.11 (ast.unparse required)",
-  "test_raw_sha256": "c04f9345bb7c066d229c3ea5c9097a48011a97e15a2e00217e4344250ecd0dd3",
-  "families_sha256": "6b5f5adc369b5101ae690842e98cf42ef1fa5764aa909b87c518690f8d52340f",
-  "rejected_count": 0,
-  "rejected_sha256": "",
+  "canary_count": 100,
+  "canary_excluded_from_total": true,
+  "test_raw_sha256": "9812c5e63385a5a3583977244a80948dcd0ec25438822e8ed13c9d9560e697fe",
+  "families_sha256": "dee0cb6de561928cc274f6d03b86737259d0959ae8e38d1a490b8a482263c896",
+  "rejected_count": 14,
+  "rejected_sha256": "9350913c9219bcfc7b6330d3694735d6f43355dade9416e59ee12ea4ee4a70a4",
   "immutability": {
     "write_once": true,
     "any_change_requires": "v5"

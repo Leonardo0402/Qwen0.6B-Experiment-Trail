@@ -1,9 +1,10 @@
-# P3 Balanced Generalist — Issue #9 §6.1
-# Train: 626 samples (30/20/20/30 code/boundary/static/exec)
+# P3 Balanced Generalist — Issue #12 P0
+# Train: 622 samples (30/20/20/30 code/boundary/static/exec, ±3pp tolerance)
 # Validation: 180 samples (4 categories x 45, shared with Repair Specialist)
-training_mode: continual
+# Independent training: from base Qwen3-0.6B, NO P2 adapter loaded.
+training_mode: independent
 model_name_or_path: models/Qwen3-0.6B
-initial_adapter: adapters/p2/continual/stage3-repair-v3  # Continue from P2 final (Stage3-v3-Antiforget)
+initial_adapter: null  # Issue #12 P0: independent — no P2 adapter
 
 train_file: data/p3-curriculum/balanced-generalist/train.jsonl
 eval_file: data/p3-curriculum/validation-v2/validation.jsonl
@@ -13,9 +14,10 @@ frozen_eval_file: data/frozen-eval/v4/test_raw.jsonl
 frozen_eval_manifest: data/frozen-eval/v4/manifest.json
 
 # RTX 3050 4GB constraints
+# Issue #12 P0: 2 epochs, LR 5e-5 (independent training, not continual)
 max_seq_length: 384
-num_train_epochs: 3
-learning_rate: 0.00002  # 2e-5 (between P2 v2 3e-5 and v3-antiforget 1e-5)
+num_train_epochs: 2
+learning_rate: 0.00005  # 5e-5 (Issue #12 P0)
 lr_scheduler_type: cosine
 warmup_ratio: 0.03
 weight_decay: 0.0
@@ -68,14 +70,14 @@ checkpoint_evaluator:
     full_validation: true
     composite_score: true
 
-# Composite Score formula (Issue #12 — 5-component with format_compliance_rate)
-# Original 30/20/20/30 scaled by 0.9 + 10% format_compliance
+# Composite Score formula (Issue #12 P5 — 5-component with hidden_pass_rate)
+# Balanced: 0.30/0.15/0.20/0.25/0.10 (CodeGen/Boundary/Static/Exec/HiddenPass)
 composite_score:
-  code_generation_pass_at_1: 0.27
-  boundary_pass_at_1: 0.18  # variant_type="boundary", task_type="code_generation"
-  static_repair_success: 0.18
-  execution_repair_success: 0.27
-  format_compliance_rate: 0.10  # Issue #12: cross-cutting 5th component
+  code_generation_pass_at_1: 0.30
+  boundary_pass_at_1: 0.15  # variant_type="boundary", task_type="code_generation"
+  static_repair_success: 0.20
+  execution_repair_success: 0.25
+  hidden_pass_rate: 0.10  # Issue #12 P5: 5th component (hidden tests pass rate)
   # Hard constraint: code_generation drop vs P2 final <= 3.0 percentage points
   hard_constraint:
     code_generation_drop_vs_p2_final_max_pct: 3.0

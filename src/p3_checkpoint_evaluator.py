@@ -18,7 +18,7 @@ from typing import Any
 from src.metrics import (
     METRICS_SCHEMA_VERSION,
     EvalOutcome,
-    format_compliance_rate,
+    hidden_pass_rate,
     normalize_baseline_key,
     pass_at_1,
     repair_success_rate,
@@ -36,7 +36,7 @@ class CompositeScore:
 
     Five components: four variant_type buckets (code, boundary,
     static_repair, execution_repair) plus a cross-cutting
-    ``format_compliance_rate`` (Issue #12). ``compute(weights)`` returns
+    ``hidden_pass_rate`` (Issue #12 P5). ``compute(weights)`` returns
     the weighted sum in [0, 1].
     """
 
@@ -44,7 +44,7 @@ class CompositeScore:
     boundary_pass_at_1: float  # variant_type="boundary", task_type="code_generation"
     static_repair_success: float
     execution_repair_success: float
-    format_compliance_rate: float = 0.0  # Cross-cutting; applies to all variants
+    hidden_pass_rate: float = 0.0  # Issue #12 P5: hidden tests pass rate
 
     def compute(self, weights: dict[str, float]) -> float:
         """Weighted sum of the five components.
@@ -54,7 +54,7 @@ class CompositeScore:
         weights : dict
             Keys: ``code_generation_pass_at_1``, ``boundary_pass_at_1``,
             ``static_repair_success``, ``execution_repair_success``,
-            ``format_compliance_rate``.
+            ``hidden_pass_rate``.
 
         Returns
         -------
@@ -66,7 +66,7 @@ class CompositeScore:
             + self.boundary_pass_at_1 * weights["boundary_pass_at_1"]
             + self.static_repair_success * weights["static_repair_success"]
             + self.execution_repair_success * weights["execution_repair_success"]
-            + self.format_compliance_rate * weights.get("format_compliance_rate", 0.0)
+            + self.hidden_pass_rate * weights.get("hidden_pass_rate", 0.0)
         )
 
 
@@ -278,20 +278,20 @@ class CheckpointEvaluator:
         static_rate = repair_success_rate(static_outcomes) if static_outcomes else 0.0
         exec_rate = repair_success_rate(exec_outcomes) if exec_outcomes else 0.0
 
-        # Issue #12: 5th component — format_compliance_rate is cross-cutting
+        # Issue #12 P5: 5th component — hidden_pass_rate is cross-cutting
         # (computed over ALL outcomes, not per-variant).
         all_outcomes = (
             code_outcomes + boundary_outcomes
             + static_outcomes + exec_outcomes
         )
-        fmt_rate = format_compliance_rate(all_outcomes) if all_outcomes else 0.0
+        hidden_rate = hidden_pass_rate(all_outcomes) if all_outcomes else 0.0
 
         return CompositeScore(
             code_generation_pass_at_1=code_rate,
             boundary_pass_at_1=boundary_rate,
             static_repair_success=static_rate,
             execution_repair_success=exec_rate,
-            format_compliance_rate=fmt_rate,
+            hidden_pass_rate=hidden_rate,
         )
 
     # ------------------------------------------------------------------

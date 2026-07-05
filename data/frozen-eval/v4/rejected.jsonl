@@ -1,0 +1,14 @@
+{"sample_id": "mbpp_107_condition_error", "family_id": "mbpp_fam_107", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_189_condition_error", "family_id": "mbpp_fam_189", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_189_off_by_one", "family_id": "mbpp_fam_189", "variant_type": null, "rejection_reason": "bug_did_not_fail:off_by_one"}
+{"sample_id": "mbpp_231_condition_error", "family_id": "mbpp_fam_231", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_452_condition_error", "family_id": "mbpp_fam_452", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_487_condition_error", "family_id": "mbpp_fam_487", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_487_off_by_one", "family_id": "mbpp_fam_487", "variant_type": null, "rejection_reason": "bug_did_not_fail:off_by_one"}
+{"sample_id": "mbpp_510_condition_error", "family_id": "mbpp_fam_510", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_559_condition_error", "family_id": "mbpp_fam_559", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_559_off_by_one", "family_id": "mbpp_fam_559", "variant_type": null, "rejection_reason": "bug_did_not_fail:off_by_one"}
+{"sample_id": "mbpp_564_off_by_one", "family_id": "mbpp_fam_564", "variant_type": null, "rejection_reason": "bug_did_not_fail:off_by_one"}
+{"sample_id": "mbpp_60_condition_error", "family_id": "mbpp_fam_60", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_627_condition_error", "family_id": "mbpp_fam_627", "variant_type": null, "rejection_reason": "bug_did_not_fail:condition_error"}
+{"sample_id": "mbpp_675_off_by_one", "family_id": "mbpp_fam_675", "variant_type": null, "rejection_reason": "bug_did_not_fail:off_by_one"}

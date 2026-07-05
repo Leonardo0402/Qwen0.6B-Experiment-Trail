@@ -65,6 +65,8 @@ from src.training_data import (  # noqa: E402
     build_assistant_only_features,
     compute_token_audit,
 )
+from src.p3_checkpoint_evaluator import CheckpointEvaluator  # noqa: E402
+from src.training_callbacks import CheckpointEvaluatorCallback  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -565,12 +567,35 @@ def run_training(config_path: str) -> int:
         resume_from = str(ckpt_dirs[-1])
         print(f"\nResuming from checkpoint: {resume_from}")
 
+    # Build CheckpointEvaluator + callback (Issue #12 P4)
+    callbacks_list = []
+    evaluator = None
+    if "checkpoint_evaluator" in cfg:
+        print("\n[CheckpointEvaluator] Initializing 3-tier evaluator...")
+        evaluator = CheckpointEvaluator(
+            config=cfg,
+            total_train_samples=len(train_records),
+        )
+        # Pilot mode: defer Tier 2/3 actual evaluation (only log scheduling)
+        is_pilot = cfg.get("max_steps", -1) > 0  # Pilot uses max_steps
+        cb = CheckpointEvaluatorCallback(
+            evaluator=evaluator,
+            config=cfg,
+            output_dir=output_dir,
+            pilot_mode=is_pilot,
+        )
+        callbacks_list.append(cb)
+        print(f"[CheckpointEvaluator] Callback attached (pilot_mode={is_pilot})")
+    else:
+        print("\n[CheckpointEvaluator] No checkpoint_evaluator in config, skipping")
+
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
+        callbacks=callbacks_list if callbacks_list else None,
     )
 
     print("\n=== Starting training ===")

@@ -410,13 +410,13 @@ def check6b_gpu_smoke() -> Tuple[bool, dict]:
     except ImportError:
         return True, {
             "skipped": True,
-            "reason": "torch not installed",
+            "reason": "GPU smoke: torch not installed",
         }
 
     if not torch.cuda.is_available():
         return True, {
             "skipped": True,
-            "reason": "CUDA not available",
+            "reason": "GPU smoke: CUDA not available",
             "torch_version": torch.__version__,
         }
 
@@ -691,6 +691,152 @@ def check11_verified_consistency(
 
 
 # ---------------------------------------------------------------------------
+# Check 12: Candidate ratio within tolerance (Issue #12 P6 #4)
+# ---------------------------------------------------------------------------
+
+def check12_candidate_ratio_within_tolerance() -> Tuple[bool, dict]:
+    """Check both candidates' variant_type ratios are within ±3pp tolerance.
+
+    Balanced target: 30% code / 20% boundary / 20% static_repair / 30% execution_repair
+    Repair target: 15% code / 15% boundary / 30% static_repair / 40% execution_repair
+
+    Tolerance: ±3 percentage points per bucket.
+    PASS iff all 8 ratios (4 buckets × 2 candidates) within tolerance.
+    """
+    # 使用已有的 _count_variant_types helper 函数
+    # Balanced targets
+    balanced_targets = {"code": 0.30, "boundary": 0.20, "static_repair": 0.20, "execution_repair": 0.30}
+    repair_targets = {"code": 0.15, "boundary": 0.15, "static_repair": 0.30, "execution_repair": 0.40}
+    tolerance = 0.03  # ±3pp
+
+    balanced_counts = _count_variant_types(BALANCED_TRAIN_PATH)
+    repair_counts = _count_variant_types(REPAIR_TRAIN_PATH)
+
+    details = {
+        "balanced_counts": balanced_counts,
+        "repair_counts": repair_counts,
+        "tolerance_pp": 3,
+        "violations": [],
+    }
+
+    all_ok = True
+    for label, counts, targets in [
+        ("balanced", balanced_counts, balanced_targets),
+        ("repair", repair_counts, repair_targets),
+    ]:
+        total = sum(counts.values())
+        if total == 0:
+            details["violations"].append(f"{label}: total=0")
+            all_ok = False
+            continue
+        for bucket, target in targets.items():
+            actual = counts.get(bucket, 0) / total
+            diff = abs(actual - target)
+            if diff > tolerance:
+                details["violations"].append(
+                    f"{label}.{bucket}: actual={actual:.2%} target={target:.2%} diff={diff:.2%}"
+                )
+                all_ok = False
+
+    return all_ok, details
+
+
+# ---------------------------------------------------------------------------
+# Check 13: All required buckets non-empty (Issue #12 P6 #5)
+# ---------------------------------------------------------------------------
+
+def check13_all_buckets_non_empty() -> Tuple[bool, dict]:
+    """Check all 4 variant_type buckets are non-empty for both candidates.
+
+    Required buckets: code, boundary, static_repair, execution_repair.
+    PASS iff all 8 (4 buckets × 2 candidates) are non-empty.
+    """
+    required = ["code", "boundary", "static_repair", "execution_repair"]
+    balanced_counts = _count_variant_types(BALANCED_TRAIN_PATH)
+    repair_counts = _count_variant_types(REPAIR_TRAIN_PATH)
+
+    empty = []
+    for bucket in required:
+        if balanced_counts.get(bucket, 0) == 0:
+            empty.append(f"balanced.{bucket}")
+        if repair_counts.get(bucket, 0) == 0:
+            empty.append(f"repair.{bucket}")
+
+    details = {
+        "balanced_counts": balanced_counts,
+        "repair_counts": repair_counts,
+        "required_buckets": required,
+        "empty_buckets": empty,
+    }
+    return len(empty) == 0, details
+
+
+# ---------------------------------------------------------------------------
+# Check 14: Composite evaluator complete (Issue #12 P6 #12)
+# ---------------------------------------------------------------------------
+
+def check14_composite_evaluator_complete() -> Tuple[bool, dict]:
+    """Check CompositeScore has all 5 components including hidden_pass_rate.
+
+    Verifies:
+    - CompositeScore dataclass has hidden_pass_rate field
+    - Both YAML configs have 5-component composite_score with hidden_pass_rate
+    - compute() method accepts hidden_pass_rate weight
+    """
+    import yaml
+    from src.p3_checkpoint_evaluator import CompositeScore
+
+    required_fields = [
+        "code_generation_pass_at_1",
+        "boundary_pass_at_1",
+        "static_repair_success",
+        "execution_repair_success",
+        "hidden_pass_rate",
+    ]
+
+    # Check CompositeScore dataclass fields
+    cs_fields = {f.name for f in CompositeScore.__dataclass_fields__.values()}
+    missing_fields = [f for f in required_fields if f not in cs_fields]
+
+    # Check YAML configs
+    config_violations = []
+    for cfg_path in [
+        _ROOT / "configs" / "p3" / "balanced-generalist.yaml",
+        _ROOT / "configs" / "p3" / "repair-specialist.yaml",
+    ]:
+        with cfg_path.open("r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        cs = cfg.get("composite_score", {})
+        for field in required_fields:
+            if field not in cs:
+                config_violations.append(f"{cfg_path.name}: missing {field}")
+
+    # Check compute() method works with 5 components
+    test_cs = CompositeScore(0.5, 0.4, 0.6, 0.7, 0.9)
+    test_weights = {f: 0.2 for f in required_fields}
+    try:
+        test_result = test_cs.compute(test_weights)
+        compute_ok = True
+    except Exception as e:
+        compute_ok = False
+        config_violations.append(f"compute() failed: {e}")
+
+    all_ok = (
+        len(missing_fields) == 0
+        and len(config_violations) == 0
+        and compute_ok
+    )
+
+    details = {
+        "composite_score_fields": sorted(cs_fields),
+        "missing_fields": missing_fields,
+        "config_violations": config_violations,
+        "compute_test": test_result if compute_ok else None,
+    }
+    return all_ok, details
+
+
+# ---------------------------------------------------------------------------
 # Verdict + report rendering
 # ---------------------------------------------------------------------------
 
@@ -707,31 +853,41 @@ CHECK_NAMES = [
     ("check9_baseline_lock_present", "P3 baseline lock present"),
     ("check10_train_capacity", "Train capacity per-candidate (2300-3100)"),
     ("check11_verified_consistency", "verified ⟺ verification subfields"),
+    ("check12_candidate_ratio_within_tolerance", "Candidate ratio within ±3pp tolerance"),
+    ("check13_all_buckets_non_empty", "All required buckets non-empty"),
+    ("check14_composite_evaluator_complete", "Composite evaluator complete (5 components)"),
 ]
 
 
 def compute_verdict(results: list[Tuple[bool, dict]]) -> str:
-    """Three-state verdict (Issue #10 Fix 6).
+    """Five-state verdict (Issue #12 P6).
 
-    - GO_FOR_P3_TRAINING: every check PASS AND no capacity PILOT_ONLY warning
-    - GO_FOR_P3_PILOT_ONLY: every check PASS but capacity below 2300
-    - FIX_FIRST: any check FAIL
+    - FIX_FIRST: any mandatory check FAIL
+    - PILOT_PENDING_GPU_SMOKE: all non-GPU checks PASS but GPU smoke SKIP
+    - GO_FOR_P3_PILOT_ONLY: all checks PASS (incl. GPU) but capacity < 2300
+    - GO_FOR_P3_TRAINING: all checks PASS and capacity >= 2300
+    - STOP: reserved for manual trigger (not auto-emitted)
 
-    SKIP on Check 6b (GPU smoke) is the only allowed SKIP and counts as PASS.
-    Capacity warning is detected via ``details.get("verdict_impact") == "PILOT_ONLY"``
-    emitted by check10_train_capacity.
+    SKIP on Check 6b (GPU smoke) triggers PILOT_PENDING_GPU_SMOKE when all
+    other checks PASS. Capacity warning is detected via
+    ``details.get("verdict_impact") == "PILOT_ONLY"`` from check10.
     """
     has_fail = False
+    has_gpu_skip = False
     capacity_warning = False
 
     for passed, details in results:
         if not passed:
             has_fail = True
+        if details.get("skipped") is True and "gpu" in str(details.get("reason", "")).lower():
+            has_gpu_skip = True
         if details.get("verdict_impact") == "PILOT_ONLY":
             capacity_warning = True
 
     if has_fail:
         return "FIX_FIRST"
+    if has_gpu_skip:
+        return "PILOT_PENDING_GPU_SMOKE"
     if capacity_warning:
         return "GO_FOR_P3_PILOT_ONLY"
     return "GO_FOR_P3_TRAINING"
@@ -803,6 +959,22 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
             f"{details.get('inconsistent_count', 0)}/"
             f"{details.get('checked', 0)} inconsistent"
         )
+    if name == "check12_candidate_ratio_within_tolerance":
+        if passed:
+            return (
+                f"balanced={details.get('balanced_counts', {})} "
+                f"repair={details.get('repair_counts', {})} "
+                f"tol=±{details.get('tolerance_pp', 3)}pp"
+            )
+        return f"violations={details.get('violations', [])}"
+    if name == "check13_all_buckets_non_empty":
+        if passed:
+            return f"all 8 buckets non-empty"
+        return f"empty={details.get('empty_buckets', [])}"
+    if name == "check14_composite_evaluator_complete":
+        if passed:
+            return f"5 components present, compute_ok"
+        return f"missing={details.get('missing_fields', [])} violations={details.get('config_violations', [])}"
     return json.dumps(details, ensure_ascii=False)[:80]
 
 
@@ -1008,6 +1180,11 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
         lines.append("- **R5**: 容量不足触发 PILOT_ONLY——Pilot 结果不可作为模型能力声明。")
         lines.append("")
         lines.append("PILOT 训练启动前须由用户明确批准，并确认上述 5 项风险与 PILOT 约束。")
+    elif verdict == "PILOT_PENDING_GPU_SMOKE":
+        lines.append("**PILOT_PENDING_GPU_SMOKE** — 所有非 GPU 检查通过，但 GPU smoke 未执行（SKIP）。")
+        lines.append("")
+        lines.append("需在具备 CUDA 的环境中执行 GPU smoke (Check 6b) 后重新运行 Readiness Gate。")
+        lines.append("GPU smoke PASS 后，verdict 将根据容量自动降级为 GO_FOR_P3_PILOT_ONLY 或 GO_FOR_P3_TRAINING。")
     else:
         lines.append("**FIX_FIRST** — 至少一项检查 FAIL。必须先修复后再启动训练：")
         lines.append("")
@@ -1069,6 +1246,9 @@ def main() -> int:
         check9_baseline_lock_present,
         check10_train_capacity,
         check11_verified_consistency,
+        check12_candidate_ratio_within_tolerance,
+        check13_all_buckets_non_empty,
+        check14_composite_evaluator_complete,
     ]
     results: list[Tuple[bool, dict]] = []
     total_checks = len(CHECK_NAMES)

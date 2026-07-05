@@ -33,14 +33,80 @@ Scope: P3.0–P3.4 (data + tests + Readiness Gate). NO full training.
 
 **关键发现**: Fix 1 回填揭露了 boundary 变体生成器的固有 bug — 125/125 boundary 样本的 target_code 在边界输入（0/-1/1）下返回错误值，全部 verified=False。这意味着 boundary 变体生成器本身需要后续修复（超出 Issue #10 scope）。
 
-## Issue #12: P3.6 — Boundary 数据链修复 + Repair-capable Eval v4 + GPU Pilot
+## Issue #12 (Revised 2026-07-05): P3.6 — Independent Training + Hidden Pass Composite + True Frozen v4
 
-- **Phase A**: 修复 Boundary 生成器 bug — COMPLETE (`_normalize_test_code` in `src/sandbox.py` 处理 mixed-format test code; boundary verified 0/125 → 121/125)
-- **Phase B**: 重建数据 — COMPLETE (Validation v2: 180 samples 4×45; Balanced: 622 samples; Repair: 490 samples; Frozen Eval v4: 860 samples = 300 v3 + 530 repair + 30 canary_repair, 用 py -3.11 构建)
-- **Phase C**: 配置 + Gate 修复 — COMPLETE (两 YAML 引用 v4 eval + 5 分量 Composite; `format_compliance_rate` 作为第 5 分量; 逐候选 Capacity Gate; verified 一致性 Gate; bf16/fp16 dict→bool 修复; initial_adapter 路径修复)
-- **Phase D**: GPU Smoke + Pilot — COMPLETE (torch 2.6.0+cu124 安装于 Python 3.11; GPU Smoke PASS on RTX 3050: bf16=True; Pilot: 20/20 steps, 0.25 epoch, train_loss 0.84→0.40, eval_loss 0.5935, peak GPU 1350 MiB, adapter save/reload verified)
+User directive (2026-07-05): PR #13 保持 OPEN, PR #11 暂不合并 (被 #13 取代), Issue #12 不得关闭,
+Balanced Pilot 仅视为 Continual 工程 Smoke, Repair Pilot 未完成, 正式训练未授权。
+Priority fixes: independent configs → hidden_pass composite → true frozen v4 → readiness v4
+→ checkpoint evaluator wired into trainer → CI runs all P3 tests.
 
-**最终 Readiness Gate 输出**: Verdict = `GO_FOR_P3_PILOT_ONLY`（12/12 检查全 PASS，含 Check 6b GPU smoke PASS on RTX 3050；Check 10 verdict_impact=PILOT_ONLY 因 train 总量 1112 < 2300）。**Pilot 已完成（balanced-generalist, 0.25 epoch）。**
+### Phase 1: 独立训练配置 (P0) — COMPLETE
+- `configs/p3/balanced-generalist.yaml`: `training_mode: independent`, `initial_adapter: null`, LR 5e-5, 2 epochs
+- `configs/p3/repair-specialist.yaml`: `training_mode: independent`, `initial_adapter: null`, LR 3e-5, 2 epochs
+- Both reference `data/frozen-eval/v4/` and `data/p3-curriculum/validation-v2/`
+
+### Phase 2: Hidden Pass Composite (P5) — COMPLETE
+- `src/p3_checkpoint_evaluator.py`: `CompositeScore` 增加 `hidden_pass_rate` 第 5 分量
+- Balanced weights: 0.30/0.15/0.20/0.25/0.10 (CodeGen/Boundary/Static/Exec/HiddenPass)
+- Repair weights: 0.10/0.10/0.30/0.40/0.10
+- 权重总和 = 1.0; 任一 bucket 缺失 hard fail; schema version + round-trip tests
+
+### Phase 3: Readiness Gate v4 (P6) — COMPLETE
+- `scripts/p3_readiness_gate.py`: 15 checks (check1-14 + 6a/6b split)
+- 5-state verdict: FIX_FIRST / PILOT_PENDING_GPU_SMOKE / GO_FOR_P3_PILOT_ONLY / GO_FOR_P3_TRAINING / STOP
+- GPU smoke SKIP detection: `"gpu" in reason.lower()`
+- Per-candidate capacity gate (check10): balanced[PILOT_ONLY] repair[PILOT_ONLY]
+- Verified consistency gate (check11): 0/1112 inconsistent
+- Candidate ratio gate (check12): ±3pp tolerance
+- All-buckets-non-empty gate (check13): 8/8 buckets
+- Composite evaluator gate (check14): 5 components present
+
+### Phase 4: CheckpointEvaluator 接入 Trainer (P4 后半) — COMPLETE
+- `src/training_callbacks.py`: `CheckpointEvaluatorCallback(TrainerCallback)` with on_log/on_epoch_end/on_train_end
+- Tier 1 (every 50 steps): train_loss, eval_loss, lr, gpu_mem, nan/inf detection
+- Tier 2 (every 0.25 epoch): probe + Composite (pilot_mode=True → SCHEDULED_PILOT_DEFERRED)
+- Tier 3 (every 1 epoch): full validation + Composite
+- NaN/Inf → immediate early stop via check_early_stop
+- `scripts/train_lora.py`: imports + wires callback into Trainer
+- 12 tests pass (`tests/test_training_callbacks.py`)
+- CI fallback: `try: from transformers import ... except ImportError: stub classes`
+
+### Phase 5: GitHub CI 跑全部 P3 测试 — COMPLETE
+- `.github/workflows/ci-tests.yml`: Python 3.11, 20min timeout, `pytest tests/ -v --tb=short --timeout=120`
+- `tests/test_p1_training_trust.py`: `torch = pytest.importorskip("torch")` for CI
+- Core 239 tests pass locally (test_schemas/validators/metrics/p2_evidence_hardening/p3_checkpoint_evaluator/p3_readiness_gate/p3_baseline_lock/training_callbacks/frozen_v4_compliance)
+
+### Phase 6: 真正的 Frozen Eval v4 (P4) — COMPLETE (TDD)
+- Old v4 was non-compliant: reused v3's 100 families (100% overlap), 860 samples (over 700 limit), canary counted in total, wrong ratios
+- New v4: 100 NEW families (zero overlap with all historical datasets), 365 non-canary samples, 100 canary (excluded from total)
+- Ratios: Code 27.4% / Boundary 17.8% / Static 27.4% / Exec 27.4% (all in range)
+- SHA locked, immutability any_change_requires="v5"
+- TDD: 22 compliance tests in `tests/test_frozen_v4_compliance.py` (TestFamilyCount, TestZeroFamilyOverlap, TestSampleCount, TestTaskRatios, TestCanaryHandling, TestSampleVerification, TestImmutability, TestManifestStructure)
+- All 22 tests pass
+
+### Phase 6.5: Boundary Root Cause Report (P1 §5) — COMPLETE
+- `reports/p3/p3-boundary-root-cause-report.md` created
+- Primary root cause (fixed): mixed-format test code (bare-assert public + pytest boundary tests concatenated)
+- Fix: `_normalize_test_code` in `src/sandbox.py` prepends `from solution import *` for mixed-format
+- Post-fix: 121/125 pass (96.8%), exceeds 90% gate
+- 4 unresolved edge cases (defaultdict repr, `error` undefined, tuple/list mismatch, underscore-prefixed `_sum`): correctly excluded, documented as follow-up
+
+### Phase 7: 完整 GPU Smoke (P7) — PENDING
+- check6b tiny smoke PASS on RTX 3050 (bf16=True, forward+backward+optimizer.step)
+- Issue #12 P7 requires fuller smoke: 2-5 steps + eval loss + checkpoint save/reload + inference for BOTH candidates
+- Requires user local CUDA environment
+
+### Phase 8-9: Balanced + Repair Pilot (P8) — PENDING
+- Verdict GO_FOR_P3_PILOT_ONLY allows Pilot (max 0.25 epoch / 50 steps each)
+- Requires user authorization to run on local GPU
+
+### Phase 10: Readiness Report + SDD + commit/push — COMPLETE (this commit)
+- 15/15 checks PASS, Verdict = GO_FOR_P3_PILOT_ONLY
+- SDD ledger updated
+- Boundary root cause report created
+- All changes committed and pushed
+
+**最终 Readiness Gate 输出**: Verdict = `GO_FOR_P3_PILOT_ONLY`（15/15 检查全 PASS，含 Check 6b GPU smoke PASS on RTX 3050；Check 10 verdict_impact=PILOT_ONLY 因 train 总量 1112 < 2300）。**正式训练未授权。完整 GPU Smoke + Pilot 待用户本地环境执行。**
 
 ## Minor Findings (triaged by final review)
 
