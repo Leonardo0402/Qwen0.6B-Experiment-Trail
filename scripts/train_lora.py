@@ -665,6 +665,25 @@ def run_training(config_path: str) -> int:
     assert abs(orig_val - loaded_val) < 1e-5, "Adapter save/reload mismatch!"
     print("  Adapter save/reload verification: OK")
 
+    # P7 GPU Smoke: inference verification (Issue #12 P7)
+    print("\nInference verification (P7)...")
+    verify_model.eval()
+    prompt_text = "def add(a, b):\n    return"
+    inputs = tokenizer(prompt_text, return_tensors="pt").to(verify_model.device)
+    with torch.no_grad():
+        gen_outputs = verify_model.generate(
+            **inputs,
+            max_new_tokens=32,
+            do_sample=False,
+            pad_token_id=tokenizer.pad_token_id,
+        )
+    generated_text = tokenizer.decode(
+        gen_outputs[0][inputs["input_ids"].shape[1]:],
+        skip_special_tokens=True,
+    )
+    print(f"  Prompt: {prompt_text}")
+    print(f"  Generated: {generated_text[:200]}")
+
     # Clean up
     del verify_model
     torch.cuda.empty_cache()

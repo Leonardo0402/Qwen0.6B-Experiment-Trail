@@ -1,14 +1,14 @@
-# P3 Balanced Generalist Pilot — Issue #12 P7/P8
+# P3 Repair Specialist Pilot — Issue #12 P7/P8
 # GPU Smoke + Pilot: independent mode, max 2-5 steps for smoke, 50 for pilot.
 # Results must NOT be reported as formal capability (GO_FOR_P3_PILOT_ONLY).
 training_mode: independent  # Issue #12 P0: independent (not continual)
 model_name_or_path: models/Qwen3-0.6B
 initial_adapter: null  # Issue #12 P0: no P2 adapter
 
-train_file: data/p3-curriculum/balanced-generalist/train.jsonl
+train_file: data/p3-curriculum/repair-specialist/train.jsonl
 eval_file: data/p3-curriculum/validation-v2/validation.jsonl
-output_dir: adapters/p3/balanced-generalist-pilot
-dataset_manifest: data/p3-curriculum/balanced-generalist/manifest.json
+output_dir: adapters/p3/repair-specialist-pilot
+dataset_manifest: data/p3-curriculum/repair-specialist/manifest.json
 
 # RTX 3050 4GB constraints
 # Issue #12 P7: GPU smoke uses max_steps=3 (2-5 steps range)
@@ -16,7 +16,7 @@ dataset_manifest: data/p3-curriculum/balanced-generalist/manifest.json
 max_steps: 3  # GPU smoke (override to 50 for full pilot)
 max_seq_length: 384
 num_train_epochs: 2  # Ignored when max_steps > 0
-learning_rate: 0.00005  # 5e-5 (Issue #12 P0: independent LR)
+learning_rate: 0.00003  # 3e-5 (Issue #12 P0: independent LR)
 lr_scheduler_type: cosine
 warmup_ratio: 0.03
 weight_decay: 0.0
