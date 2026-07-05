@@ -91,14 +91,22 @@ Priority fixes: independent configs → hidden_pass composite → true frozen v4
 - Post-fix: 121/125 pass (96.8%), exceeds 90% gate
 - 4 unresolved edge cases (defaultdict repr, `error` undefined, tuple/list mismatch, underscore-prefixed `_sum`): correctly excluded, documented as follow-up
 
-### Phase 7: 完整 GPU Smoke (P7) — PENDING
-- check6b tiny smoke PASS on RTX 3050 (bf16=True, forward+backward+optimizer.step)
-- Issue #12 P7 requires fuller smoke: 2-5 steps + eval loss + checkpoint save/reload + inference for BOTH candidates
-- Requires user local CUDA environment
+### Phase 7: 完整 GPU Smoke (P7) — COMPLETE
+- Both candidates: 3 optimizer steps, independent mode, RTX 3050 Laptop GPU
+- Forward/backward/optimizer.step/eval loss/checkpoint save/adapter reload/inference all verified
+- Balanced: 64.21s, peak VRAM 1350.86 MiB, inference "a + b" (valid)
+- Repair: 70.95s, peak VRAM 1342.05 MiB, inference "a + b" (valid)
+- No NaN/Inf, no OOM, BF16 supported
+- Report: `reports/p3/p3-gpu-smoke-report.md`
 
-### Phase 8-9: Balanced + Repair Pilot (P8) — PENDING
-- Verdict GO_FOR_P3_PILOT_ONLY allows Pilot (max 0.25 epoch / 50 steps each)
-- Requires user authorization to run on local GPU
+### Phase 8-9: Balanced + Repair Pilot (P8) — COMPLETE
+- Both candidates: 50 optimizer steps, independent mode, max 0.25 epoch
+- Balanced: 837.08s, peak VRAM 1350.86 MiB, 622 samples, LR 5e-5
+- Repair: 983.42s, peak VRAM 1342.05 MiB, 490 samples, LR 3e-5
+- No NaN/Inf, no OOM, save/reload OK, inference produces valid code
+- 3-tier evaluator callback attached (pilot_mode=True, Tier 2/3 deferred)
+- Capability claims NOT allowed (pilot only)
+- Report: `reports/p3/p3-pilot-report.md`
 
 ### Phase 10: Readiness Report + SDD + commit/push — COMPLETE (this commit)
 - 15/15 checks PASS, Verdict = GO_FOR_P3_PILOT_ONLY

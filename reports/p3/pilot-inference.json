@@ -1,0 +1,10 @@
+{
+  "balanced": {
+    "generated": " a + b\ndef subtract(a, b):\n    return a - b\ndef multiply(a, b):\n    return a * b\ndef divide(a,",
+    "adapter_sha256": "fd5254cf108bf38d1a0bbaec55fc39a7bc099346794a948aea1d198c55e79905"
+  },
+  "repair": {
+    "generated": " a + b\n\ndef main():\n    a = int(input(\"Enter first number: \"))\n    b = int(input(\"Enter second number: \"))\n    print(add",
+    "adapter_sha256": "2810cf548651cd9786e7464623ce1fc8e59c176002199af1363e1ae3295dcf30"
+  }
+}

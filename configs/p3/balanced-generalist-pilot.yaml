@@ -13,7 +13,7 @@ dataset_manifest: data/p3-curriculum/balanced-generalist/manifest.json
 # RTX 3050 4GB constraints
 # Issue #12 P7: GPU smoke uses max_steps=3 (2-5 steps range)
 # Issue #12 P8: Pilot uses max_steps=50 (max 0.25 epoch / 50 steps)
-max_steps: 3  # GPU smoke (override to 50 for full pilot)
+max_steps: 50  # Issue #12 P8: Pilot (max 0.25 epoch / 50 steps)
 max_seq_length: 384
 num_train_epochs: 2  # Ignored when max_steps > 0
 learning_rate: 0.00005  # 5e-5 (Issue #12 P0: independent LR)
