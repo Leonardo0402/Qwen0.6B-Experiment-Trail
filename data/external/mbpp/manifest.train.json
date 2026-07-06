@@ -1,6 +1,6 @@
 {
   "source": "google-research-datasets/mbpp",
-  "source_revision": "main",
+  "source_revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
   "dataset_fingerprint": "5cdc16311fd8e220",
   "split": "train",
   "sample_count": 374,

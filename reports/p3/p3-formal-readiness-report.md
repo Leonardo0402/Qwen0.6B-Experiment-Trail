@@ -1,7 +1,7 @@
 # P3 Formal Readiness Gate v2 Report
 
-**Generated**: 2026-07-06T04:57:08.040692+00:00
-**Branch**: feat/p3-capability-expansion-v2
+**Generated**: 2026-07-06T05:59:31.476847+00:00
+**Branch**: feat/p3-boundary-repair-pipeline-v3
 **Wave**: 5-J (Issue #14)
 **Scope**: Formal training data + configs + infrastructure readiness.
 
@@ -19,7 +19,7 @@
 | 6 | CPU smoke (mandatory) | PASS | smoke=ok numpy=True sum=49995000 |
 | 7 | GPU smoke (deferrable) | PASS | bf16=True smoke=True device=cuda |
 | 8 | Formal output dirs don't exist | PASS | 2 paths checked, none exist |
-| 9 | CPU CI green | PASS | 105/105 tests pass (rc=0) |
+| 9 | Local CPU CI green (subprocess) | PASS | 105/105 tests pass (rc=0) |
 | 10 | P3 baseline lock present | PASS | 3/3 models, all fields present |
 | 11 | Formal train capacity (>=2300/candidate) | SKIP | SKIP: formal train datasets not built yet |
 | 12 | verified ⟺ verification (formal) | SKIP | SKIP: formal train datasets not built yet |
@@ -31,7 +31,11 @@
 | 18 | Formal pool SHA lock | PASS | sha=c6186afd49df4fa1... samples=2544 families=403 |
 | 19 | Formal config validity | PASS | 2 configs valid (independent, null adapter, 2 epochs) |
 | 20 | Per-family cap enforcement (formal) | SKIP | SKIP: formal train datasets not built yet |
-| 21 | Capacity verdict (formal builder) | PASS | balanced: ?(max=2181); repair: ?(max=1591) status=LIMIT src=pool_fallback_lp |
+| 21 | Capacity verdict (formal builder) | PASS | balanced: max=2181 binding=execution_repair; repair: max=1591 binding=execution_repair status=LIMIT src=pool_fallback_lp |
+
+> **Note**: Check 8 runs a local pytest subprocess and reports
+> local results only. The GitHub Actions CI status on the PR
+> must be verified separately on the PR page.
 
 ## SKIP Summary
 

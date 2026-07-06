@@ -12,12 +12,18 @@ Covers
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Torch availability check for tests that call .run() (which lazy-imports torch).
+# CPU-only CI environments may not have torch installed.
+_TORCH_AVAILABLE = importlib.util.find_spec("torch") is not None
+_TORCH_SKIP_REASON = "torch not installed (CPU-only CI environment)"
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -627,6 +633,7 @@ class TestTier3FullValidationBucketMissing:
 class TestTier2ProbeRunWithMock:
     """Tier2Probe.run with a mock model (no real GPU)."""
 
+    @pytest.mark.skipif(not _TORCH_AVAILABLE, reason=_TORCH_SKIP_REASON)
     def test_run_produces_probe_result(self, tmp_path: Path) -> None:
         cfg = _make_config(probe_size=8)
         samples = _make_validation_samples(12)
@@ -683,6 +690,7 @@ class TestTier2ProbeRunWithMock:
 class TestTier3FullValidationRunWithMock:
     """Tier3FullValidation.run with a mock model."""
 
+    @pytest.mark.skipif(not _TORCH_AVAILABLE, reason=_TORCH_SKIP_REASON)
     def test_run_produces_full_result(self, tmp_path: Path) -> None:
         cfg = _make_config()
         # Use 4 samples (1 per bucket) for speed

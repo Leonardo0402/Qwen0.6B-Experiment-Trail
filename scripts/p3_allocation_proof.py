@@ -270,8 +270,10 @@ def main():
         if result["max_total"] < HARD_MIN_TOTAL:
             result["verdict"] = "MBPP_FAMILY_OR_VARIANT_LIMIT"
             any_limit = True
+            all_feasible = False
         elif result["max_total"] < FEASIBLE_MIN_TOTAL:
             result["verdict"] = "FORMAL_CAPACITY_AT_RISK"
+            all_feasible = False
         else:
             result["verdict"] = "FORMAL_CAPACITY_FEASIBLE"
 

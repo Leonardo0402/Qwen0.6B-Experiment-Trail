@@ -926,7 +926,7 @@ CHECK_NAMES = [
     ("check6a_cpu_smoke", "CPU smoke (mandatory)"),
     ("check6b_gpu_smoke", "GPU smoke (deferrable)"),
     ("check7_formal_output_dirs_dont_exist", "Formal output dirs don't exist"),
-    ("check8_cpu_ci_green", "CPU CI green"),
+    ("check8_cpu_ci_green", "Local CPU CI green (subprocess)"),
     ("check9_baseline_lock_present", "P3 baseline lock present"),
     ("check10_formal_train_capacity", "Formal train capacity (>=2300/candidate)"),
     ("check11_verified_consistency_formal", "verified ⟺ verification (formal)"),
@@ -1117,7 +1117,7 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
     lines.append("# P3 Formal Readiness Gate v2 Report")
     lines.append("")
     lines.append(f"**Generated**: {now}")
-    lines.append("**Branch**: feat/p3-capability-expansion-v2")
+    lines.append("**Branch**: feat/p3-boundary-repair-pipeline-v3")
     lines.append("**Wave**: 5-J (Issue #14)")
     lines.append("**Scope**: Formal training data + configs + infrastructure readiness.")
     lines.append("")
@@ -1132,6 +1132,10 @@ def render_report(results: list[Tuple[bool, dict]], verdict: str) -> str:
         status = _status_token(passed, details)
         short = _format_details_short(name, passed, details)
         lines.append(f"| {i} | {label} | {status} | {short} |")
+    lines.append("")
+    lines.append("> **Note**: Check 8 runs a local pytest subprocess and reports")
+    lines.append("> local results only. The GitHub Actions CI status on the PR")
+    lines.append("> must be verified separately on the PR page.")
     lines.append("")
 
     # SKIP summary

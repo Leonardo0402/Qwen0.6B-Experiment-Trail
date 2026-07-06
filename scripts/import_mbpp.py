@@ -73,11 +73,13 @@ _LICENSE = "Apache-2.0"
 _DATASET_VERSION = "mbpp-v1"
 _GENERATOR = "mbpp-importer"
 
-# HF revision pin (P3 global constraint #16).  ``"main"`` is always valid for
-# HuggingFace datasets; it pins the branch (not a specific commit hash), which
-# is the most discoverable stable identifier available without scraping the HF
-# commit log.
-_SOURCE_REVISION = "main"
+# HF revision pin (P3 global constraint #16).  Pinned to an immutable commit
+# SHA (not "main") so that all committed train/test/validation artifacts are
+# reproducible.  The SHA below corresponds to the latest commit on
+# google-research-datasets/mbpp as of 2024-01-04; the dataset has not been
+# modified since.  Verified via the HuggingFace API endpoint
+# https://huggingface.co/api/datasets/google-research-datasets/mbpp/revision/main
+_SOURCE_REVISION = "4bb6404fdc6cacfda99d4ac4205087b89d32030c"
 
 # MBPP samples are imported as UNVERIFIED code_generation references.  Per the
 # P3 task brief, the importer must NOT claim any verification -- no compile,
