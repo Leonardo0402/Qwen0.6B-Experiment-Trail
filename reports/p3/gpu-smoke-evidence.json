@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "issue": "#14 P4",
+  "generated_at": "2026-07-05T15:48:03.658509+00:00",
+  "candidates": {
+    "balanced-generalist": {
+      "candidate": "balanced-generalist",
+      "config_path": "configs\\p3\\balanced-generalist-pilot.yaml",
+      "config_sha256": "f9b7da701f8d31f2ed7591ce12fb543874ed1d22189d5bdc01b3b58e04439834",
+      "train_path": "data\\p3-curriculum\\balanced-generalist\\train.jsonl",
+      "train_sha256": "95ba99c073018fc407bede4a196c35a9afb0b9a6d9ded6615631eb262274b2cf",
+      "validation_path": "data\\p3-curriculum\\validation-v2\\validation.jsonl",
+      "validation_sha256": "e481126d0d4ec5743d1e0bd47f5bd5db3e8350b21f09145d948335a0e64ecce6",
+      "base_model_path": "models/Qwen3-0.6B",
+      "base_model_hash": "328490672023d42b2f04373680072ebc737a42defb76ccf4e546c9499b40d95c",
+      "precision": {
+        "load": "fp16",
+        "train": "bf16",
+        "bf16_supported": true
+      },
+      "environment": {
+        "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+        "gpu_total_vram_mb": 4095,
+        "cuda": "12.4",
+        "pytorch": "2.6.0+cu124",
+        "transformers": "5.12.1",
+        "peft": "0.19.1",
+        "python": "3.11",
+        "os": "Windows"
+      },
+      "optimizer_steps": 50,
+      "verification": {
+        "forward": "PASS",
+        "backward": "PASS",
+        "optimizer_step": "PASS",
+        "eval_loss": "PASS",
+        "checkpoint_save": "PASS",
+        "adapter_reload": "PASS",
+        "inference": "PASS"
+      },
+      "adapter_path": "adapters\\p3\\balanced-generalist-pilot",
+      "adapter_sha256": "fd5254cf108bf38d1a0bbaec55fc39a7bc099346794a948aea1d198c55e79905",
+      "peak_vram_mb": 0,
+      "nan_detected": false,
+      "inf_detected": false,
+      "oom": false,
+      "inference_output": " a + b\n\ndef subtract(a, b):\n    return a - b\n\ndef multiply(a, b):\n    return a * b\n\ndef divide(a,",
+      "inference_sha256": "e569bd0bf1aee5c7c1b42dcaf48f38814db9b8a061098d1bf67a2a28900e8f57",
+      "train_samples": 0,
+      "train_duration_s": 837.0778639316559,
+      "created_at": "2026-07-05T15:48:03.506385+00:00"
+    },
+    "repair-specialist": {
+      "candidate": "repair-specialist",
+      "config_path": "configs\\p3\\repair-specialist-pilot.yaml",
+      "config_sha256": "6e39eb923a6f81784826edd153fd6117a9ea969f601c2b13eb41b81f2e057021",
+      "train_path": "data\\p3-curriculum\\repair-specialist\\train.jsonl",
+      "train_sha256": "60b231f7ca1edf80e57c14e8ff075126421cc360345d112d9a7af93362533481",
+      "validation_path": "data\\p3-curriculum\\validation-v2\\validation.jsonl",
+      "validation_sha256": "e481126d0d4ec5743d1e0bd47f5bd5db3e8350b21f09145d948335a0e64ecce6",
+      "base_model_path": "models/Qwen3-0.6B",
+      "base_model_hash": "328490672023d42b2f04373680072ebc737a42defb76ccf4e546c9499b40d95c",
+      "precision": {
+        "load": "fp16",
+        "train": "bf16",
+        "bf16_supported": true
+      },
+      "environment": {
+        "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+        "gpu_total_vram_mb": 4095,
+        "cuda": "12.4",
+        "pytorch": "2.6.0+cu124",
+        "transformers": "5.12.1",
+        "peft": "0.19.1",
+        "python": "3.11",
+        "os": "Windows"
+      },
+      "optimizer_steps": 50,
+      "verification": {
+        "forward": "PASS",
+        "backward": "PASS",
+        "optimizer_step": "PASS",
+        "eval_loss": "PASS",
+        "checkpoint_save": "PASS",
+        "adapter_reload": "PASS",
+        "inference": "PASS"
+      },
+      "adapter_path": "adapters\\p3\\repair-specialist-pilot",
+      "adapter_sha256": "2810cf548651cd9786e7464623ce1fc8e59c176002199af1363e1ae3295dcf30",
+      "peak_vram_mb": 0,
+      "nan_detected": false,
+      "inf_detected": false,
+      "oom": false,
+      "inference_output": " a + b\n\ndef subtract(a, b):\n    return a - b\n\ndef multiply(a, b):\n    return a * b\n\ndef divide(a,",
+      "inference_sha256": "e569bd0bf1aee5c7c1b42dcaf48f38814db9b8a061098d1bf67a2a28900e8f57",
+      "train_samples": 0,
+      "train_duration_s": 983.42285323143,
+      "created_at": "2026-07-05T15:48:03.658509+00:00"
+    }
+  },
+  "evidence_sha256": "4d70a3fc55f50337568805f0570b685ce246167608cdca4c1ec73fca97c1bffa"
+}

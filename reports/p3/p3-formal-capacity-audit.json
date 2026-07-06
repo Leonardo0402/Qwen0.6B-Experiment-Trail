@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-05T15:17:43.591604+00:00",
+  "generator": "p3_formal_capacity_audit.py",
+  "family_counts": {
+    "total_in_registry": 807,
+    "shared_train": 425,
+    "p3_train_new": 219,
+    "p3_train_replay": 206,
+    "p3_validation": 90,
+    "validation_v2": 45,
+    "frozen_v4": 100,
+    "quarantined": 50,
+    "remaining_new_available": 0,
+    "p2_used": 374
+  },
+  "theoretical_yield": {
+    "variants_per_family_per_bucket": 3,
+    "buckets": [
+      "code",
+      "boundary",
+      "static_repair",
+      "execution_repair"
+    ],
+    "total_variants_per_family": 12,
+    "shared_train_families": 425,
+    "max_per_bucket": 1275,
+    "max_total": 5100
+  },
+  "current_canonical_pool": {
+    "path": "data/p3-curriculum/canonical-pool.jsonl",
+    "total_samples": 782,
+    "variant_distribution": {
+      "code": 281,
+      "execution_repair": 228,
+      "static_repair": 148,
+      "boundary": 125
+    },
+    "bug_type_distribution": {
+      "none": 406,
+      "branch_deletion": 57,
+      "condition_error": 61,
+      "off_by_one": 35,
+      "return_value_error": 132,
+      "initialization_error": 31,
+      "aggregation_error": 21,
+      "index_error": 9,
+      "type_error": 30
+    }
+  },
+  "capacity_targets": {
+    "balanced_2300": {
+      "code": 690,
+      "boundary": 460,
+      "static_repair": 460,
+      "execution_repair": 690
+    },
+    "balanced_2500": {
+      "code": 750,
+      "boundary": 500,
+      "static_repair": 500,
+      "execution_repair": 750
+    },
+    "repair_2300": {
+      "code": 345,
+      "boundary": 345,
+      "static_repair": 690,
+      "execution_repair": 920
+    },
+    "repair_2500": {
+      "code": 375,
+      "boundary": 375,
+      "static_repair": 750,
+      "execution_repair": 1000
+    },
+    "margin_pct_for_feasible": 0.1
+  },
+  "theoretical_feasibility": {
+    "balanced_2300_total": true,
+    "balanced_2500_total": true,
+    "per_bucket_meets_balanced_2500": {
+      "code": true,
+      "boundary": true,
+      "static_repair": true,
+      "execution_repair": true
+    },
+    "per_bucket_meets_repair_2500": {
+      "code": true,
+      "boundary": true,
+      "static_repair": true,
+      "execution_repair": true
+    }
+  }
+}

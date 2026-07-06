@@ -1,179 +1,78 @@
-# Task 2 Report: Extend compute_router_analysis.py with P3 Decision Gate
+# Task 2 Report: Extend Sample Schema
 
-## Status: DONE
-
-## What was implemented
-
-Extended `scripts/compute_router_analysis.py` (and added `tests/test_router_gate.py`) with the P3 Decision Gate logic per the task brief.
-
-### 1. Two inline helper functions (lines 107-137 of `scripts/compute_router_analysis.py`)
-
-Added after `extract_bug_type`, in a new "Paired stats helpers" section:
-- `mcnemar_exact(b: int, c: int) -> float` — two-sided exact McNemar p-value via binomial
-- `paired_bootstrap_ci(pass_a, pass_b, n_boot=10000, seed=42) -> tuple[float, float]` — paired bootstrap 95% CI for difference in pass rate (b - a)
-
-Both copied verbatim from the brief (which mirrors `scripts/compute_paired_stats.py` lines 69-108). They are duplicated inline (not imported) to keep `compute_router_analysis.py` self-contained, as required.
-
-### 2. `apply_decision_gate(...)` function (lines 253-323)
-
-Added before `main()` in a new "P3 Decision Gate" section. Copied verbatim from the brief. Pure function (no I/O, no global state) returning:
-
-```python
-{
-    "verdict": "GO" | "NO-GO" | "SIGNAL",
-    "reason": "<human-readable explanation>",
-    "criteria": {
-        "lift_threshold_pp": 5.0,
-        "oracle_lift", "oracle_meaningful",
-        "deployable_lift", "deployable_meaningful",
-        "deployable_mcnemar_p",
-        "deployable_ci_95": [lo, hi],
-        "deployable_ci_significant",
-        "deployable_significant",
-        "deployable_mcnemar_b", "deployable_mcnemar_c",
-        "n_common",
-    },
-}
-```
-
-### 3. Integration in `main()` (lines 493-527)
-
-Inserted between the `deployable_router = {...}` block and the "Comparison table" section. The clean loop I wrote (NOT copied from the awkward example in the brief):
-
-```python
-# ------------------------------------------------------------------
-# 5. P3 Decision Gate — Deployable Router vs Best Single
-# ------------------------------------------------------------------
-# McNemar convention: A = Best Single, B = Deployable Router
-#   b = #samples where A passed, B failed
-#   c = #samples where A failed, B passed
-best_single_pass_map = {
-    sid: _passed(by_model[best_single_key][sid]) for sid in common
-}
-gate_b = 0
-gate_c = 0
-pass_a: list[bool] = []  # best_single
-pass_b: list[bool] = []  # deployable
-for sid in common:
-    bs_pass = best_single_pass_map[sid]
-    dep_pass = deployable_pass[sid]
-    if bs_pass and not dep_pass:
-        gate_b += 1
-    elif not bs_pass and dep_pass:
-        gate_c += 1
-    pass_a.append(bs_pass)
-    pass_b.append(dep_pass)
-
-mcnemar_p = mcnemar_exact(gate_b, gate_c)
-ci_lo, ci_hi = paired_bootstrap_ci(pass_a, pass_b)
-gate_result = apply_decision_gate(
-    deployable_lift=deployable_router["lift_vs_best_single"],
-    oracle_lift=oracle_router["lift_vs_best_single"],
-    deployable_mcnemar_p=mcnemar_p,
-    deployable_ci_lo=ci_lo,
-    deployable_ci_hi=ci_hi,
-    deployable_b=gate_b,
-    deployable_c=gate_c,
-    n_common=len(common),
-)
-```
-
-The loop iterates `common` exactly once, computing both McNemar discordant counts (`gate_b`/`gate_c`) and the aligned `pass_a`/`pass_b` lists for the bootstrap CI in a single pass.
-
-### 4. `decision_gate` key in JSON result (line 593)
-
-Added `"decision_gate": gate_result,` to the `result` dict, immediately after `deployable_router` and before `comparison_table`.
-
-### 5. "P3 Decision Gate" markdown section (lines 780-798)
-
-Added after the "Methodology Notes" section and before the final `out_md.write_text(...)` call. Includes:
-- The verdict in bold
-- The human-readable reason
-- A criteria table with columns: Criterion | Value | Threshold | Met
-
-The markdown code matches the brief verbatim.
-
-### 6. Test file `tests/test_router_gate.py` (new file, 117 lines)
-
-Created with the verbatim test cases from the brief. Three test classes:
-- `TestDecisionGate` — 9 tests covering GO/NO-GO/SIGNAL branches and edge cases
-- `TestMcNemarExact` — 3 tests (no discordant pairs, symmetric, extreme asymmetry)
-- `TestPairedBootstrapCI` — 2 tests (identical lists → zero CI, all-b-passes → positive CI)
-
-Total: 14 test methods.
-
-## Test results (all 3 verification commands)
-
-### 1. New test file
-```
-$ D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_router_gate.py -v
-============================= test session starts =============================
-platform win32 -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
-rootdir: E:\agent\Qwen\qwen3-code-lab
-configfile: pyproject.toml
-plugins: anyio-4.14.1, hypothesis-6.155.7, timeout-2.4.0
-collected 14 items
-
-tests\test_router_gate.py ..............                                 [100%]
-
-============================= 14 passed in 1.84s ==============================
-```
-**Result: 14/14 passed**
-
-### 2. Import check
-```
-$ D:\Anaconda\envs\qwen3-code-lab\python.exe -c "from scripts.compute_router_analysis import apply_decision_gate, mcnemar_exact, paired_bootstrap_ci; print('imports OK')"
-imports OK
-```
-**Result: imports OK**
-
-### 3. Existing CI tests
-```
-$ D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_p2_evidence_hardening.py tests/test_metrics.py tests/test_schemas.py tests/test_validators.py -v --tb=short
-============================= test session starts =============================
-platform win32 -- Python 3.10.20, pytest-9.1.1, pluggy-1.6.0
-rootdir: E:\agent\Qwen\qwen3-code-lab
-configfile: pyproject.toml
-plugins: anyio-4.14.1, hypothesis-6.155.7, timeout-2.4.0
-collected 148 items
-
-tests\test_p2_evidence_hardening.py .................................... [ 24%]
-                                                                         [ 24%]
-tests\test_metrics.py ...............................................    [ 56%]
-tests\test_schemas.py ........................................           [ 83%]
-tests\test_validators.py .........................                       [100%]
-
-======================= 148 passed in 111.58s (0:01:51) =======================
-```
-**Result: 148/148 passed**
+## Status
+DONE
 
 ## Commit
+- Hash: `5b88a6e`
+- Branch: `feat/p3-capability-expansion-v2`
+- Parent: `48614af` (Task 1)
+- Message: `feat(p3): add variant_type/bug_type/source_split optional fields to Sample schema`
+- Files staged (only these two):
+  - `src/schemas.py`
+  - `tests/test_schemas.py`
 
-- **SHA:** `5dbaf8b`
-- **Subject:** `feat(router): add P3 Decision Gate with McNemar + bootstrap CI`
-- **Files changed:** 2 files, 905 insertions (new: `scripts/compute_router_analysis.py`, new: `tests/test_router_gate.py`)
-- **Parent:** `deb8db9` (the Task 1 / BASE commit)
+## Test Summary
+48/48 tests passed (`python -m pytest tests/test_schemas.py -v`)
+- Existing tests: 40 (backward compat verified — all green, no regressions)
+- New P3 tests: 8 (`TestP3OptionalFields`)
 
-Commit message used verbatim from the brief.
+## Changes Made
 
-## Pre-existing repository state (NOT my changes)
+### `src/schemas.py` (surgical — 3 new fields only)
+Added 3 optional free-form `Optional[str] = None` fields to the `Sample` model, placed immediately after `dataset_version` and before the field-level validators section:
 
-Two pre-existing conditions observed during the task — left untouched per the brief's "Explicitly NOT in scope" rule:
-1. `scripts/compute_paired_stats.py` had uncommitted modifications (renamed model keys from `base`/`stage2-boundary`/... to `full576-base`/`full576-stage2-boundary`/...). I did NOT stage or modify this file.
-2. `scripts/compute_router_analysis.py` was untracked before my work (Task 1 left it on disk but did not commit it). My commit now includes it as a new file alongside my Task 2 changes.
+```python
+generator: str
+created_at: str
+dataset_version: str
+# P3 optional metadata fields (free-form strings, default None for
+# backward compatibility with pre-P3 JSONL files).
+variant_type: Optional[str] = None
+bug_type: Optional[str] = None
+source_split: Optional[str] = None
+```
 
-## Self-review checklist
+No other changes to `schemas.py`:
+- `TaskType` enum untouched (no new task_type)
+- Existing field validators (`difficulty_in_range`, `language_must_be_python`, `non_empty_string`) untouched
+- `check_repair_fields` model_validator untouched
+- `to_json_line` / `from_json_line` untouched (pydantic `model_dump(mode="json")` already includes all fields by default — including `None` as `null`)
+- `to_chatml` untouched (these fields are metadata, not chat content)
+- `Verification` class untouched
 
-- [x] `apply_decision_gate` is a pure function (no I/O, no global state)
-- [x] McNemar and bootstrap CI functions match the implementations in `compute_paired_stats.py` (copied verbatim from the brief, which mirrors compute_paired_stats.py lines 69-108)
-- [x] `decision_gate` key added to the `result` dict in `main()` (line 593)
-- [x] "P3 Decision Gate" section added to the markdown output (lines 780-798)
-- [x] All tests in `tests/test_router_gate.py` pass (14/14 — brief mentioned "12 test cases" but lists 14 in the test code; all pass)
-- [x] Existing CI tests (evidence_hardening, metrics, schemas, validators) still pass (148/148)
-- [x] No existing router computation logic was modified (Best Single, Oracle, Metadata, Deployable sections untouched — only added new code in clean insertion points)
-- [x] No reformatting of existing code (matched double-quoted strings, 4-space indent, type hints on public functions)
+### `tests/test_schemas.py` (additive — new class only)
+Appended a new test class `TestP3OptionalFields` (8 tests). Existing helper functions `_base_sample`, `_repair_sample`, `_exec_repair_sample`, `_verification` were reused unmodified (the `_base_sample` helper naturally accepts the new kwargs via its `**kwargs` passthrough, so no helper change was needed).
 
-## Notes
+The 8 tests:
+1. `test_new_fields_default_none` — Sample constructed without the 3 fields → fields are `None`
+2. `test_new_fields_set` — all 3 fields set → round-trip via attribute access
+3. `test_backward_compat_existing_json` — pre-P3 JSON line lacking the 3 keys → loads via `from_json_line` with `None` defaults
+4. `test_serialization_includes_new_fields` — `to_json_line` JSON contains `variant_type: "boundary"`
+5. `test_serialization_includes_none_as_null` — pydantic default: `None` fields appear as explicit `null` (verified behavior — `model_dump(mode="json")` does NOT omit None fields by default)
+6. `test_boundary_variant_is_not_new_task_type` — `task_type="code_generation"` + `variant_type="boundary"` loads fine, task_type stays code_generation (boundary is variant, not task_type)
+7. `test_round_trip_with_new_fields` — construct → `to_json_line` → `from_json_line` → all 3 fields match original, and the full Sample equality also holds
+8. `test_bug_type_free_form` — arbitrary `bug_type="some_new_bug_type_not_in_list"` loads (no enum restriction, no field_validator)
 
-- The brief's commit message says "12 test cases" but the test file actually contains 14 test methods (9 + 3 + 2). I kept the commit message verbatim as instructed by the brief. The brief's own test code listing shows 14 methods, so this is a brief-internal inconsistency, not an implementation error.
-- The `paired_bootstrap_ci` in the brief is slightly simpler than the one in `compute_paired_stats.py` (no `observed` variable computed). I copied the brief's version verbatim per instructions — they are functionally identical for CI computation.
+## Constraint Compliance Checklist
+- [x] Backward compatible: pre-P3 JSON without the 3 fields loads with `None` defaults (test #3)
+- [x] No new task_type: boundary expressed as `variant_type="boundary"` with `task_type="code_generation"` (test #6)
+- [x] Optional fields default `None` (test #1)
+- [x] Free-form strings, no `field_validator` restricting to a fixed set (test #8)
+- [x] `to_json_line()` includes the fields, including explicit `null` for `None` (tests #4 and #5)
+- [x] `from_json_line()` handles missing fields (test #3)
+- [x] `to_chatml` unmodified
+- [x] `Verification` class unmodified
+- [x] Surgical change: only 3 fields added to Sample; no refactor of existing validators
+- [x] No new test file created; tests appended to existing `tests/test_schemas.py`
+- [x] Existing code style matched (4-space indent, `_base_sample(**kwargs)` helper reuse, descriptive Chinese-aware English docstrings, comment headers with `# ---` separators)
+- [x] No emojis in code or commit message
+- [x] Single commit
+- [x] Only `src/schemas.py` and `tests/test_schemas.py` staged
+
+## Key Findings
+- **pydantic serialization behavior verified**: `model_dump(mode="json")` includes `None`-valued fields as `null` by default. The `to_json_line()` method does NOT use `exclude_none`, so the 3 new fields always appear in the JSONL output. This satisfies constraint #5 of the brief without any code change to `to_json_line()`.
+- **Helper compatibility**: `_base_sample(**kwargs)` already passes through arbitrary kwargs, so `_base_sample(variant_type="boundary", ...)` works without modifying the helper. This keeps the diff surgical.
+
+## Concerns
+None.

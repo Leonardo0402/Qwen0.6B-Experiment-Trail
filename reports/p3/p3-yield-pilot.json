@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-05T15:43:32.035538+00:00",
+  "generator": "p3_yield_pilot.py",
+  "config": {
+    "n_families_requested": 25,
+    "n_families_sampled": 25,
+    "n_families_with_source": 25,
+    "n_families_no_source": 0,
+    "seed": 42,
+    "total_shared_families": 425,
+    "z_score": 1.645,
+    "feasible_margin_pct": 0.1
+  },
+  "sampled_family_ids": [
+    "mbpp_fam_14",
+    "mbpp_fam_141",
+    "mbpp_fam_146",
+    "mbpp_fam_147",
+    "mbpp_fam_210",
+    "mbpp_fam_22",
+    "mbpp_fam_234",
+    "mbpp_fam_25",
+    "mbpp_fam_284",
+    "mbpp_fam_346",
+    "mbpp_fam_369",
+    "mbpp_fam_374",
+    "mbpp_fam_383",
+    "mbpp_fam_392",
+    "mbpp_fam_426",
+    "mbpp_fam_623",
+    "mbpp_fam_693",
+    "mbpp_fam_73",
+    "mbpp_fam_74",
+    "mbpp_fam_767",
+    "mbpp_fam_78",
+    "mbpp_fam_806",
+    "mbpp_fam_835",
+    "mbpp_fam_892",
+    "mbpp_fam_896"
+  ],
+  "families_no_source": [],
+  "bucket_stats": {
+    "code": {
+      "attempts": 75,
+      "verified": 75,
+      "families_with_source": 25
+    },
+    "boundary": {
+      "attempts": 25,
+      "verified": 24,
+      "families_with_source": 25
+    },
+    "static_repair": {
+      "attempts": 50,
+      "verified": 44,
+      "families_with_source": 25
+    },
+    "execution_repair": {
+      "attempts": 50,
+      "verified": 44,
+      "families_with_source": 25
+    }
+  },
+  "extrapolation": {
+    "code": {
+      "attempts": 75,
+      "verified": 75,
+      "yield_rate": 1.0,
+      "wilson_lower_90": 0.9652,
+      "max_per_family": 3,
+      "projected_point_425": 1275,
+      "projected_lower_425": 1230
+    },
+    "boundary": {
+      "attempts": 25,
+      "verified": 24,
+      "yield_rate": 0.96,
+      "wilson_lower_90": 0.8391,
+      "max_per_family": 1,
+      "projected_point_425": 408,
+      "projected_lower_425": 356
+    },
+    "static_repair": {
+      "attempts": 50,
+      "verified": 44,
+      "yield_rate": 0.88,
+      "wilson_lower_90": 0.7843,
+      "max_per_family": 3,
+      "projected_point_425": 1122,
+      "projected_lower_425": 1000
+    },
+    "execution_repair": {
+      "attempts": 50,
+      "verified": 44,
+      "yield_rate": 0.88,
+      "wilson_lower_90": 0.7843,
+      "max_per_family": 3,
+      "projected_point_425": 1122,
+      "projected_lower_425": 1000
+    }
+  },
+  "verdict": {
+    "verdict": "MBPP_FAMILY_OR_VARIANT_LIMIT",
+    "balanced_buckets_ok": {
+      "code": true,
+      "boundary": false,
+      "static_repair": true,
+      "execution_repair": true
+    },
+    "repair_buckets_ok": {
+      "code": true,
+      "boundary": false,
+      "static_repair": true,
+      "execution_repair": false
+    },
+    "balanced_total_projected_lower": 3586,
+    "repair_total_projected_lower": 3586,
+    "balanced_total_ok": true,
+    "repair_total_ok": true,
+    "balanced_critical_buckets_below_target": {
+      "code": false,
+      "boundary": true,
+      "static_repair": false,
+      "execution_repair": false
+    },
+    "repair_critical_buckets_below_target": {
+      "code": false,
+      "boundary": true,
+      "static_repair": false,
+      "execution_repair": false
+    },
+    "balanced_targets_2500": {
+      "code": 750,
+      "boundary": 500,
+      "static_repair": 500,
+      "execution_repair": 750
+    },
+    "repair_targets_2500": {
+      "code": 375,
+      "boundary": 375,
+      "static_repair": 750,
+      "execution_repair": 1000
+    }
+  }
+}

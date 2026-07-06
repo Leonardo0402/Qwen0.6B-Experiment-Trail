@@ -1,0 +1,1 @@
+﻿Adapter saved to: E:\agent\Qwen\qwen3-code-lab\adapters\p3\repair-specialist-pilot

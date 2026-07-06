@@ -1,0 +1,10 @@
+{
+  "balanced": {
+    "generated": " a + b\n\ndef subtract(a, b):\n    return a - b\n\ndef multiply(a, b):\n    return a * b\n\ndef divide(a,",
+    "adapter_sha256": "68c732a7e0499637cebbca0da09701c95af64caf07970766d79ef8a8fe644836"
+  },
+  "repair": {
+    "generated": " a + b\n\ndef subtract(a, b):\n    return a - b\n\ndef multiply(a, b):\n    return a * b\n\ndef divide(a,",
+    "adapter_sha256": "88fd1c3bd81292bb2a8026f47dccc98307c297868a9c3e8e98f52b4df5a7b07c"
+  }
+}

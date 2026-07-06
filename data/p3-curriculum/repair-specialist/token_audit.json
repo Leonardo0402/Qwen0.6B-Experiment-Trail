@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "candidate_type": "repair_specialist",
+  "train": {
+    "total_samples": 490,
+    "total_tokens": 42707,
+    "mean_tokens_per_sample": 87.1571,
+    "max_tokens": 310,
+    "min_tokens": 33,
+    "by_variant_type": {
+      "code": {
+        "count": 74,
+        "total_tokens": 5540,
+        "mean": 74.8649
+      },
+      "boundary": {
+        "count": 74,
+        "total_tokens": 9115,
+        "mean": 123.1757
+      },
+      "static_repair": {
+        "count": 145,
+        "total_tokens": 11758,
+        "mean": 81.0897
+      },
+      "execution_repair": {
+        "count": 197,
+        "total_tokens": 16294,
+        "mean": 82.7107
+      }
+    }
+  },
+  "validation": {
+    "total_samples": 180,
+    "total_tokens": 15714,
+    "mean_tokens_per_sample": 87.3
+  }
+}

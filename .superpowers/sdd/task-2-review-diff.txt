@@ -1,0 +1,1 @@
+﻿+        assert s.bug_type == "some_new_bug_type_not_in_list"

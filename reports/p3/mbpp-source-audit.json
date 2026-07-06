@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-07-04T14:08:28.359306+00:00",
+  "source": "google-research-datasets/mbpp",
+  "source_revision": "main",
+  "splits": {
+    "train": {
+      "present": true,
+      "sample_count": 374,
+      "task_id_range": {
+        "min": 601,
+        "max": 974
+      },
+      "missing_task_ids": [],
+      "duplicate_task_ids": [],
+      "normalized_sha256": "5632d58a6e71079d792402aee8b287678e5a3b9c1ba5b14a902f86ed10b39884",
+      "verified_sha256": "945ee9069b1acd322d1ad14dabaf4c6c56934f6cd17d5df80a5d66e605b5aaa4",
+      "verified_count": 281,
+      "rejected_count": 93,
+      "benchmark_contaminated": false,
+      "dataset_fingerprint": "5cdc16311fd8e220",
+      "source_revision": "main"
+    },
+    "test": {
+      "present": true,
+      "sample_count": 500,
+      "task_id_range": {
+        "min": 11,
+        "max": 510
+      },
+      "missing_task_ids": [],
+      "duplicate_task_ids": [],
+      "normalized_sha256": "bb21489a46c925f712296610a0fb916423ed10845ad307a8c382792628d00d4d",
+      "verified_sha256": "b3e9c0aaeb22502f1506761182c35e3674e5e86e6c589c33430dc72b65349c28",
+      "verified_count": 365,
+      "rejected_count": 135,
+      "benchmark_contaminated": true,
+      "dataset_fingerprint": "44206dd27b0bf01d",
+      "source_revision": "main"
+    },
+    "validation": {
+      "present": true,
+      "sample_count": 90,
+      "task_id_range": {
+        "min": 511,
+        "max": 600
+      },
+      "missing_task_ids": [],
+      "duplicate_task_ids": [],
+      "normalized_sha256": "b938fc0f9c09c1058b3eb35dcb010530efedf61578df4065d536111f12b4bc01",
+      "verified_sha256": "a8f0d1a0cb67b0dbadda68240e0b360a5c8976cb44b1fd8365cd926797644942",
+      "verified_count": 68,
+      "rejected_count": 22,
+      "benchmark_contaminated": false,
+      "dataset_fingerprint": "8f9deacfc72ae133",
+      "source_revision": "main"
+    }
+  },
+  "cross_split_task_id_overlap": {
+    "test_train": [],
+    "train_validation": [],
+    "test_validation": []
+  },
+  "total_samples": 964,
+  "total_verified": 714,
+  "total_rejected": 250,
+  "new_families_available": 433,
+  "conclusion": "LIKELY_FEASIBLE",
+  "feasibility_notes": "test verified_count=365 >= 240 (180 train + 60 val minimum). new_families_available=433 (test 365 + validation 68)."
+}

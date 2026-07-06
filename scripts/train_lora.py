@@ -65,6 +65,9 @@ from src.training_data import (  # noqa: E402
     build_assistant_only_features,
     compute_token_audit,
 )
+from src.p3_checkpoint_evaluator import CheckpointEvaluator  # noqa: E402
+from src.training_callbacks import CheckpointEvaluatorCallback  # noqa: E402
+from src.schemas import Sample  # noqa: E402 — Wave 3-D: validation v2 Sample loading
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +485,7 @@ def run_training(config_path: str) -> int:
     training_args = TrainingArguments(
         output_dir=str(output_dir),
         num_train_epochs=cfg.get("num_train_epochs", 2),
+        max_steps=cfg.get("max_steps", -1),
         per_device_train_batch_size=cfg.get("per_device_train_batch_size", 1),
         per_device_eval_batch_size=cfg.get("per_device_eval_batch_size", 1),
         gradient_accumulation_steps=cfg.get("gradient_accumulation_steps", 8),
@@ -564,12 +568,84 @@ def run_training(config_path: str) -> int:
         resume_from = str(ckpt_dirs[-1])
         print(f"\nResuming from checkpoint: {resume_from}")
 
+    # Build CheckpointEvaluator + callback (Issue #12 P4 / Wave 3-D)
+    callbacks_list = []
+    evaluator = None
+    if "checkpoint_evaluator" in cfg:
+        print("\n[CheckpointEvaluator] Initializing 3-tier evaluator...")
+        evaluator = CheckpointEvaluator(
+            config=cfg,
+            total_train_samples=len(train_records),
+        )
+        # Pilot mode: defer Tier 2/3 actual evaluation (only log scheduling)
+        is_pilot = cfg.get("max_steps", -1) > 0  # Pilot uses max_steps
+
+        # Wave 3-D: load validation v2 samples as Sample objects for real
+        # Tier 2/3 evaluation (non-pilot mode only).
+        validation_samples: list[Sample] | None = None
+        baseline: dict = {}
+        if not is_pilot and eval_file.exists():
+            try:
+                raw_eval = _load_jsonl(eval_file)
+                validation_samples = [
+                    Sample.model_validate(rec) for rec in raw_eval
+                ]
+                print(
+                    f"[CheckpointEvaluator] Loaded {len(validation_samples)} "
+                    f"validation v2 samples for Tier 2/3 evaluation"
+                )
+            except Exception as exc:
+                print(
+                    f"[CheckpointEvaluator] WARNING: validation sample load "
+                    f"failed, Tier 2/3 will be deferred: {exc}",
+                    file=sys.stderr,
+                )
+                validation_samples = None
+
+            # Load baseline lock for hard-constraint check (optional)
+            baseline_path = _ROOT / "reports" / "p3" / "p3-baseline-lock.json"
+            if baseline_path.exists():
+                try:
+                    with baseline_path.open("r", encoding="utf-8") as bfh:
+                        baseline_data = json.load(bfh)
+                    # Use the latest model entry's historical metrics
+                    models = baseline_data.get("models", [])
+                    if models:
+                        baseline = models[-1].get(
+                            "historical_held_out_metrics", {}
+                        )
+                except Exception:
+                    pass
+
+        # Reports directory for probe/fullval reports + checkpoint evidence
+        reports_dir = _ROOT / "reports" / "p3"
+
+        cb = CheckpointEvaluatorCallback(
+            evaluator=evaluator,
+            config=cfg,
+            output_dir=output_dir,
+            pilot_mode=is_pilot,
+            model=model if not is_pilot else None,
+            tokenizer=tokenizer if not is_pilot else None,
+            validation_samples=validation_samples,
+            reports_dir=reports_dir,
+            config_path=config_path,
+            train_file=train_file,
+            validation_file=eval_file,
+            baseline=baseline,
+        )
+        callbacks_list.append(cb)
+        print(f"[CheckpointEvaluator] Callback attached (pilot_mode={is_pilot})")
+    else:
+        print("\n[CheckpointEvaluator] No checkpoint_evaluator in config, skipping")
+
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
+        callbacks=callbacks_list if callbacks_list else None,
     )
 
     print("\n=== Starting training ===")
@@ -638,6 +714,25 @@ def run_training(config_path: str) -> int:
     print(f"  Reloaded LoRA param mean: {loaded_val:.6f}")
     assert abs(orig_val - loaded_val) < 1e-5, "Adapter save/reload mismatch!"
     print("  Adapter save/reload verification: OK")
+
+    # P7 GPU Smoke: inference verification (Issue #12 P7)
+    print("\nInference verification (P7)...")
+    verify_model.eval()
+    prompt_text = "def add(a, b):\n    return"
+    inputs = tokenizer(prompt_text, return_tensors="pt").to(verify_model.device)
+    with torch.no_grad():
+        gen_outputs = verify_model.generate(
+            **inputs,
+            max_new_tokens=32,
+            do_sample=False,
+            pad_token_id=tokenizer.pad_token_id,
+        )
+    generated_text = tokenizer.decode(
+        gen_outputs[0][inputs["input_ids"].shape[1]:],
+        skip_special_tokens=True,
+    )
+    print(f"  Prompt: {prompt_text}")
+    print(f"  Generated: {generated_text[:200]}")
 
     # Clean up
     del verify_model

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "frozen_version": "v4",
+  "manifest_sha256": "43385f553662194251d77a923148f10ca4eb30e8a4207bb92d568a3de8d39350",
+  "test_raw_sha256": "9812c5e63385a5a3583977244a80948dcd0ec25438822e8ed13c9d9560e697fe",
+  "families_sha256": "dee0cb6de561928cc274f6d03b86737259d0959ae8e38d1a490b8a482263c896",
+  "rejected_sha256": "9350913c9219bcfc7b6330d3694735d6f43355dade9416e59ee12ea4ee4a70a4",
+  "sha_lock": "4405a5885336960c4f8a396cdfa333b2248d0e345443dd27cd03a0c7f789a811",
+  "formal_sample_count": 365,
+  "canary_count": 100,
+  "family_count": 100,
+  "variant_distribution": {
+    "code": 100,
+    "boundary": 65,
+    "static_repair": 100,
+    "execution_repair": 100,
+    "canary": 100
+  },
+  "source_commit": "61d3d6b79ce38976bf3f77d7bebaa2f4d43c2f4e",
+  "created_at": "2026-07-05T15:55:16.617479+00:00",
+  "validation_v2": {
+    "validation_jsonl_sha256": "e481126d0d4ec5743d1e0bd47f5bd5db3e8350b21f09145d948335a0e64ecce6",
+    "families_sha256": "3532650e1c75419795535e3f743fd8c0806af13d079b80fffc938ccb565d6b36",
+    "manifest_sha256": "10b54a1f74ae9f966b3b7ee99e43a1d0fb9862b4f346cb1975bf175cccbfa25e",
+    "sample_count": 180
+  }
+}

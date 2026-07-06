@@ -1,0 +1,21 @@
+{
+  "source": "google-research-datasets/mbpp",
+  "source_revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+  "dataset_fingerprint": "5cdc16311fd8e220",
+  "split": "train",
+  "sample_count": 374,
+  "normalized_sha256": "5632d58a6e71079d792402aee8b287678e5a3b9c1ba5b14a902f86ed10b39884",
+  "normalized_file": "normalized/train.jsonl",
+  "license": "Apache-2.0",
+  "imported_at": "2026-07-04T08:58:39.372265+00:00",
+  "benchmark_contaminated": false,
+  "standard_mbpp_test_claims_disallowed": false,
+  "verified_sha256": "945ee9069b1acd322d1ad14dabaf4c6c56934f6cd17d5df80a5d66e605b5aaa4",
+  "verified_count": 281,
+  "rejected_count": 93,
+  "rejected_sha256": "df652385cfc465812a332d753e916c6e6951f9df1a243b7b4febddfd6d457935",
+  "verified_at": "2026-07-04T14:06:21.105452+00:00",
+  "warnings": {
+    "padding_rejected_count": 89
+  }
+}

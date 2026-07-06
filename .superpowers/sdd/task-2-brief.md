@@ -1,386 +1,79 @@
-# Task 2: Extend compute_router_analysis.py with P3 Decision Gate
+# Task 2 Brief: Extend Sample Schema
 
-## Location
-- File to modify: `scripts/compute_router_analysis.py`
-- New test file: `tests/test_router_gate.py`
-- Working directory: `e:\agent\Qwen\qwen3-code-lab`
-- Current git branch: `feat/p2.2-ci-router-validation`
-- BASE commit (before your work): `deb8db9` (the Task 1 commit)
+## Context
+- Project: e:\agent\Qwen\qwen3-code-lab
+- Branch: feat/p3-capability-expansion-v2 (Task 1 complete at 48614af)
+- Plan file: .superpowers/sdd/p3-plan.md (Global Constraints apply)
+- Schema file: src/schemas.py (pydantic BaseModel, use_enum_values=True)
+- Existing tests: tests/test_schemas.py (uses _base_sample() and _repair_sample() helpers)
 
-## Background
+## Goal
+Add 3 optional, backward-compatible fields to the `Sample` model in `src/schemas.py`:
+- `variant_type: Optional[str] = None` — e.g. "boundary", "empty_input", "duplicates", None
+- `bug_type: Optional[str] = None` — e.g. "condition_error", "off_by_one", "return_value_error", "index_error", "initialization_error", "aggregation_error", "branch_deletion", "type_error", None
+- `source_split: Optional[str] = None` — e.g. "train", "test", "validation", None
 
-`scripts/compute_router_analysis.py` already computes four routing strategies across 5 P2 models and produces `reports/p2/router-analysis.json` + `reports/p2/router-analysis.md`. The four strategies are:
+## Why
+- P3 needs to track boundary samples as `variant_type="boundary"` (NOT as a new task_type — Issue #9 user directive #3)
+- P3 needs `bug_type` for per-bug-type success reporting (Issue #9 §8.3)
+- P3 needs `source_split` to trace MBPP origin split for contamination tracking (user directive: manifest must record source_split)
 
-1. **Best Single Model** — overall pass rate is highest among the 5 models.
-2. **Oracle Router** — any model passes → router passes (upper bound, not deployable).
-3. **Metadata Router** — routes by `task_type` to the best model per task_type.
-4. **Deployable Deterministic Router** — routes by deployment-observable signals (broken_code presence, execution_feedback presence) inferred from task_type. Same routing map as Metadata but described via observable signals.
+## Constraints (binding)
+1. **Backward compatible**: existing JSON without these 3 fields MUST load fine (fields default to None)
+2. **No new task_type**: do NOT add "boundary" to TaskType enum. Boundary is expressed via `variant_type="boundary"` with `task_type="code_generation"`
+3. **Optional fields**: all 3 fields default to None; no validation that they must be non-empty
+4. **No enum restriction**: variant_type / bug_type / source_split are free-form strings (not Enums) — P3 may introduce new variant types later without schema migration. Do NOT add field_validator that restricts to a fixed set.
+5. **Serialization**: `to_json_line()` must include these fields when set (pydantic model_dump includes all fields by default — verify). `from_json_line()` must handle missing fields (default None via pydantic).
+6. **to_chatml**: unaffected — the 3 new fields are metadata, not chat content. Do NOT modify to_chatml.
+7. **Verification model**: do NOT modify Verification class.
+8. **Surgical change**: only add the 3 fields to Sample class. Do NOT refactor existing validators, do NOT change other fields, do NOT add new validators beyond what's specified.
 
-The script already computes:
-- `best_single_key`, `best_single_rate`, `best_single` stats dict (incl. `overall_pass`)
-- `oracle_router` stats dict (incl. `overall_pass`, `lift_vs_best_single`)
-- `deployable_router` stats dict (incl. `overall_pass`, `lift_vs_best_single`)
-- `deployable_pass: dict[str, bool]` — per-sample pass/fail under the Deployable Router
-- `pass_map` for each model (line 261): `{sid: _passed(by_model[key][sid]) for sid in common}`
-
-What's MISSING is the P3 Decision Gate: a structured verdict (GO / NO-GO / SIGNAL) with statistical evidence (McNemar exact test + paired bootstrap 95% CI) comparing the Deployable Router against the Best Single model.
-
-## The P3 Gate Criteria (from Issue #6)
-
-- **GO**: Deployable Router lift over Best Single ≥ 5pp AND (bootstrap 95% CI lower bound > 0 OR McNemar p < 0.05)
-- **NO-GO**: Oracle Router lift over Best Single < 5pp (even the upper bound shows no meaningful routing gain) OR Deployable Router shows no significant improvement
-- **SIGNAL**: Oracle lift ≥ 5pp (meaningful routing potential exists) BUT Deployable Router lift < 5pp OR not statistically significant (Deployable cannot capture the potential with observable signals only)
-
-Threshold: 5pp = 0.05 (absolute percentage-point difference in overall pass rate).
-
-## Required Implementation
-
-### 1. Add two helper functions (inline, near the top of the file after the existing helpers)
-
-Copy the same implementations already used in `scripts/compute_paired_stats.py` (lines 69-108 of that file). Do NOT import from compute_paired_stats — duplicate the small functions inline to keep compute_router_analysis.py self-contained.
-
-```python
-def mcnemar_exact(b: int, c: int) -> float:
-    """Two-sided exact McNemar p-value via binomial.
-    b = #samples where A passed, B failed. c = #samples where A failed, B passed.
-    """
-    from math import comb
-    n = b + c
-    if n == 0:
-        return 1.0
-    k_min = min(b, c)
-    p_one_tail = sum(comb(n, k) for k in range(k_min + 1)) * (0.5 ** n)
-    return min(1.0, 2.0 * p_one_tail)
-
-
-def paired_bootstrap_ci(
-    pass_a: list[bool], pass_b: list[bool], n_boot: int = 10000, seed: int = 42
-) -> tuple[float, float]:
-    """Paired bootstrap 95% CI for the difference in pass rate (b - a)."""
-    import random
-    rng = random.Random(seed)
-    n = len(pass_a)
-    if n == 0:
-        return (0.0, 0.0)
-    diffs = [(1 if b else 0) - (1 if a else 0) for a, b in zip(pass_a, pass_b)]
-    boots = []
-    for _ in range(n_boot):
-        idx = [rng.randrange(n) for _ in range(n)]
-        boots.append(sum(diffs[i] for i in idx) / n)
-    boots.sort()
-    lo = boots[int(0.025 * n_boot)]
-    hi = boots[int(0.975 * n_boot)]
-    return (lo, hi)
-```
-
-### 2. Add a `apply_decision_gate(...)` function
-
-Place it after the helper functions, before `main()`. This function MUST be pure (no I/O, no global state) so it is unit-testable.
-
-```python
-def apply_decision_gate(
-    *,
-    deployable_lift: float,
-    oracle_lift: float,
-    deployable_mcnemar_p: float,
-    deployable_ci_lo: float,
-    deployable_ci_hi: float,
-    deployable_b: int,
-    deployable_c: int,
-    n_common: int,
-) -> dict:
-    """Apply the P3 Decision Gate criteria.
-
-    Returns dict with:
-      - verdict: "GO" | "NO-GO" | "SIGNAL"
-      - criteria: dict of the raw thresholds and booleans used
-      - reason: human-readable explanation string
-    """
-    LIFT_THRESHOLD = 0.05  # 5 percentage points
-
-    oracle_meaningful = oracle_lift >= LIFT_THRESHOLD
-    deployable_meaningful = deployable_lift >= LIFT_THRESHOLD
-    ci_significant = (deployable_ci_lo > 0.0) or (deployable_mcnemar_p < 0.05)
-    deployable_significant = deployable_meaningful and ci_significant
-
-    if not oracle_meaningful:
-        verdict = "NO-GO"
-        reason = (
-            f"Oracle Router lift ({oracle_lift*100:.1f}pp) < 5pp threshold — "
-            "even the upper bound shows no meaningful routing gain."
-        )
-    elif deployable_significant:
-        verdict = "GO"
-        reason = (
-            f"Deployable Router lift ({deployable_lift*100:.1f}pp) >= 5pp "
-            f"with statistical significance (McNemar p={deployable_mcnemar_p:.4f}, "
-            f"95% CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
-        )
-    elif oracle_meaningful and not deployable_significant:
-        verdict = "SIGNAL"
-        reason = (
-            f"Oracle lift ({oracle_lift*100:.1f}pp) >= 5pp (routing potential exists), "
-            f"but Deployable Router lift ({deployable_lift*100:.1f}pp) or significance "
-            f"(McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}]) "
-            "does not meet the GO threshold — observable signals alone cannot capture the potential."
-        )
-    else:
-        verdict = "NO-GO"
-        reason = (
-            f"Deployable Router lift ({deployable_lift*100:.1f}pp) shows no significant "
-            f"improvement (McNemar p={deployable_mcnemar_p:.4f}, CI=[{deployable_ci_lo:+.4f}, {deployable_ci_hi:+.4f}])."
-        )
-
-    return {
-        "verdict": verdict,
-        "reason": reason,
-        "criteria": {
-            "lift_threshold_pp": LIFT_THRESHOLD * 100,
-            "oracle_lift": oracle_lift,
-            "oracle_meaningful": oracle_meaningful,
-            "deployable_lift": deployable_lift,
-            "deployable_meaningful": deployable_meaningful,
-            "deployable_mcnemar_p": deployable_mcnemar_p,
-            "deployable_ci_95": [deployable_ci_lo, deployable_ci_hi],
-            "deployable_ci_significant": ci_significant,
-            "deployable_significant": deployable_significant,
-            "deployable_mcnemar_b": deployable_b,
-            "deployable_mcnemar_c": deployable_c,
-            "n_common": n_common,
-        },
-    }
-```
-
-### 3. In `main()`, compute the gate after the deployable router section
-
-After the existing `deployable_router = {...}` block (currently around line 377) and BEFORE the "Comparison table" section, add:
-
-```python
-# ------------------------------------------------------------------
-# 5. P3 Decision Gate — Deployable Router vs Best Single
-# ------------------------------------------------------------------
-best_single_pass_list = [pass_map_best_single[sid] for sid in common]
-deployable_pass_list = [deployable_pass[sid] for sid in common]
-
-# McNemar counts: b = best_single passes but deployable fails;
-#                  c = best_single fails but deployable passes.
-gate_b = sum(1 for s in common if best_single_pass_list[i] and not deployable_pass_list[i] for i, s in enumerate(common))
-gate_c = sum(1 for s in common if not best_single_pass_list[i] and deployable_pass_list[i] for i, s in enumerate(common))
-# NOTE: the above enumeration is awkward — use a cleaner loop:
-gate_b = 0
-gate_c = 0
-for sid in common:
-    bs_pass = best_single_pass[<index>]  # you need to align indices
-    dep_pass = deployable_pass[sid]
-    # ... count b and c
-```
-
-**IMPORTANT**: Do NOT copy the awkward enumeration above verbatim. Write clean code that:
-1. Builds `best_single_pass_map = {sid: _passed(by_model[best_single_key][sid]) for sid in common}` (or reuse the existing `pass_map` from line 261 — but that variable is local to the per-model loop, so you may need to re-derive it)
-2. Iterates `common` once to compute `b_count` (best_single passed, deployable failed) and `c_count` (best_single failed, deployable passed)
-3. Builds `pass_a` and `pass_b` lists for the bootstrap CI
-4. Calls `mcnemar_exact(b_count, c_count)` and `paired_bootstrap_ci(pass_a, pass_b)`
-5. Calls `apply_decision_gate(...)` with all the arguments
-6. Adds the result to the `result` dict as `result["decision_gate"] = gate_result`
-
-**Re-deriving best_single_pass_map**: The existing loop at line 261 computes `pass_map` per model but it's local. The cleanest approach is to compute the best_single pass map explicitly:
-```python
-best_single_pass_map = {sid: _passed(by_model[best_single_key][sid]) for sid in common}
-```
-This is consistent with how `deployable_pass` is built.
-
-### 4. Add `decision_gate` to the JSON result
-
-In the `result = {...}` dict assembly, add:
-```python
-"decision_gate": gate_result,
-```
-
-### 5. Add a "P3 Decision Gate" section to the markdown report
-
-After the existing "Methodology Notes" section, add:
-
-```python
-md.append("## P3 Decision Gate")
-md.append("")
-md.append(f"**Verdict: {gate_result['verdict']}**")
-md.append("")
-md.append(f"{gate_result['reason']}")
-md.append("")
-md.append("### Gate Criteria")
-md.append("")
-md.append("| Criterion | Value | Threshold | Met |")
-md.append("|-----------|-------|-----------|-----|")
-c = gate_result["criteria"]
-md.append(f"| Oracle lift vs Best Single | {c['oracle_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['oracle_meaningful'] else 'NO'} |")
-md.append(f"| Deployable lift vs Best Single | {c['deployable_lift']*100:.1f}pp | >= 5.0pp | {'YES' if c['deployable_meaningful'] else 'NO'} |")
-md.append(f"| Deployable McNemar p (2-sided) | {c['deployable_mcnemar_p']:.4f} | < 0.05 | {'YES' if c['deployable_mcnemar_p'] < 0.05 else 'NO'} |")
-md.append(f"| Deployable 95% CI | [{c['deployable_ci_95'][0]:+.4f}, {c['deployable_ci_95'][1]:+.4f}] | lower > 0 | {'YES' if c['deployable_ci_95'][0] > 0 else 'NO'} |")
-md.append(f"| Deployable b/c (McNemar) | {c['deployable_mcnemar_b']}/{c['deployable_mcnemar_c']} | — | — |")
-md.append(f"| Common samples | {c['n_common']} | — | — |")
-md.append("")
-```
-
-### 6. Create test file `tests/test_router_gate.py`
-
-Test the `apply_decision_gate` function with these cases (use pytest, no mocks):
-
-```python
-"""Tests for the P3 Decision Gate logic in compute_router_analysis.apply_decision_gate."""
-import pytest
-from scripts.compute_router_analysis import apply_decision_gate
-
-
-class TestDecisionGate:
-    def _gate(self, **overrides):
-        defaults = dict(
-            deployable_lift=0.07,      # 7pp
-            oracle_lift=0.10,          # 10pp
-            deployable_mcnemar_p=0.01, # significant
-            deployable_ci_lo=0.03,     # CI doesn't cross 0
-            deployable_ci_hi=0.11,
-            deployable_b=5,
-            deployable_c=20,
-            n_common=576,
-        )
-        defaults.update(overrides)
-        return apply_decision_gate(**defaults)
-
-    def test_GO_when_lift_significant_and_ci_positive(self):
-        g = self._gate()
-        assert g["verdict"] == "GO"
-
-    def test_GO_when_lift_significant_and_mcnemar_significant_even_if_ci_crosses_zero(self):
-        g = self._gate(deployable_ci_lo=-0.01, deployable_ci_hi=0.15, deployable_mcnemar_p=0.03)
-        assert g["verdict"] == "GO"
-
-    def test_NO_GO_when_oracle_lift_below_threshold(self):
-        g = self._gate(oracle_lift=0.04)
-        assert g["verdict"] == "NO-GO"
-        assert "Oracle Router lift" in g["reason"]
-
-    def test_SIGNAL_when_oracle_meaningful_but_deployable_lift_below_threshold(self):
-        g = self._gate(oracle_lift=0.08, deployable_lift=0.03)
-        assert g["verdict"] == "SIGNAL"
-
-    def test_SIGNAL_when_oracle_meaningful_but_deployable_not_significant(self):
-        g = self._gate(oracle_lift=0.08, deployable_lift=0.06, deployable_mcnemar_p=0.20, deployable_ci_lo=-0.02)
-        assert g["verdict"] == "SIGNAL"
-
-    def test_NO_GO_when_deployable_no_significant_improvement_and_oracle_also_low(self):
-        g = self._gate(oracle_lift=0.04, deployable_lift=0.02, deployable_mcnemar_p=0.50, deployable_ci_lo=-0.03)
-        assert g["verdict"] == "NO-GO"
-
-    def test_GO_at_exact_5pp_threshold(self):
-        # >= 5pp is the threshold (inclusive)
-        g = self._gate(deployable_lift=0.05, oracle_lift=0.06, deployable_mcnemar_p=0.04, deployable_ci_lo=0.01)
-        assert g["verdict"] == "GO"
-
-    def test_criteria_dict_contains_all_fields(self):
-        g = self._gate()
-        c = g["criteria"]
-        for key in ("lift_threshold_pp", "oracle_lift", "oracle_meaningful",
-                    "deployable_lift", "deployable_meaningful", "deployable_mcnemar_p",
-                    "deployable_ci_95", "deployable_ci_significant",
-                    "deployable_significant", "deployable_mcnemar_b",
-                    "deployable_mcnemar_c", "n_common"):
-            assert key in c, f"missing key: {key}"
-
-    def test_reason_string_contains_numbers(self):
-        g = self._gate()
-        assert "7.0pp" in g["reason"] or "10.0pp" in g["reason"]
-```
-
-Also test the helper functions:
-
-```python
-class TestMcNemarExact:
-    def test_no_discordant_pairs_returns_1(self):
-        from scripts.compute_router_analysis import mcnemar_exact
-        assert mcnemar_exact(0, 0) == 1.0
-
-    def test_symmetric_distribution_returns_high_p(self):
-        from scripts.compute_router_analysis import mcnemar_exact
-        # 10 vs 10 — no asymmetry
-        p = mcnemar_exact(10, 10)
-        assert p > 0.5
-
-    def test_extreme_asymmetry_returns_low_p(self):
-        from scripts.compute_router_analysis import mcnemar_exact
-        # 0 vs 20 — extreme asymmetry
-        p = mcnemar_exact(0, 20)
-        assert p < 0.001
-
-
-class TestPairedBootstrapCI:
-    def test_identical_pass_lists_give_ci_centered_at_zero(self):
-        from scripts.compute_router_analysis import paired_bootstrap_ci
-        passes = [True] * 100 + [False] * 100
-        lo, hi = paired_bootstrap_ci(passes, passes, n_boot=1000, seed=42)
-        assert -0.01 < lo < 0.01
-        assert -0.01 < hi < 0.01
-
-    def test_all_b_passes_all_a_fails_gives_positive_ci(self):
-        from scripts.compute_router_analysis import paired_bootstrap_ci
-        a = [False] * 100
-        b = [True] * 100
-        lo, hi = paired_bootstrap_ci(a, b, n_boot=1000, seed=42)
-        assert lo > 0.5
-        assert hi > 0.5
-```
-
-## Verification
-
-1. Run the new test file:
+## Implementation Steps
+1. Read `src/schemas.py` to understand current structure (pydantic v2, ConfigDict, field_validator, model_validator, to_json_line, from_json_line)
+2. Add 3 fields after `dataset_version` field (before the validators section):
+   ```python
+   variant_type: Optional[str] = None
+   bug_type: Optional[str] = None
+   source_split: Optional[str] = None
    ```
-   D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_router_gate.py -v
-   ```
-   All tests must pass.
+3. Verify `to_json_line()` includes them (it uses `model_dump(mode="json")` which includes all fields — should work without change)
+4. Verify `from_json_line()` handles missing fields (pydantic defaults to None — should work without change)
+5. Run existing tests/test_schemas.py to ensure backward compatibility (all must still pass)
 
-2. Verify the script still imports correctly (eval files don't exist yet, so it will skip):
-   ```
-   D:\Anaconda\envs\qwen3-code-lab\python.exe -c "from scripts.compute_router_analysis import apply_decision_gate, mcnemar_exact, paired_bootstrap_ci; print('imports OK')"
-   ```
+## Tests (add to tests/test_schemas.py — DO NOT create a new test file)
+Add a new test class `TestP3OptionalFields` with these tests:
 
-3. Verify the existing CI tests still pass (don't break anything):
-   ```
-   D:\Anaconda\envs\qwen3-code-lab\python.exe -m pytest tests/test_p2_evidence_hardening.py tests/test_metrics.py tests/test_schemas.py tests/test_validators.py -v --tb=short
-   ```
+1. `test_new_fields_default_none`: construct a Sample without variant_type/bug_type/source_split → fields are None
+2. `test_new_fields_set`: construct a Sample with all 3 fields set → fields round-trip correctly
+3. `test_backward_compat_existing_json`: load a JSON line (dict) that does NOT contain the 3 new fields → Sample constructs successfully with fields=None
+4. `test_serialization_includes_new_fields`: set variant_type="boundary", serialize via to_json_line, parse JSON, assert "variant_type" key present with value "boundary"
+5. `test_serialization_omits_none_fields_check`: set fields to None, serialize, parse — fields present with null value (pydantic default includes None fields). Just assert the keys exist with null values (do NOT use exclude_none — we want explicit null for schema clarity). If pydantic excludes None by default in model_dump, adjust to ensure fields are always present. Verify behavior and document in test.
+6. `test_boundary_variant_is_not_new_task_type`: construct a Sample with task_type="code_generation" and variant_type="boundary" → loads fine, task_type is still "code_generation"
+7. `test_round_trip_with_new_fields`: construct → to_json_line → from_json_line → assert all 3 fields match original
+8. `test_bug_type_free_form`: set bug_type="some_new_bug_type_not_in_list" → loads fine (no enum restriction)
 
-## Explicitly NOT in scope
+## Report File
+Write your full report to: `.superpowers/sdd/task-2-report.md`
+Return only: status (DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT), commit hash, one-line test summary, concerns.
 
-- Do NOT modify the existing router computation logic (Best Single, Oracle, Metadata, Deployable sections).
-- Do NOT change the output file paths (`router-analysis.json`, `router-analysis.md`).
-- Do NOT modify `compute_paired_stats.py` (the inline duplication of McNemar/bootstrap is intentional — keep compute_router_analysis.py self-contained).
-- Do NOT add the gate logic to `compute_paired_stats.py` or any other file.
-- Do NOT change the MODELS list or any existing function signatures.
-- Do NOT reformat existing code.
+## Commit
+- Stage: `src/schemas.py`, `tests/test_schemas.py`
+- Commit message: `feat(p3): add variant_type/bug_type/source_split optional fields to Sample schema`
+- Single commit.
 
-## Commit message
+## Working Directory
+e:\agent\Qwen\qwen3-code-lab
 
-```
-feat(router): add P3 Decision Gate with McNemar + bootstrap CI
+## Test Verification
+Run ALL schema tests (existing + new):
+`cd e:\agent\Qwen\qwen3-code-lab ; python -m pytest tests/test_schemas.py -v`
 
-Extends compute_router_analysis.py with:
-- mcnemar_exact() and paired_bootstrap_ci() inline helpers
-- apply_decision_gate() pure function returning GO/NO-GO/SIGNAL verdict
-- decision_gate section in router-analysis.json output
-- P3 Decision Gate section in router-analysis.md output
-- tests/test_router_gate.py with 12 test cases
+Confirm: existing tests still pass (backward compat) AND new tests pass.
 
-Gate criteria:
-- GO: deployable_lift >= 5pp AND (CI_lo > 0 OR McNemar p < 0.05)
-- NO-GO: oracle_lift < 5pp OR deployable no significant improvement
-- SIGNAL: oracle_lift >= 5pp BUT deployable not significant
-```
-
-## Self-review checklist
-
-- [ ] `apply_decision_gate` is a pure function (no I/O, no global state)
-- [ ] McNemar and bootstrap CI functions match the implementations in compute_paired_stats.py
-- [ ] `decision_gate` key added to the `result` dict in `main()`
-- [ ] "P3 Decision Gate" section added to the markdown output
-- [ ] All 12+ tests in `tests/test_router_gate.py` pass
-- [ ] Existing CI tests (evidence_hardening, metrics, schemas, validators) still pass
-- [ ] No existing router computation logic was modified
-- [ ] No reformatting of existing code
+## Global Constraints (from .superpowers/sdd/p3-plan.md)
+- Backward compatible (existing JSON without new fields loads fine)
+- No new task_type (boundary is variant_type)
+- Optional fields default to None
+- Surgical change (only add fields, no refactor)
+- Do NOT modify to_chatml (metadata only)
+- Do NOT modify Verification class

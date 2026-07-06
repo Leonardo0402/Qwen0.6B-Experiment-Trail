@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-07-05T12:21:43.159024+00:00",
+  "schema_version": 1,
+  "frozen_version": "v4",
+  "base_version": "mbpp_verified_direct",
+  "generator": "build_frozen_v4_samples.py",
+  "frozen_family_count": 100,
+  "total_sample_count": 365,
+  "variant_breakdown": {
+    "code": 100,
+    "boundary": 65,
+    "static_repair": 100,
+    "execution_repair": 100,
+    "canary": 100
+  },
+  "canary_count": 100,
+  "canary_excluded_from_total": true,
+  "test_raw_sha256": "9812c5e63385a5a3583977244a80948dcd0ec25438822e8ed13c9d9560e697fe",
+  "families_sha256": "dee0cb6de561928cc274f6d03b86737259d0959ae8e38d1a490b8a482263c896",
+  "rejected_count": 14,
+  "rejected_sha256": "9350913c9219bcfc7b6330d3694735d6f43355dade9416e59ee12ea4ee4a70a4",
+  "immutability": {
+    "write_once": true,
+    "any_change_requires": "v5"
+  }
+}

@@ -1,0 +1,1254 @@
+commit e1466bf1d88df27d38c4bef0f7bdaca4f09abfb8
+Author: Claude Code <noreply@anthropic.com>
+Date:   Sat Jul 4 16:21:38 2026 +0800
+
+    fix(p3): split import/verify pipeline, per-split manifest, real verification
+    
+    Why: P3 separates dataset import from verification so that no unverified
+    claim can escape the import step, and so the verifier can be re-run
+    independently after schema / sandbox changes without re-downloading from
+    HuggingFace.
+    
+    Changes:
+    - scripts/import_mbpp.py: default verified=False (was True), all-false
+      Verification preset, per-split manifest.{split}.json (never overwritten
+      by other splits) + merged manifest.index.json, HF revision="main" pin,
+      benchmark_contaminated flag on test split only, source_split field on
+      every Sample, NO pytest / NO verify_sample in importer.
+    - scripts/verify_imported_mbpp.py (new): standalone verifier reading
+      normalized JSONL, runs real src.validators.verify_sample, enforces
+      hard checks (public>=2 asserts, hidden>=3 asserts, broken-is-broken
+      for repair, failure-marker for exec_repair), writes verified/ +
+      rejected/ JSONL, updates manifest with verified_* fields.
+    - tests/test_import_mbpp_p3.py (new): 11 tests (5 importer + 6 verifier),
+      mocks datasets.load_dataset -- no network.
+    - tests/test_import_mbpp.py: surgical fix for 7 regressions caused by
+      the build_manifest() contract change (sha256 -> normalized_sha256 +
+      new required kwargs; verified=True -> verified=False default).
+    
+    src/validators.py, src/schemas.py, src/sandbox.py UNMODIFIED.
+
+diff --git a/scripts/import_mbpp.py b/scripts/import_mbpp.py
+index ff3aa88..6d58695 100644
+--- a/scripts/import_mbpp.py
++++ b/scripts/import_mbpp.py
+@@ -6,11 +6,19 @@ converts each task to the project's canonical ``Sample`` schema
+ (task_type=code_generation), and writes:
+ 
+     <output-dir>/normalized/<split>.jsonl
+-    <output-dir>/manifest.json
++    <output-dir>/manifest.<split>.json
++    <output-dir>/manifest.index.json
+ 
+-Only the normalized JSONL and manifest are written to the output directory;
+-raw dataset bytes remain inside the HuggingFace cache (already git-ignored
+-via .hf_cache/).  No large raw files are written into the project tree.
++The importer ONLY downloads + normalises.  It does NOT run pytest or
++:func:`src.validators.verify_sample` -- that is the job of
++:mod:`scripts.verify_imported_mbpp`.  Imported samples default to
++``verified=False`` with an all-false :class:`Verification` so that no
++unverified claim escapes the import step.
++
++Per P3 global constraint #20 (import + verify split) and the task brief,
++the per-split manifest is never overwritten by another split: each
++``--split`` invocation writes only ``manifest.<split>.json`` and merges
++its entry into the shared ``manifest.index.json``.
+ 
+ Usage
+ -----
+@@ -65,10 +73,18 @@ _LICENSE = "Apache-2.0"
+ _DATASET_VERSION = "mbpp-v1"
+ _GENERATOR = "mbpp-importer"
+ 
+-# MBPP samples are imported as verified code_generation references; we have NOT
+-# run ruff on them, so ruff_ok=False (matches the spec in the task brief).
++# HF revision pin (P3 global constraint #16).  ``"main"`` is always valid for
++# HuggingFace datasets; it pins the branch (not a specific commit hash), which
++# is the most discoverable stable identifier available without scraping the HF
++# commit log.
++_SOURCE_REVISION = "main"
++
++# MBPP samples are imported as UNVERIFIED code_generation references.  Per the
++# P3 task brief, the importer must NOT claim any verification -- no compile,
++# no pytest, no ruff, no timeout.  All four flags default to False and stay
++# False until scripts/verify_imported_mbpp.py runs the real checks.
+ _VERIFIED_VER = Verification(
+-    syntax_ok=True, pytest_ok=True, ruff_ok=False, timeout=False
++    syntax_ok=False, pytest_ok=False, ruff_ok=False, timeout=False
+ )
+ 
+ # MBPP ships difficulty as a string ("Introductory" / "Interview" /
+@@ -157,11 +173,23 @@ def mbpp_record_to_sample(
+     record: dict,
+     *,
+     created_at: Optional[str] = None,
++    source_split: Optional[str] = None,
+ ) -> Sample:
+     """Convert a single MBPP dataset record to a ``Sample`` (code_generation).
+ 
+     Expected record keys: ``task_id``, ``text`` (or ``prompt``), ``code``,
+     ``test_list``, and optionally ``difficulty``.
++
++    Parameters
++    ----------
++    record:
++        Raw MBPP record dict.
++    created_at:
++        ISO-8601 timestamp; defaults to ``datetime.now(timezone.utc)``.
++    source_split:
++        Name of the dataset split this record came from (e.g. ``"train"``,
++        ``"test"``, ``"validation"``).  Stored on the Sample as the new
++        P3 ``source_split`` field for downstream traceability.
+     """
+     if created_at is None:
+         created_at = datetime.now(timezone.utc).isoformat()
+@@ -187,11 +215,12 @@ def mbpp_record_to_sample(
+         target_code=code,
+         public_tests=public_tests,
+         hidden_tests=hidden_tests,
+-        verified=True,
++        verified=False,
+         verification=_VERIFIED_VER,
+         generator=_GENERATOR,
+         created_at=created_at,
+         dataset_version=_DATASET_VERSION,
++        source_split=source_split,
+     )
+ 
+ 
+@@ -211,23 +240,114 @@ def compute_sha256(path: Path) -> str:
+ def build_manifest(
+     *,
+     source: str,
++    source_revision: str,
++    dataset_fingerprint: Optional[str],
+     split: str,
+     sample_count: int,
+-    sha256: str,
++    normalized_sha256: str,
++    normalized_file: str,
+     license: str,
+     imported_at: str,
++    benchmark_contaminated: bool,
++    standard_mbpp_test_claims_disallowed: bool,
+ ) -> dict:
+-    """Build the manifest dict for an MBPP import (does not write it)."""
++    """Build the per-split manifest dict for an MBPP import (does not write it).
++
++    The returned dict matches the per-split schema in the P3 task brief:
++    ``manifest.<split>.json``.  Verifier-filled fields
++    (``verified_sha256`` / ``verified_count`` / ``rejected_count`` /
++    ``rejected_sha256`` / ``verified_at``) are emitted as ``None`` placeholders
++    so the schema is stable across the import -> verify lifecycle.
++    """
+     return {
+         "source": source,
++        "source_revision": source_revision,
++        "dataset_fingerprint": dataset_fingerprint,
+         "split": split,
+         "sample_count": sample_count,
+-        "sha256": sha256,
++        "normalized_sha256": normalized_sha256,
++        "normalized_file": normalized_file,
+         "license": license,
+         "imported_at": imported_at,
++        "benchmark_contaminated": benchmark_contaminated,
++        "standard_mbpp_test_claims_disallowed": standard_mbpp_test_claims_disallowed,
++        # Verifier-filled placeholders -- the importer does NOT fabricate these.
++        "verified_sha256": None,
++        "verified_count": None,
++        "rejected_count": None,
++        "rejected_sha256": None,
++        "verified_at": None,
+     }
+ 
+ 
++def build_manifest_index(
++    *,
++    source: str,
++    splits_detail: dict[str, dict],
++    updated_at: str,
++) -> dict:
++    """Build the manifest.index.json dict (does not write it).
++
++    Parameters
++    ----------
++    source:
++        HF repo id (e.g. ``google-research-datasets/mbpp``).
++    splits_detail:
++        Mapping ``{split_name: {sample_count, normalized_sha256, manifest}}``.
++        Typically produced incrementally by :func:`update_manifest_index`.
++    updated_at:
++        ISO-8601 timestamp of the most recent import.
++    """
++    return {
++        "source": source,
++        "splits": sorted(splits_detail.keys()),
++        "updated_at": updated_at,
++        "splits_detail": splits_detail,
++    }
++
++
++def update_manifest_index(
++    *,
++    index_path: Path,
++    source: str,
++    split: str,
++    split_detail: dict,
++    updated_at: str,
++) -> dict:
++    """Merge *split_detail* into the manifest.index.json at *index_path*.
++
++    Reads the existing index (if any), inserts/replaces the entry for
++    *split*, writes the merged result back, and returns the merged dict.
++
++    Per the brief: only ``manifest.index.json`` is shared across splits and
++    merged on each import; per-split ``manifest.<split>.json`` files are
++    never overwritten by other splits.
++    """
++    if index_path.exists():
++        with index_path.open("r", encoding="utf-8") as fh:
++            index = json.load(fh)
++    else:
++        index = {"source": source, "splits": [], "updated_at": updated_at,
++                 "splits_detail": {}}
++
++    # Defensive: ensure the expected keys exist even if a stale/partial file
++    # was left on disk by a previous run.
++    index.setdefault("source", source)
++    index.setdefault("splits", [])
++    index.setdefault("splits_detail", {})
++    index.setdefault("updated_at", updated_at)
++
++    index["splits_detail"][split] = split_detail
++    index["splits"] = sorted(index["splits_detail"].keys())
++    index["updated_at"] = updated_at
++    index["source"] = source
++
++    index_path.parent.mkdir(parents=True, exist_ok=True)
++    with index_path.open("w", encoding="utf-8") as fh:
++        json.dump(index, fh, indent=2, ensure_ascii=False)
++    return index
++
++
+ def write_manifest(manifest: dict, path: Path) -> None:
+     """Write *manifest* as indented JSON to *path* (creating parent dirs)."""
+     path.parent.mkdir(parents=True, exist_ok=True)
+@@ -243,6 +363,34 @@ def write_normalized_jsonl(samples: list[Sample], path: Path) -> None:
+             fh.write(s.to_json_line() + "\n")
+ 
+ 
++def extract_dataset_fingerprint(ds: Any) -> Optional[str]:
++    """Best-effort extraction of the HuggingFace dataset fingerprint.
++
++    Returns ``None`` when no fingerprint attribute is discoverable.  Per the
++    brief: do NOT fabricate a value -- ``null`` is the correct sentinel.
++    """
++    # ``datasets`` exposes fingerprint on the Dataset object via various
++    # attributes across versions; check the most common ones defensively.
++    for attr in ("_fingerprint", "fingerprint"):
++        try:
++            val = getattr(ds, attr, None)
++        except Exception:  # noqa: BLE001 -- defensive; never propagate
++            val = None
++        if isinstance(val, str) and val:
++            return val
++    # Some versions stash it under `ds.info` or `ds._info`.
++    info = getattr(ds, "info", None) or getattr(ds, "_info", None)
++    if info is not None:
++        for attr in ("fingerprint", "_fingerprint"):
++            try:
++                val = getattr(info, attr, None)
++            except Exception:  # noqa: BLE001
++                val = None
++            if isinstance(val, str) and val:
++                return val
++    return None
++
++
+ # ---------------------------------------------------------------------------
+ # CLI
+ # ---------------------------------------------------------------------------
+@@ -278,9 +426,10 @@ def main() -> int:
+               file=sys.stderr)
+         return 1
+ 
+-    print(f"Loading {_SOURCE_REPO} (split={split}) from HuggingFace ...")
++    print(f"Loading {_SOURCE_REPO} (split={split}, revision={_SOURCE_REVISION}) "
++          "from HuggingFace ...")
+     try:
+-        ds = _load_dataset(_SOURCE_REPO, split=split)
++        ds = _load_dataset(_SOURCE_REPO, split=split, revision=_SOURCE_REVISION)
+     except Exception as exc:  # noqa: BLE001
+         print(
+             f"ERROR: failed to download {_SOURCE_REPO} (split={split}): {exc}",
+@@ -290,12 +439,17 @@ def main() -> int:
+               file=sys.stderr)
+         return 1
+ 
++    dataset_fingerprint = extract_dataset_fingerprint(ds)
+     created_at = datetime.now(timezone.utc).isoformat()
+     samples: list[Sample] = []
+     for record in ds:
+         try:
+             samples.append(
+-                mbpp_record_to_sample(dict(record), created_at=created_at)
++                mbpp_record_to_sample(
++                    dict(record),
++                    created_at=created_at,
++                    source_split=split,
++                )
+             )
+         except Exception as exc:  # noqa: BLE001
+             task_id = record.get("task_id", "?") if hasattr(record, "get") else "?"
+@@ -308,24 +462,54 @@ def main() -> int:
+         )
+         return 1
+ 
++    # ----- normalised JSONL -----
+     jsonl_path = out_dir / "normalized" / f"{split}.jsonl"
+     write_normalized_jsonl(samples, jsonl_path)
+ 
+     sha = compute_sha256(jsonl_path)
++
++    # ----- per-split manifest (NEVER overwritten by other splits) -----
++    # Per P3 global constraint #17: only the test split is benchmark-
++    # contaminated (because P3 will reuse it for training); train/validation
++    # are clean.
++    is_test_split = split == "test"
+     manifest = build_manifest(
+         source=_SOURCE_REPO,
++        source_revision=_SOURCE_REVISION,
++        dataset_fingerprint=dataset_fingerprint,
+         split=split,
+         sample_count=len(samples),
+-        sha256=sha,
++        normalized_sha256=sha,
++        normalized_file=f"normalized/{split}.jsonl",
+         license=_LICENSE,
+         imported_at=created_at,
++        benchmark_contaminated=is_test_split,
++        standard_mbpp_test_claims_disallowed=is_test_split,
+     )
+-    manifest_path = out_dir / "manifest.json"
++    manifest_path = out_dir / f"manifest.{split}.json"
+     write_manifest(manifest, manifest_path)
+ 
++    # ----- merged manifest.index.json (the one shared file) -----
++    split_detail = {
++        "sample_count": len(samples),
++        "normalized_sha256": sha,
++        "manifest": f"manifest.{split}.json",
++    }
++    update_manifest_index(
++        index_path=out_dir / "manifest.index.json",
++        source=_SOURCE_REPO,
++        split=split,
++        split_detail=split_detail,
++        updated_at=created_at,
++    )
++
+     print(f"import_mbpp: wrote {len(samples)} samples -> {jsonl_path}")
+     print(f"  sha256:    {sha[:16]}...")
+     print(f"  manifest:  -> {manifest_path}")
++    print(f"  index:      -> {out_dir / 'manifest.index.json'}")
++    if dataset_fingerprint is None:
++        print("  note: dataset_fingerprint unavailable; recorded as null "
++              "(P3 constraint: do NOT fabricate).")
+     return 0
+ 
+ 
+diff --git a/scripts/verify_imported_mbpp.py b/scripts/verify_imported_mbpp.py
+new file mode 100644
+index 0000000..2bd71cf
+--- /dev/null
++++ b/scripts/verify_imported_mbpp.py
+@@ -0,0 +1,409 @@
++"""
++scripts/verify_imported_mbpp.py -- Standalone verifier for imported MBPP samples.
++
++Reads ``data/external/mbpp/normalized/<split>.jsonl`` (produced by
++:mod:`scripts.import_mbpp`), runs the REAL verification pipeline on each
++Sample, and writes:
++
++    <output-dir>/verified/<split>.jsonl
++    <output-dir>/rejected/<split>.jsonl
++
++The verifier also updates ``<output-dir>/manifest.<split>.json`` with the
++verified/rejected counts and SHA-256 digests.
++
++Per the P3 task brief, the verifier performs these checks per sample:
++
++1. Hard check: ``public_tests.count("assert ") >= 2``
++2. Hard check: ``hidden_tests.count("assert ") >= 3``
++3. For ``static_repair`` / ``execution_repair`` samples: call
++   :func:`src.validators.verify_broken_is_broken` and require True
++   (broken_code must fail at least one test).
++4. For ``execution_repair`` samples: ``execution_feedback`` must be
++   non-empty AND contain a failure marker (case-insensitive:
++   any of ``Error``, ``assert``, ``Traceback``, ``FAILED``,
++   ``Exception``, ``fail``).
++5. Real verification: call :func:`src.validators.verify_sample` and
++   require ``is_accepted=True`` (syntax_ok AND pytest_ok AND NOT timeout).
++
++Samples that pass ALL checks go to ``verified/<split>.jsonl`` with
++``verified=True`` and the real ``verification`` results.  Samples that
++fail ANY check go to ``rejected/<split>.jsonl`` with ``verified=False``
++and a ``rejection_reason`` field.
++
++The verifier does NOT download datasets -- that is the importer's job.
++
++Usage
++-----
++    python scripts/verify_imported_mbpp.py [--split test] [--output-dir DIR]
++
++Exit codes
++----------
++    0   success (all samples verified, or partial rejection -- counts reported)
++    1   error (input missing / no samples / all samples rejected)
++    2   partial rejection (some verified, some rejected -- counts reported)
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import sys
++from datetime import datetime, timezone
++from pathlib import Path
++
++# ---------------------------------------------------------------------------
++# Project-root import guard (so the script works from any cwd)
++# ---------------------------------------------------------------------------
++_ROOT = Path(__file__).resolve().parent.parent
++if str(_ROOT) not in sys.path:
++    sys.path.insert(0, str(_ROOT))
++
++from src.schemas import Sample  # noqa: E402
++from src.validators import verify_broken_is_broken, verify_sample  # noqa: E402
++
++# ---------------------------------------------------------------------------
++# Constants
++# ---------------------------------------------------------------------------
++
++# Minimum assertion counts (P3 task brief constraints #7).
++_MIN_PUBLIC_ASSERTS = 2
++_MIN_HIDDEN_ASSERTS = 3
++
++# Failure markers used to validate execution_feedback for execution_repair
++# samples (case-insensitive substring match).  Per task brief constraint #9.
++_FAILURE_MARKERS = (
++    "error",
++    "assert",
++    "traceback",
++    "failed",
++    "exception",
++    "fail",
++)
++
++# Task type strings (mirror src.schemas.TaskType enum values, kept as plain
++# strings to avoid importing the enum for a trivial comparison).
++_TASK_STATIC_REPAIR = "static_repair"
++_TASK_EXECUTION_REPAIR = "execution_repair"
++
++
++# ---------------------------------------------------------------------------
++# Hard-check helpers (pure, importable, testable)
++# ---------------------------------------------------------------------------
++
++def count_asserts(text: str) -> int:
++    """Count literal ``assert `` occurrences in *text* (case-sensitive).
++
++    Per task brief constraint #7: ``public_tests.count("assert ")`` is the
++    canonical counting method.  The trailing space avoids matching
++    ``assertion`` / ``asserted``.
++    """
++    return (text or "").count("assert ")
++
++
++def has_failure_marker(feedback: str) -> bool:
++    """Return True if *feedback* contains a recognised failure marker.
++
++    Case-insensitive substring match against :data:`_FAILURE_MARKERS`.
++    Per task brief constraint #9.
++    """
++    if not feedback:
++        return False
++    lower = feedback.lower()
++    return any(marker in lower for marker in _FAILURE_MARKERS)
++
++
++def check_sample(sample: Sample) -> tuple[bool, str]:
++    """Run all hard checks + real verification on *sample*.
++
++    Returns
++    -------
++    (passed, reason)
++        *passed* is True when the sample passes ALL checks.  *reason* is
++        the empty string on success, or a short human-readable reason on
++        failure.
++    """
++    # ------------------------------------------------------------------
++    # Hard check 1: public assertions >= 2
++    # ------------------------------------------------------------------
++    n_public = count_asserts(sample.public_tests)
++    if n_public < _MIN_PUBLIC_ASSERTS:
++        return False, (
++            f"public assertions {n_public} < {_MIN_PUBLIC_ASSERTS}"
++        )
++
++    # ------------------------------------------------------------------
++    # Hard check 2: hidden assertions >= 3
++    # ------------------------------------------------------------------
++    n_hidden = count_asserts(sample.hidden_tests)
++    if n_hidden < _MIN_HIDDEN_ASSERTS:
++        return False, (
++            f"hidden assertions {n_hidden} < {_MIN_HIDDEN_ASSERTS}"
++        )
++
++    # ------------------------------------------------------------------
++    # Hard check 3 (repair only): verify_broken_is_broken
++    # ------------------------------------------------------------------
++    if sample.task_type in (_TASK_STATIC_REPAIR, _TASK_EXECUTION_REPAIR):
++        broken = (sample.broken_code or "").strip()
++        if not broken:
++            # Schema should have rejected this earlier; defensive.
++            return False, "repair sample missing broken_code"
++        try:
++            is_broken = verify_broken_is_broken(sample)
++        except ValueError as exc:
++            return False, f"verify_broken_is_broken raised: {exc}"
++        if not is_broken:
++            return False, "broken_code passes all tests"
++
++    # ------------------------------------------------------------------
++    # Hard check 4 (execution_repair only): execution_feedback failure marker
++    # ------------------------------------------------------------------
++    if sample.task_type == _TASK_EXECUTION_REPAIR:
++        feedback = sample.execution_feedback or ""
++        if not feedback.strip():
++            return False, "execution_feedback is empty"
++        if not has_failure_marker(feedback):
++            return False, "execution_feedback lacks failure marker"
++
++    # ------------------------------------------------------------------
++    # Real verification: compile + pytest + ruff
++    # ------------------------------------------------------------------
++    sv = verify_sample(sample)
++    # ALWAYS update the sample's verification with the real results so the
++    # verified/rejected JSONL files reflect what was actually run.
++    sample.verification = sv.verification
++    if not sv.is_accepted:
++        reason = "; ".join(sv.messages[:3]) if sv.messages else (
++            "verification failed (syntax/pytest/timeout)"
++        )
++        return False, reason
++
++    return True, ""
++
++
++# ---------------------------------------------------------------------------
++# I/O helpers
++# ---------------------------------------------------------------------------
++
++def compute_sha256(path: Path) -> str:
++    """Return the hex SHA-256 digest of the file at *path*."""
++    h = hashlib.sha256()
++    with path.open("rb") as fh:
++        for chunk in iter(lambda: fh.read(8192), b""):
++            h.update(chunk)
++    return h.hexdigest()
++
++
++def load_normalized_jsonl(path: Path) -> list[Sample]:
++    """Load Sample objects from a normalised JSONL file (blank lines skipped)."""
++    samples: list[Sample] = []
++    with path.open(encoding="utf-8") as fh:
++        for line in fh:
++            line = line.strip()
++            if line:
++                samples.append(Sample.from_json_line(line))
++    return samples
++
++
++def write_verified_jsonl(samples: list[Sample], path: Path) -> None:
++    """Write verified samples (verified=True) as one JSONL line each."""
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("w", encoding="utf-8", newline="\n") as fh:
++        for s in samples:
++            fh.write(s.to_json_line() + "\n")
++
++
++def write_rejected_jsonl(
++    rejected: list[tuple[Sample, str]], path: Path
++) -> None:
++    """Write rejected samples to JSONL with a ``rejection_reason`` field.
++
++    The Sample's own ``verified`` field is forced to False and
++    ``verification`` is whatever was actually run (all-false when the
++    sample failed a hard check before verification; real results when
++    verification ran but failed).
++    """
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("w", encoding="utf-8", newline="\n") as fh:
++        for sample, reason in rejected:
++            record = json.loads(sample.to_json_line())
++            record["verified"] = False
++            record["rejection_reason"] = reason
++            fh.write(
++                json.dumps(record, ensure_ascii=False, separators=(",", ":"))
++                + "\n"
++            )
++
++
++def update_manifest_with_verified(
++    manifest_path: Path,
++    *,
++    verified_sha256: str,
++    verified_count: int,
++    rejected_count: int,
++    rejected_sha256: str,
++    verified_at: str,
++) -> dict:
++    """Update an existing per-split manifest with verifier-filled fields.
++
++    Reads the manifest at *manifest_path*, fills in the verifier fields,
++    writes it back, and returns the updated dict.
++    """
++    with manifest_path.open("r", encoding="utf-8") as fh:
++        manifest = json.load(fh)
++    manifest["verified_sha256"] = verified_sha256
++    manifest["verified_count"] = verified_count
++    manifest["rejected_count"] = rejected_count
++    manifest["rejected_sha256"] = rejected_sha256
++    manifest["verified_at"] = verified_at
++    manifest_path.parent.mkdir(parents=True, exist_ok=True)
++    with manifest_path.open("w", encoding="utf-8") as fh:
++        json.dump(manifest, fh, indent=2, ensure_ascii=False)
++    return manifest
++
++
++# ---------------------------------------------------------------------------
++# Core logic
++# ---------------------------------------------------------------------------
++
++def verify_split(
++    samples: list[Sample],
++) -> tuple[list[Sample], list[tuple[Sample, str]]]:
++    """Verify all *samples*; return (verified, rejected) lists.
++
++    Verified samples have ``verified=True`` and ``verification`` updated to
++    the real results from :func:`verify_sample`.  Rejected samples keep
++    ``verified=False`` (will be re-stated in the rejection writer) and are
++    paired with a short reason string.
++    """
++    verified: list[Sample] = []
++    rejected: list[tuple[Sample, str]] = []
++    for sample in samples:
++        passed, reason = check_sample(sample)
++        if passed:
++            sample.verified = True
++            # verification was already updated inside check_sample.
++            verified.append(sample)
++        else:
++            sample.verified = False
++            rejected.append((sample, reason))
++    return verified, rejected
++
++
++# ---------------------------------------------------------------------------
++# CLI
++# ---------------------------------------------------------------------------
++
++def _build_parser() -> argparse.ArgumentParser:
++    p = argparse.ArgumentParser(
++        description=(
++            "Verify imported MBPP samples (reads normalized/<split>.jsonl, "
++            "writes verified/<split>.jsonl + rejected/<split>.jsonl)."
++        ),
++    )
++    p.add_argument(
++        "--output-dir", default="data/external/mbpp",
++        help="Root output directory (default: data/external/mbpp).",
++    )
++    p.add_argument(
++        "--split", default="test",
++        help="Dataset split to verify (default: test).",
++    )
++    return p
++
++
++def main() -> int:
++    """CLI entry point.  Returns 0/1/2 (see module docstring)."""
++    try:
++        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")  # type: ignore[attr-defined]
++    except Exception:
++        pass
++
++    args = _build_parser().parse_args()
++    out_dir = Path(args.output_dir)
++    split = args.split
++
++    normalized_path = out_dir / "normalized" / f"{split}.jsonl"
++    if not normalized_path.exists():
++        print(
++            f"ERROR: normalized input not found: {normalized_path}",
++            file=sys.stderr,
++        )
++        print(
++            "  Run scripts/import_mbpp.py first to produce the normalised "
++            "JSONL for this split.",
++            file=sys.stderr,
++        )
++        return 1
++
++    samples = load_normalized_jsonl(normalized_path)
++    if not samples:
++        print(f"ERROR: no samples in {normalized_path}", file=sys.stderr)
++        return 1
++
++    print(
++        f"verify_imported_mbpp: verifying {len(samples)} samples "
++        f"from {normalized_path}"
++    )
++
++    verified, rejected = verify_split(samples)
++
++    verified_path = out_dir / "verified" / f"{split}.jsonl"
++    rejected_path = out_dir / "rejected" / f"{split}.jsonl"
++
++    if verified:
++        write_verified_jsonl(verified, verified_path)
++    if rejected:
++        write_rejected_jsonl(rejected, rejected_path)
++
++    verified_sha = compute_sha256(verified_path) if verified else ""
++    rejected_sha = compute_sha256(rejected_path) if rejected else ""
++
++    verified_at = datetime.now(timezone.utc).isoformat()
++    manifest_path = out_dir / f"manifest.{split}.json"
++    if manifest_path.exists():
++        update_manifest_with_verified(
++            manifest_path,
++            verified_sha256=verified_sha,
++            verified_count=len(verified),
++            rejected_count=len(rejected),
++            rejected_sha256=rejected_sha,
++            verified_at=verified_at,
++        )
++    else:
++        print(
++            f"WARNING: manifest {manifest_path} not found; skipped manifest "
++            "update.",
++            file=sys.stderr,
++        )
++
++    print(
++        f"  n_in={len(samples)}  verified={len(verified)}  "
++        f"rejected={len(rejected)}"
++    )
++    if verified:
++        print(f"  verified -> {verified_path}")
++        print(f"    sha256: {verified_sha[:16]}...")
++    if rejected:
++        print(f"  rejected -> {rejected_path}")
++        print(f"    sha256: {rejected_sha[:16]}...")
++        # Top rejection reasons
++        hist: dict[str, int] = {}
++        for _, reason in rejected:
++            key = reason[:60]
++            hist[key] = hist.get(key, 0) + 1
++        print("  Rejection reasons:")
++        for reason, count in sorted(hist.items(), key=lambda kv: -kv[1])[:10]:
++            print(f"    [{count}] {reason}")
++
++    # Exit code: 1 = all rejected, 2 = partial rejection, 0 = all verified.
++    if not verified:
++        return 1
++    if rejected:
++        return 2
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tests/test_import_mbpp.py b/tests/test_import_mbpp.py
+index 5c270ef..b081093 100644
+--- a/tests/test_import_mbpp.py
++++ b/tests/test_import_mbpp.py
+@@ -210,13 +210,17 @@ class TestMbppRecordToSample:
+                                        "assert add(0, 0) == 0"])
+         assert mbpp_record_to_sample(rec).hidden_tests == ""
+ 
+-    def test_verified_is_true(self) -> None:
+-        assert mbpp_record_to_sample(_mbpp_record()).verified is True
++    def test_verified_is_false_by_default(self) -> None:
++        # P3: importer must NOT claim verification -- default verified=False
++        # until scripts/verify_imported_mbpp.py runs the real checks.
++        assert mbpp_record_to_sample(_mbpp_record()).verified is False
+ 
+     def test_verification_flags(self) -> None:
+         v = mbpp_record_to_sample(_mbpp_record()).verification
+-        assert v.syntax_ok is True
+-        assert v.pytest_ok is True
++        # All-false preset: no compile / pytest / ruff / timeout claim until
++        # the standalone verifier runs (P3 import+verify split).
++        assert v.syntax_ok is False
++        assert v.pytest_ok is False
+         assert v.ruff_ok is False
+         assert v.timeout is False
+ 
+@@ -288,36 +292,54 @@ class TestBuildManifest:
+     def _make(self, **kwargs) -> dict:
+         defaults = dict(
+             source="google-research-datasets/mbpp",
++            source_revision="main",
++            dataset_fingerprint=None,
+             split="train",
+             sample_count=10,
+-            sha256="abc123",
++            normalized_sha256="abc123",
++            normalized_file="normalized/train.jsonl",
+             license="Apache-2.0",
+             imported_at="2026-01-01T00:00:00+00:00",
++            benchmark_contaminated=False,
++            standard_mbpp_test_claims_disallowed=False,
+         )
+         defaults.update(kwargs)
+         return build_manifest(**defaults)
+ 
+     def test_required_keys(self) -> None:
+         m = self._make()
+-        for k in ("source", "split", "sample_count", "sha256",
+-                  "license", "imported_at"):
++        for k in ("source", "source_revision", "split", "sample_count",
++                  "normalized_sha256", "normalized_file",
++                  "license", "imported_at", "benchmark_contaminated",
++                  "standard_mbpp_test_claims_disallowed",
++                  "dataset_fingerprint"):
+             assert k in m, f"missing key: {k}"
+ 
+     def test_values_preserved(self) -> None:
+         m = self._make(
+             source="google-research-datasets/mbpp",
++            source_revision="main",
++            dataset_fingerprint="fp-abc",
+             split="train",
+             sample_count=374,
+-            sha256="deadbeef",
++            normalized_sha256="deadbeef",
++            normalized_file="normalized/train.jsonl",
+             license="Apache-2.0",
+             imported_at="2026-07-02T00:00:00+00:00",
++            benchmark_contaminated=False,
++            standard_mbpp_test_claims_disallowed=False,
+         )
+         assert m["source"] == "google-research-datasets/mbpp"
++        assert m["source_revision"] == "main"
++        assert m["dataset_fingerprint"] == "fp-abc"
+         assert m["split"] == "train"
+         assert m["sample_count"] == 374
+-        assert m["sha256"] == "deadbeef"
++        assert m["normalized_sha256"] == "deadbeef"
++        assert m["normalized_file"] == "normalized/train.jsonl"
+         assert m["license"] == "Apache-2.0"
+         assert m["imported_at"] == "2026-07-02T00:00:00+00:00"
++        assert m["benchmark_contaminated"] is False
++        assert m["standard_mbpp_test_claims_disallowed"] is False
+ 
+     def test_imported_at_is_iso_parseable(self) -> None:
+         ts = datetime.now(timezone.utc).isoformat()
+@@ -365,12 +387,17 @@ class TestWriteHelpers:
+         sha = compute_sha256(p)
+         m = build_manifest(
+             source="google-research-datasets/mbpp",
++            source_revision="main",
++            dataset_fingerprint=None,
+             split="train",
+             sample_count=len(samples),
+-            sha256=sha,
++            normalized_sha256=sha,
++            normalized_file="normalized/train.jsonl",
+             license="Apache-2.0",
+             imported_at=datetime.now(timezone.utc).isoformat(),
++            benchmark_contaminated=False,
++            standard_mbpp_test_claims_disallowed=False,
+         )
+         assert m["sample_count"] == 3
+-        assert m["sha256"] == sha
+-        assert len(m["sha256"]) == 64  # hex digest length
++        assert m["normalized_sha256"] == sha
++        assert len(m["normalized_sha256"]) == 64  # hex digest length
+diff --git a/tests/test_import_mbpp_p3.py b/tests/test_import_mbpp_p3.py
+new file mode 100644
+index 0000000..73119d1
+--- /dev/null
++++ b/tests/test_import_mbpp_p3.py
+@@ -0,0 +1,366 @@
++"""Tests for the P3 import_mbpp + verify_imported_mbpp pipeline (Task 3).
++
++Covers the 11 tests specified in `.superpowers/sdd/task-3-brief.md`:
++
++Importer (5)
++-----------
++1. test_imported_samples_default_verified_false
++2. test_per_split_manifest_no_overwrite
++3. test_benchmark_contamination_flag
++4. test_source_split_field_set
++5. test_no_pytest_in_importer
++
++Verifier (6)
++------------
++6.  test_verified_sample_passes_all_checks
++7.  test_rejected_low_public_count
++8.  test_rejected_low_hidden_count
++9.  test_repair_sample_verify_broken_is_broken
++10. test_execution_repair_feedback_check
++11. test_manifest_updated_with_verified_fields
++
++Importer tests mock ``datasets.load_dataset`` via ``scripts.import_mbpp._load_dataset``
++so no network is hit.  Verifier tests use synthetic Samples and run the REAL
++``verify_sample`` / ``verify_broken_is_broken`` (no mocks on the validators).
++"""
++
++from __future__ import annotations
++
++import json
++import sys
++from datetime import datetime, timezone
++from pathlib import Path
++from unittest.mock import patch
++
++import pytest
++
++from scripts import import_mbpp
++from scripts.import_mbpp import (
++    _SOURCE_REPO,
++    _SOURCE_REVISION,
++    build_manifest,
++    mbpp_record_to_sample,
++    update_manifest_index,
++    write_manifest,
++)
++from scripts.verify_imported_mbpp import (
++    check_sample,
++    update_manifest_with_verified,
++    verify_split,
++    write_verified_jsonl,
++)
++from src.schemas import Sample, Verification
++
++
++# ---------------------------------------------------------------------------
++# Shared helpers
++# ---------------------------------------------------------------------------
++
++def _mbpp_record(**kwargs) -> dict:
++    """Return a synthetic MBPP record (task_id=601, 5 tests)."""
++    base = {
++        "task_id": 601,
++        "text": "Write a function to add two numbers.",
++        "code": "def add(a, b):\n    return a + b\n",
++        "test_list": [
++            "assert add(1, 2) == 3",
++            "assert add(0, 0) == 0",
++            "assert add(-1, 1) == 0",
++            "assert add(2, 3) == 5",
++            "assert add(100, 200) == 300",
++        ],
++        "difficulty": "Introductory",
++    }
++    base.update(kwargs)
++    return base
++
++
++def _verification_all_false() -> Verification:
++    return Verification(syntax_ok=False, pytest_ok=False, ruff_ok=False, timeout=False)
++
++
++def _make_sample(**kwargs) -> Sample:
++    """Build a minimal valid code_generation sample with passing tests.
++
++    Defaults satisfy the verifier hard checks:
++    - public_tests has 2 ``assert `` occurrences (>= 2)
++    - hidden_tests has 3 ``assert `` occurrences (>= 3)
++    - target_code is correct, so verify_sample().is_accepted is True
++    """
++    defaults: dict = {
++        "sample_id": "test-001",
++        "family_id": "fam-001",
++        "difficulty": 1,
++        "task_type": "code_generation",
++        "language": "python",
++        "skill_tags": ["arithmetic"],
++        "instruction": "Write an add function.",
++        "broken_code": None,
++        "execution_feedback": None,
++        "target_code": "def add(a, b):\n    return a + b\n",
++        "public_tests": "assert add(1, 2) == 3\n\nassert add(0, 0) == 0",
++        "hidden_tests": (
++            "assert add(-1, 1) == 0\n\n"
++            "assert add(2, 3) == 5\n\n"
++            "assert add(100, 200) == 300"
++        ),
++        "verified": False,
++        "verification": _verification_all_false(),
++        "generator": "test-harness",
++        "created_at": "2026-01-01T00:00:00+00:00",
++        "dataset_version": "v1",
++        "source_split": "test",
++    }
++    defaults.update(kwargs)
++    return Sample(**defaults)
++
++
++def _run_importer_cli(monkeypatch, tmp_path: Path, split: str) -> int:
++    """Invoke ``scripts.import_mbpp.main()`` with mocked datasets + CLI args.
++
++    Returns the exit code from main().  ``_load_dataset`` is replaced with a
++    callable returning a single synthetic MBPP record; ``_DATASETS_AVAILABLE``
++    is forced True so the datasets-unavailable guard does not short-circuit.
++    """
++    monkeypatch.setattr(import_mbpp, "_load_dataset",
++                        lambda *a, **kw: [_mbpp_record()])
++    monkeypatch.setattr(import_mbpp, "_DATASETS_AVAILABLE", True)
++    monkeypatch.setattr(
++        sys, "argv",
++        ["import_mbpp.py",
++         "--output-dir", str(tmp_path),
++         "--split", split],
++    )
++    return import_mbpp.main()
++
++
++# ---------------------------------------------------------------------------
++# Part 1: Importer tests (mock datasets, no network)
++# ---------------------------------------------------------------------------
++
++class TestImporterP3:
++    """5 importer tests per the task brief."""
++
++    # --- Test 1 ---
++    def test_imported_samples_default_verified_false(self) -> None:
++        """Imported Sample must default to verified=False with all-false
++        Verification (no preset claims; P3 constraint #2)."""
++        s = mbpp_record_to_sample(_mbpp_record(), source_split="train")
++        assert s.verified is False
++        assert s.verification.syntax_ok is False
++        assert s.verification.pytest_ok is False
++        assert s.verification.ruff_ok is False
++        assert s.verification.timeout is False
++
++    # --- Test 2 ---
++    def test_per_split_manifest_no_overwrite(self, tmp_path: Path,
++                                              monkeypatch) -> None:
++        """Running --split train then --split test must produce BOTH
++        manifest.train.json and manifest.test.json (neither overwritten),
++        and manifest.index.json must list both splits (P3 constraint #3)."""
++        rc1 = _run_importer_cli(monkeypatch, tmp_path, split="train")
++        assert rc1 == 0
++        rc2 = _run_importer_cli(monkeypatch, tmp_path, split="test")
++        assert rc2 == 0
++
++        # Both per-split manifests exist with correct content.
++        train_manifest_path = tmp_path / "manifest.train.json"
++        test_manifest_path = tmp_path / "manifest.test.json"
++        assert train_manifest_path.exists()
++        assert test_manifest_path.exists()
++
++        train_m = json.loads(train_manifest_path.read_text(encoding="utf-8"))
++        test_m = json.loads(test_manifest_path.read_text(encoding="utf-8"))
++        assert train_m["split"] == "train"
++        assert test_m["split"] == "test"
++
++        # Index lists both splits and points to the right manifest files.
++        index_path = tmp_path / "manifest.index.json"
++        assert index_path.exists()
++        index = json.loads(index_path.read_text(encoding="utf-8"))
++        assert sorted(index["splits"]) == ["test", "train"]
++        assert index["splits_detail"]["train"]["manifest"] == "manifest.train.json"
++        assert index["splits_detail"]["test"]["manifest"] == "manifest.test.json"
++
++    # --- Test 3 ---
++    def test_benchmark_contamination_flag(self, tmp_path: Path,
++                                           monkeypatch) -> None:
++        """test split manifest has benchmark_contaminated=true;
++        train split has false (P3 constraint #5)."""
++        _run_importer_cli(monkeypatch, tmp_path, split="test")
++        _run_importer_cli(monkeypatch, tmp_path, split="train")
++
++        test_m = json.loads(
++            (tmp_path / "manifest.test.json").read_text(encoding="utf-8"))
++        train_m = json.loads(
++            (tmp_path / "manifest.train.json").read_text(encoding="utf-8"))
++
++        assert test_m["benchmark_contaminated"] is True
++        assert test_m["standard_mbpp_test_claims_disallowed"] is True
++        assert train_m["benchmark_contaminated"] is False
++        assert train_m["standard_mbpp_test_claims_disallowed"] is False
++
++    # --- Test 4 ---
++    def test_source_split_field_set(self) -> None:
++        """Every imported Sample must carry source_split=<split_name>
++        (P3 constraint #6)."""
++        for split in ("train", "test", "validation"):
++            s = mbpp_record_to_sample(_mbpp_record(), source_split=split)
++            assert s.source_split == split
++
++    # --- Test 5 ---
++    def test_no_pytest_in_importer(self) -> None:
++        """Importer must NOT import or call verify_sample / run_pytest
++        (P3 constraint #1).  Verified by module attribute inspection: if
++        the importer never imports these names, it cannot call them."""
++        import scripts.import_mbpp as mod
++        assert not hasattr(mod, "verify_sample"), \
++            "importer must not import verify_sample"
++        assert not hasattr(mod, "run_pytest"), \
++            "importer must not import run_pytest"
++        assert not hasattr(mod, "verify_broken_is_broken"), \
++            "importer must not import verify_broken_is_broken"
++        # The src.validators module itself must not be imported by the
++        # importer (no transitive pytest path).
++        assert "src.validators" not in (getattr(mod, "__dict__", {}) or {}), \
++            "importer must not import src.validators"
++
++
++# ---------------------------------------------------------------------------
++# Part 2: Verifier tests (synthetic samples, real validators)
++# ---------------------------------------------------------------------------
++
++class TestVerifierP3:
++    """6 verifier tests per the task brief."""
++
++    # --- Test 6 ---
++    def test_verified_sample_passes_all_checks(self, tmp_path: Path) -> None:
++        """Sample with valid code, public>=2, hidden>=3 -> written to
++        verified/<split>.jsonl with verified=true (P3 constraint #7)."""
++        sample = _make_sample()
++        verified, rejected = verify_split([sample])
++        assert len(verified) == 1
++        assert len(rejected) == 0
++        assert verified[0].verified is True
++        # Real verification results from verify_sample
++        assert verified[0].verification.syntax_ok is True
++        assert verified[0].verification.pytest_ok is True
++
++        # Write and read back to confirm verified=true lands in the file.
++        out_path = tmp_path / "verified" / "test.jsonl"
++        write_verified_jsonl(verified, out_path)
++        lines = [ln for ln in out_path.read_text(encoding="utf-8").splitlines()
++                 if ln.strip()]
++        assert len(lines) == 1
++        record = json.loads(lines[0])
++        assert record["verified"] is True
++
++    # --- Test 7 ---
++    def test_rejected_low_public_count(self) -> None:
++        """public_tests with only 1 assert -> rejected with reason
++        mentioning 'public assertions' (P3 constraint #7)."""
++        sample = _make_sample(
++            public_tests="assert add(1, 2) == 3",  # 1 assert only
++        )
++        passed, reason = check_sample(sample)
++        assert passed is False
++        assert "public assertions" in reason
++        assert "1" in reason
++
++    # --- Test 8 ---
++    def test_rejected_low_hidden_count(self) -> None:
++        """hidden_tests with only 2 asserts -> rejected with reason
++        mentioning 'hidden assertions' (P3 constraint #7)."""
++        sample = _make_sample(
++            hidden_tests="assert add(-1, 1) == 0\n\nassert add(2, 3) == 5",
++            # 2 asserts only -- below the minimum of 3
++        )
++        passed, reason = check_sample(sample)
++        assert passed is False
++        assert "hidden assertions" in reason
++        assert "2" in reason
++
++    # --- Test 9 ---
++    def test_repair_sample_verify_broken_is_broken(self) -> None:
++        """static_repair sample where broken_code PASSES all tests ->
++        rejected with reason 'broken_code passes all tests' (P3 constraint #8).
++
++        Here broken_code is identical to target_code, so it passes pytest and
++        verify_broken_is_broken returns False.
++        """
++        correct_code = "def add(a, b):\n    return a + b\n"
++        sample = _make_sample(
++            task_type="static_repair",
++            broken_code=correct_code,  # passes -- NOT actually broken
++        )
++        passed, reason = check_sample(sample)
++        assert passed is False
++        assert "broken_code passes all tests" in reason
++
++    # --- Test 10 ---
++    def test_execution_repair_feedback_check(self) -> None:
++        """execution_repair with non-failure execution_feedback -> rejected
++        with reason 'execution_feedback lacks failure marker'
++        (P3 constraint #9).
++
++        broken_code is genuinely broken (subtracts instead of adds), so
++        verify_broken_is_broken returns True and the sample reaches the
++        execution_feedback hard check, where it is rejected.
++
++        The feedback string is chosen to contain NONE of the failure
++        markers (``error`` / ``assert`` / ``traceback`` / ``failed`` /
++        ``exception`` / ``fail``) so the heuristic correctly rejects it.
++        """
++        sample = _make_sample(
++            task_type="execution_repair",
++            broken_code="def add(a, b):\n    return a - b\n",  # genuinely broken
++            execution_feedback="all good -- program completed",  # no marker
++        )
++        passed, reason = check_sample(sample)
++        assert passed is False
++        assert "execution_feedback" in reason
++        assert "failure marker" in reason
++
++    # --- Test 11 ---
++    def test_manifest_updated_with_verified_fields(self, tmp_path: Path) -> None:
++        """After verification, manifest.<split>.json has verified_sha256,
++        verified_count, rejected_count, rejected_sha256, verified_at
++        filled in (P3 task brief Part B #3)."""
++        manifest_path = tmp_path / "manifest.test.json"
++        initial = build_manifest(
++            source=_SOURCE_REPO,
++            source_revision=_SOURCE_REVISION,
++            dataset_fingerprint=None,
++            split="test",
++            sample_count=1,
++            normalized_sha256="abc",
++            normalized_file="normalized/test.jsonl",
++            license="Apache-2.0",
++            imported_at="2026-01-01T00:00:00+00:00",
++            benchmark_contaminated=True,
++            standard_mbpp_test_claims_disallowed=True,
++        )
++        write_manifest(initial, manifest_path)
++
++        verified_at = datetime.now(timezone.utc).isoformat()
++        updated = update_manifest_with_verified(
++            manifest_path,
++            verified_sha256="deadbeef",
++            verified_count=1,
++            rejected_count=0,
++            rejected_sha256="",
++            verified_at=verified_at,
++        )
++        assert updated["verified_sha256"] == "deadbeef"
++        assert updated["verified_count"] == 1
++        assert updated["rejected_count"] == 0
++        assert updated["rejected_sha256"] == ""
++        assert updated["verified_at"] == verified_at
++
++        # Persisted to disk
++        with manifest_path.open("r", encoding="utf-8") as fh:
++            persisted = json.load(fh)
++        assert persisted["verified_sha256"] == "deadbeef"
++        assert persisted["verified_count"] == 1
++        assert persisted["rejected_count"] == 0
++        assert persisted["verified_at"] == verified_at
