@@ -139,7 +139,16 @@ _FORMAL_CANDIDATE_TARGETS: dict = {
         "code": 375, "boundary": 375, "static_repair": 750, "execution_repair": 1000,
     },
 }
+_FORMAL_CANDIDATE_RATIOS: dict = {
+    "balanced": {
+        "code": 0.30, "boundary": 0.20, "static_repair": 0.20, "execution_repair": 0.30,
+    },
+    "repair": {
+        "code": 0.15, "boundary": 0.15, "static_repair": 0.30, "execution_repair": 0.40,
+    },
+}
 _FORMAL_BUCKETS = ("code", "boundary", "static_repair", "execution_repair")
+_FORMAL_RATIO_TOLERANCE = 0.03  # ±3pp
 
 
 # ---------------------------------------------------------------------------
@@ -801,37 +810,53 @@ def check20_capacity_verdict() -> Tuple[bool, dict]:
             return _skip("pool manifest has no bucket_counts",
                          capacity_status="SKIP")
 
-        # Compute max_achievable for each candidate.
+        # Compute LP-feasible max_achievable for each candidate.
+        # This enforces ratio constraints (target_ratio ± tolerance) as
+        # hard bounds, not just availability caps.
+        import math as _math
         details_per: dict = {}
         capacity_status = "OK"
         notes: list[str] = []
-        for name, targets in _FORMAL_CANDIDATE_TARGETS.items():
-            per_bucket_max = {
-                v: min(targets[v], pool_buckets.get(v, 0))
-                for v in _FORMAL_BUCKETS
-            }
-            max_achievable = sum(per_bucket_max.values())
+        for name, ratios in _FORMAL_CANDIDATE_RATIOS.items():
+            lb = {v: ratios[v] - _FORMAL_RATIO_TOLERANCE for v in _FORMAL_BUCKETS}
+            ub = {v: ratios[v] + _FORMAL_RATIO_TOLERANCE for v in _FORMAL_BUCKETS}
+            available = {v: pool_buckets.get(v, 0) for v in _FORMAL_BUCKETS}
+
+            # T <= available_v / lb_v for each v
+            t_upper = {}
+            for v in _FORMAL_BUCKETS:
+                if lb[v] > 0:
+                    t_upper[v] = int(_math.floor(available[v] / lb[v]))
+                else:
+                    t_upper[v] = float("inf")
+            binding = min(t_upper, key=lambda v: t_upper[v])
+            max_achievable = t_upper[binding]
+            sum_avail = sum(available.values())
+            if max_achievable > sum_avail:
+                max_achievable = sum_avail
+
             details_per[name] = {
                 "max_achievable_total": max_achievable,
-                "per_bucket_max": per_bucket_max,
-                "source": "pool_fallback",
+                "binding_bucket": binding,
+                "binding_constraint": (
+                    f"available_{binding} / lb_{binding} = "
+                    f"{available[binding]} / {lb[binding]:.4f} = {max_achievable}"
+                ),
+                "source": "pool_fallback_lp",
             }
             if max_achievable < MIN_TRAIN_SAMPLES_FOR_FULL:
                 notes.append(
                     f"{name}: max_achievable={max_achievable} < "
-                    f"{MIN_TRAIN_SAMPLES_FOR_FULL} (pool-based fallback)"
+                    f"{MIN_TRAIN_SAMPLES_FOR_FULL} (LP-feasible pool fallback, "
+                    f"binding={binding})"
                 )
                 capacity_status = "LIMIT"
 
-        # passed=True even when LIMIT: the check correctly identified the
-        # capacity issue. capacity_status="LIMIT" drives the verdict, not
-        # has_fail. Setting passed=False would trigger FIX_FIRST which is
-        # wrong for a capacity insufficiency.
         return True, {
             "notes": notes,
             "per_candidate": details_per,
             "capacity_status": capacity_status,
-            "source": "pool_fallback",
+            "source": "pool_fallback_lp",
         }
 
     manifests = [
@@ -1071,8 +1096,10 @@ def _format_details_short(name: str, passed: bool, details: dict) -> str:
         for k, v in per.items():
             verdict = v.get("verdict", "?")
             max_a = v.get("max_achievable_total", 0)
-            if source == "pool_fallback":
-                parts.append(f"{k}: max={max_a}")
+            binding = v.get("binding_bucket", "")
+            if source.startswith("pool_fallback"):
+                binding_str = f" binding={binding}" if binding else ""
+                parts.append(f"{k}: max={max_a}{binding_str}")
             else:
                 parts.append(f"{k}: {verdict}(max={max_a})")
         status = details.get("capacity_status", "?")

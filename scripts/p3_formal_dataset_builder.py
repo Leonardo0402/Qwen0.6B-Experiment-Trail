@@ -235,21 +235,107 @@ def _subsample_bucket(
 def _assess_candidate_capacity(
     candidate_cfg: dict, per_bucket_available: dict
 ) -> dict:
-    """Compute max achievable total for one candidate.
+    """Compute LP-feasible max achievable total for one candidate.
 
-    max_achievable = sum of min(target_per_bucket, available_per_bucket)
-    across all 4 buckets.
+    Enforces ratio constraints (target_ratio ± tolerance) as hard bounds:
+      - lower bound: selected_v >= lb_v * T  (lb_v = target_ratio - tol)
+      - upper bound: selected_v <= ub_v * T  (ub_v = target_ratio + tol)
+      - availability: selected_v <= available_v
+      - sum: sum(selected_v) = T
+
+    The max T is bounded by the tightest lower-bound constraint:
+      T <= available_v / lb_v  for each bucket v
+
+    The binding bucket is the one with the smallest available_v / lb_v.
+
+    This replaces the previous loose upper bound (sum of min(target, available))
+    which did not enforce ratio lower bounds and could overestimate max T.
     """
+    import math
+
     bucket_targets = candidate_cfg["bucket_targets"]
-    per_bucket_max = {
-        v: min(bucket_targets[v], per_bucket_available[v]) for v in BUCKETS
+    target_ratios = candidate_cfg["target_ratios"]
+    tol = RATIO_TOLERANCE_PP / 100.0
+
+    lb = {v: target_ratios[v] - tol for v in BUCKETS}
+    ub = {v: target_ratios[v] + tol for v in BUCKETS}
+
+    # Upper bound on T from lower-bound ratio constraints:
+    # T <= available_v / lb_v for each v
+    t_upper_bounds = {}
+    for v in BUCKETS:
+        if lb[v] > 0:
+            t_upper_bounds[v] = int(math.floor(per_bucket_available[v] / lb[v]))
+        else:
+            t_upper_bounds[v] = float("inf")
+
+    binding_bucket = min(t_upper_bounds, key=lambda v: t_upper_bounds[v])
+    max_achievable = t_upper_bounds[binding_bucket]
+
+    # Also cap by sum of available (trivial bound).
+    sum_available = sum(per_bucket_available.values())
+    if max_achievable > sum_available:
+        max_achievable = sum_available
+
+    # Compute a feasible per-bucket allocation at max_achievable.
+    # Start with lower bounds (ceil), then fill greedily from buckets with
+    # the most slack (effective_upper - current) until we reach T.
+    selected = {v: int(math.ceil(lb[v] * max_achievable)) for v in BUCKETS}
+    for v in BUCKETS:
+        selected[v] = min(selected[v], per_bucket_available[v])
+
+    remaining = max_achievable - sum(selected.values())
+    if remaining > 0:
+        slack = {}
+        for v in BUCKETS:
+            upper = min(
+                int(math.floor(ub[v] * max_achievable)),
+                per_bucket_available[v],
+            )
+            slack[v] = upper - selected[v]
+        for v in sorted(slack, key=slack.get, reverse=True):
+            if remaining <= 0:
+                break
+            take = min(remaining, slack[v])
+            selected[v] += take
+            remaining -= take
+
+    if remaining < 0:
+        for v in BUCKETS:
+            excess = selected[v] - int(math.ceil(lb[v] * max_achievable))
+            trim = min(-remaining, excess)
+            selected[v] -= trim
+            remaining += trim
+
+    # Verify feasibility
+    ratios = {
+        v: (selected[v] / max_achievable if max_achievable > 0 else 0.0)
+        for v in BUCKETS
     }
-    max_achievable = sum(per_bucket_max.values())
+    ratio_ok = {
+        v: (lb[v] - 1e-9 <= ratios[v] <= ub[v] + 1e-9)
+        for v in BUCKETS
+    }
+    feasibility_verified = (
+        sum(selected.values()) == max_achievable
+        and all(ratio_ok.values())
+    )
+
     return {
         "per_bucket_available": dict(per_bucket_available),
         "per_bucket_target": dict(bucket_targets),
-        "per_bucket_max": per_bucket_max,
+        "per_bucket_max": selected,
+        "per_bucket_ratio": {v: round(ratios[v], 6) for v in BUCKETS},
+        "per_bucket_ratio_ok": ratio_ok,
         "max_achievable_total": max_achievable,
+        "binding_bucket": binding_bucket,
+        "binding_constraint": (
+            f"available_{binding_bucket} / lb_{binding_bucket} = "
+            f"{per_bucket_available[binding_bucket]} / {lb[binding_bucket]:.4f} = {max_achievable}"
+        ),
+        "feasibility_verified": feasibility_verified,
+        "tolerance": tol,
+        "method": "lp_feasible_ratio_enforced",
     }
 
 

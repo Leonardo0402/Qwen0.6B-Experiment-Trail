@@ -1,6 +1,6 @@
 # P3 Formal Readiness Gate v2 Report
 
-**Generated**: 2026-07-05T22:57:06.019147+00:00
+**Generated**: 2026-07-06T04:57:08.040692+00:00
 **Branch**: feat/p3-capability-expansion-v2
 **Wave**: 5-J (Issue #14)
 **Scope**: Formal training data + configs + infrastructure readiness.
@@ -31,7 +31,7 @@
 | 18 | Formal pool SHA lock | PASS | sha=c6186afd49df4fa1... samples=2544 families=403 |
 | 19 | Formal config validity | PASS | 2 configs valid (independent, null adapter, 2 epochs) |
 | 20 | Per-family cap enforcement (formal) | SKIP | SKIP: formal train datasets not built yet |
-| 21 | Capacity verdict (formal builder) | PASS | balanced: max=2201; repair: max=1928 status=LIMIT src=pool_fallback |
+| 21 | Capacity verdict (formal builder) | PASS | balanced: ?(max=2181); repair: ?(max=1591) status=LIMIT src=pool_fallback_lp |
 
 ## SKIP Summary
 

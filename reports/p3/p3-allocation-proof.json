@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-05T22:51:14.611325+00:00",
+  "pool_sha256": "c6186afd49df4fa11922e79e6c0992f5ba1a09affee0b71ae3c6288207bcf26b",
+  "pool_total_samples": 2544,
+  "pool_total_families": 403,
+  "pool_unique_sample_ids": 2544,
+  "pool_unique_families": 403,
+  "tolerance": 0.03,
+  "pool_bucket_counts": {
+    "code": 612,
+    "boundary": 754,
+    "static_repair": 589,
+    "execution_repair": 589
+  },
+  "pool_bucket_family_coverage": {
+    "code": 403,
+    "boundary": 378,
+    "static_repair": 394,
+    "execution_repair": 394
+  },
+  "hard_min_total": 2300,
+  "feasible_min_total": 2530,
+  "candidates": {
+    "balanced_generalist": {
+      "max_total": 2181,
+      "binding_bucket": "execution_repair",
+      "binding_constraint": "available_execution_repair / lb_execution_repair = 589 / 0.2700 = 2181",
+      "per_bucket_available": {
+        "code": 612,
+        "boundary": 754,
+        "static_repair": 589,
+        "execution_repair": 589
+      },
+      "per_bucket_selected": {
+        "code": 590,
+        "boundary": 501,
+        "static_repair": 501,
+        "execution_repair": 589
+      },
+      "per_bucket_ratio": {
+        "code": 0.270518,
+        "boundary": 0.229711,
+        "static_repair": 0.229711,
+        "execution_repair": 0.27006
+      },
+      "per_bucket_ratio_ok": {
+        "code": true,
+        "boundary": true,
+        "static_repair": true,
+        "execution_repair": true
+      },
+      "per_bucket_lower_bound": {
+        "code": 0.27,
+        "boundary": 0.17,
+        "static_repair": 0.17,
+        "execution_repair": 0.27
+      },
+      "per_bucket_upper_bound": {
+        "code": 0.33,
+        "boundary": 0.23,
+        "static_repair": 0.23,
+        "execution_repair": 0.33
+      },
+      "feasibility_verified": true,
+      "tolerance": 0.03,
+      "target_ratios": {
+        "code": 0.3,
+        "boundary": 0.2,
+        "static_repair": 0.2,
+        "execution_repair": 0.3
+      },
+      "bucket_targets": {
+        "code": 750,
+        "boundary": 500,
+        "static_repair": 500,
+        "execution_repair": 750
+      },
+      "verdict": "MBPP_FAMILY_OR_VARIANT_LIMIT"
+    },
+    "repair_specialist": {
+      "max_total": 1591,
+      "binding_bucket": "execution_repair",
+      "binding_constraint": "available_execution_repair / lb_execution_repair = 589 / 0.3700 = 1591",
+      "per_bucket_available": {
+        "code": 612,
+        "boundary": 754,
+        "static_repair": 589,
+        "execution_repair": 589
+      },
+      "per_bucket_selected": {
+        "code": 286,
+        "boundary": 286,
+        "static_repair": 430,
+        "execution_repair": 589
+      },
+      "per_bucket_ratio": {
+        "code": 0.179761,
+        "boundary": 0.179761,
+        "static_repair": 0.27027,
+        "execution_repair": 0.370207
+      },
+      "per_bucket_ratio_ok": {
+        "code": true,
+        "boundary": true,
+        "static_repair": true,
+        "execution_repair": true
+      },
+      "per_bucket_lower_bound": {
+        "code": 0.12,
+        "boundary": 0.12,
+        "static_repair": 0.27,
+        "execution_repair": 0.37
+      },
+      "per_bucket_upper_bound": {
+        "code": 0.18,
+        "boundary": 0.18,
+        "static_repair": 0.33,
+        "execution_repair": 0.43
+      },
+      "feasibility_verified": true,
+      "tolerance": 0.03,
+      "target_ratios": {
+        "code": 0.15,
+        "boundary": 0.15,
+        "static_repair": 0.3,
+        "execution_repair": 0.4
+      },
+      "bucket_targets": {
+        "code": 375,
+        "boundary": 375,
+        "static_repair": 750,
+        "execution_repair": 1000
+      },
+      "verdict": "MBPP_FAMILY_OR_VARIANT_LIMIT"
+    }
+  },
+  "overall_verdict": "MBPP_FAMILY_OR_VARIANT_LIMIT"
+}
