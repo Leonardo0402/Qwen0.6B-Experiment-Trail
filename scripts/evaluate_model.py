@@ -425,6 +425,40 @@ def _evaluate_one(
 # Core evaluation
 # ---------------------------------------------------------------------------
 
+def _compute_scored_metrics(
+    outcomes: list[EvalOutcome],
+    details: list[dict],
+) -> tuple[dict[str, float], list[dict], int]:
+    """Filter canary outcomes, compute metrics on scored outcomes only.
+
+    Canary rows (sample_id containing "canary") are still evaluated for
+    harness validation but excluded from the scored summary metrics so
+    they do not inflate n_total / n_repair / rate metrics (Issue #16).
+
+    Each detail dict is enriched in place with an ``is_canary`` bool field.
+
+    Returns
+    -------
+    (metrics, details, canary_excluded_count)
+        ``metrics`` is the output of ``summarize()`` over non-canary outcomes
+        only. ``details`` is the enriched list (same objects, with
+        ``is_canary`` added). ``canary_excluded_count`` is the number of
+        canary outcomes filtered out.
+    """
+    scored_outcomes: list[EvalOutcome] = []
+    canary_excluded_count = 0
+    for outcome, detail in zip(outcomes, details):
+        is_canary = "canary" in detail["sample_id"]
+        detail["is_canary"] = is_canary
+        if is_canary:
+            canary_excluded_count += 1
+        else:
+            scored_outcomes.append(outcome)
+
+    metrics = summarize(scored_outcomes)
+    return metrics, details, canary_excluded_count
+
+
 def evaluate_model(
     model_path: str,
     dataset_path: str,
@@ -572,9 +606,10 @@ def evaluate_model(
     print()  # newline after progress
 
     # ------------------------------------------------------------------
-    # 5. Compute metrics
+    # 5. Compute metrics (exclude canary rows from scored metrics — Issue #16)
     # ------------------------------------------------------------------
-    metrics = summarize(outcomes)
+    metrics, details, canary_excluded_count = _compute_scored_metrics(outcomes, details)
+    scored_sample_count = len(samples) - canary_excluded_count
 
     # ------------------------------------------------------------------
     # 6. Assemble results
@@ -588,6 +623,8 @@ def evaluate_model(
         "canary": canary_result,
         "schema_validation": schema_validation,
         "sample_count": len(samples),
+        "scored_sample_count": scored_sample_count,
+        "canary_excluded_count": canary_excluded_count,
         "task_type_counts": task_type_counts,
         "family_count": len(family_ids),
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -615,6 +652,9 @@ def evaluate_model(
     print(f"  Total samples:       {int(metrics['n_total'])}")
     print(f"  Generation:          {int(metrics['n_generation'])}")
     print(f"  Repair:              {int(metrics['n_repair'])}")
+    if canary_excluded_count > 0:
+        print(f"  Canary excluded:     {canary_excluded_count}")
+        print(f"  Scored sample count: {scored_sample_count}")
 
     return results
 
