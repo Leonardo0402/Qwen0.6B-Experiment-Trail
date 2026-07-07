@@ -1,0 +1,41 @@
+{
+  "model_name_or_path": "E:\\agent\\Qwen\\qwen3-code-lab\\models\\Qwen3-0.6B",
+  "train_file": "E:\\agent\\Qwen\\qwen3-code-lab\\data\\p3-limited\\repair-limited\\train.jsonl",
+  "train_hash": "1c3108feb70f8b40f7f8332be39662dff7251a81a1a9371d96106db4ab0ed33d",
+  "eval_hash": "b875235c9c59beb22c6739f37b9559d44d06c805fde47c7feb1be4cef09a9942",
+  "seed": 42,
+  "lora_config": {
+    "rank": 16,
+    "alpha": 32,
+    "dropout": 0.05,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "max_seq_length": 384,
+  "trainable_params": 10092544,
+  "total_params": 606142464,
+  "started_at": "2026-07-06T11:43:08.947857+00:00",
+  "finished_at": "2026-07-06T16:33:24.987478+00:00",
+  "train_duration_s": 17403.176024913788,
+  "training_mode": "independent",
+  "initial_adapter": null,
+  "parent_adapter_sha256": null,
+  "assistant_only_loss": true,
+  "truncation_policy": "preserve_assistant",
+  "token_audit": {
+    "total": 1470,
+    "truncated": 396,
+    "assistant_intact": 1470,
+    "assistant_partial": 0,
+    "assistant_lost": 0,
+    "target_too_long": 0
+  },
+  "peak_gpu_mib": 1360.4150390625
+}
