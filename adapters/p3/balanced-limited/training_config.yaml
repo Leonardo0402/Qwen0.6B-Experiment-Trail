@@ -1,5 +1,5 @@
 # P3 Balanced Limited — controlled experiment (post PR #13 merge)
-# Train: 1470 samples from Formal Canonical Pool v2 (exact 30/20/20/30 ratios)
+# Train: 1280 samples from Formal Canonical Pool v2 (exact 30/20/20/30 ratios, post frozen-v4 exclusion)
 # Validation: 180 samples (4 categories x 45, shared with Repair Limited)
 # Independent training: from base Qwen3-0.6B, NO P2 adapter loaded.
 # LABEL: P3-Limited (NOT a formal capability claim — controlled comparison only)

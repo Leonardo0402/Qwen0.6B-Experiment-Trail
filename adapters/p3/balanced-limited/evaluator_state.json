@@ -1,168 +1,167 @@
 {
-  "tier1_entries": 16,
+  "tier1_entries": 14,
   "tier2_entries": 10,
   "tier3_entries": 2,
   "nan_inf_detected": false,
-  "early_stop_triggered": false,
-  "early_stop_reason": "",
-  "best_composite_value": 0.30777777777777776,
+  "early_stop_triggered": true,
+  "early_stop_reason": "confirmed_stop: probe pending + full validation no improvement",
+  "best_composite_value": 0.3033333333333333,
   "pilot_mode": false,
   "tier1_first": [
     {
       "step": 50,
-      "epoch": 0.272108843537415,
-      "train_loss": 0.7321082305908203,
+      "epoch": 0.3125,
+      "train_loss": 0.6733094787597657,
       "eval_loss": null,
-      "lr": 4.334239130434783e-05,
-      "gpu_mem_mb": 1360.4,
+      "lr": 4.234375e-05,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     },
     {
       "step": 50,
-      "epoch": 0.272108843537415,
+      "epoch": 0.3125,
       "train_loss": null,
-      "eval_loss": 0.5919557213783264,
+      "eval_loss": 0.5894548892974854,
       "lr": null,
-      "gpu_mem_mb": 1360.4,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     },
     {
       "step": 100,
-      "epoch": 0.54421768707483,
-      "train_loss": 0.5218670272827148,
+      "epoch": 0.625,
+      "train_loss": 0.5245124435424805,
       "eval_loss": null,
-      "lr": 3.654891304347826e-05,
-      "gpu_mem_mb": 1360.4,
+      "lr": 3.453125e-05,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     }
   ],
   "tier1_last": [
     {
-      "step": 350,
-      "epoch": 1.9034013605442177,
+      "step": 300,
+      "epoch": 1.875,
       "train_loss": null,
-      "eval_loss": 0.5525391101837158,
+      "eval_loss": 0.5568646192550659,
       "lr": null,
-      "gpu_mem_mb": 1360.4,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     },
     {
-      "step": 368,
+      "step": 320,
       "epoch": 2.0,
       "train_loss": null,
-      "eval_loss": 0.5510904788970947,
+      "eval_loss": 0.5566605925559998,
       "lr": null,
-      "gpu_mem_mb": 1360.4,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     },
     {
-      "step": 368,
+      "step": 320,
       "epoch": 2.0,
       "train_loss": null,
       "eval_loss": null,
       "lr": null,
-      "gpu_mem_mb": 1360.4,
+      "gpu_mem_mb": 1342.0,
       "nan_inf_detected": false
     }
   ],
   "tier2_log": [
     {
       "epoch": 0.25,
-      "step": 46,
+      "step": 40,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.16561403508771932,
+      "composite_value": 0.15183625730994152,
       "probe_sample_count": 75
     },
     {
       "epoch": 0.5,
-      "step": 92,
+      "step": 80,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.31416374269005853,
+      "composite_value": 0.29512280701754384,
       "probe_sample_count": 75
     },
     {
       "epoch": 0.75,
-      "step": 138,
+      "step": 120,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.32732163742690057,
+      "composite_value": 0.3694970760233918,
       "probe_sample_count": 75
     },
     {
       "epoch": 1.0,
-      "step": 184,
+      "step": 160,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.31416374269005853,
+      "composite_value": 0.3627719298245614,
       "probe_sample_count": 75
     },
     {
       "epoch": 1.0,
-      "step": 184,
+      "step": 160,
       "status": "RUNNING"
     },
     {
       "epoch": 1.25,
-      "step": 230,
+      "step": 200,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.3280701754385965,
+      "composite_value": 0.29440935672514623,
       "probe_sample_count": 75
     },
     {
       "epoch": 1.5,
-      "step": 276,
+      "step": 240,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.31094736842105264,
+      "composite_value": 0.3378830409356725,
       "probe_sample_count": 75
     },
     {
       "epoch": 1.75,
-      "step": 322,
+      "step": 280,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.2964561403508772,
+      "composite_value": 0.3075672514619883,
       "probe_sample_count": 75
     },
     {
       "epoch": 2.0,
-      "step": 368,
+      "step": 320,
       "status": "COMPLETED",
       "probe_sha": "66c6629c6ddf5b32e9512960f77e190509af1720b56f3d9345dc4bf2db6f512c",
-      "composite_value": 0.2964561403508772,
+      "composite_value": 0.32339181286549706,
       "probe_sample_count": 75
     },
     {
       "epoch": 2.0,
-      "step": 368,
+      "step": 320,
       "status": "RUNNING"
     }
   ],
   "tier3_log": [
     {
       "epoch": 1,
-      "step": 184,
+      "step": 160,
       "status": "COMPLETED",
-      "composite_value": 0.2622222222222222,
-      "hard_constraint_pass": false,
-      "hard_constraint_violations": [
-        "code_generation_pass_at_1 dropped 17.24pp vs P2 final (0.1724 -> 0.0000), max allowed 3.0pp"
-      ],
-      "is_best": true
-    },
-    {
-      "epoch": 2,
-      "step": 368,
-      "status": "COMPLETED",
-      "composite_value": 0.30777777777777776,
+      "composite_value": 0.3033333333333333,
       "hard_constraint_pass": false,
       "hard_constraint_violations": [
         "code_generation_pass_at_1 dropped 15.02pp vs P2 final (0.1724 -> 0.0222), max allowed 3.0pp"
       ],
       "is_best": true
+    },
+    {
+      "epoch": 2,
+      "step": 320,
+      "status": "COMPLETED",
+      "composite_value": 0.29000000000000004,
+      "hard_constraint_pass": false,
+      "hard_constraint_violations": [
+        "code_generation_pass_at_1 dropped 15.02pp vs P2 final (0.1724 -> 0.0222), max allowed 3.0pp"
+      ]
     }
   ],
   "early_stopping_state": {
@@ -173,26 +172,26 @@
     "timeout_max_rate": 0.08,
     "probe_history_count": 8,
     "full_history_count": 2,
-    "best_probe": 0.32732163742690057,
-    "best_full": 0.30777777777777776,
+    "best_probe": 0.3694970760233918,
+    "best_full": 0.3033333333333333,
     "consecutive_no_improve": 5,
-    "prev_syntax": 0.9666666666666667,
-    "pending_stop": false,
-    "confirmed_stop": false,
-    "stop_reason": "",
+    "prev_syntax": 0.9944444444444445,
+    "pending_stop": true,
+    "confirmed_stop": true,
+    "stop_reason": "confirmed_stop: probe pending + full validation no improvement",
     "probe_composite_values": [
-      0.16561403508771932,
-      0.31416374269005853,
-      0.32732163742690057,
-      0.31416374269005853,
-      0.3280701754385965,
-      0.31094736842105264,
-      0.2964561403508772,
-      0.2964561403508772
+      0.15183625730994152,
+      0.29512280701754384,
+      0.3694970760233918,
+      0.3627719298245614,
+      0.29440935672514623,
+      0.3378830409356725,
+      0.3075672514619883,
+      0.32339181286549706
     ],
     "full_composite_values": [
-      0.2622222222222222,
-      0.30777777777777776
+      0.3033333333333333,
+      0.29000000000000004
     ]
   }
 }

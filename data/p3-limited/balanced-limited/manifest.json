@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "candidate": "balanced-limited",
-  "generated_at": "2026-07-07T05:29:03.217493+00:00",
+  "generated_at": "2026-07-07T19:16:45.898256+00:00",
   "pool_sha256": "c6186afd49df4fa11922e79e6c0992f5ba1a09affee0b71ae3c6288207bcf26b",
   "pool_source": "data/p3-formal/canonical-pool.jsonl",
   "total_samples": 1280,

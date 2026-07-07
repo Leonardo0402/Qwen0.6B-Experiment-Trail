@@ -1,7 +1,7 @@
 {
   "model_name_or_path": "E:\\agent\\Qwen\\qwen3-code-lab\\models\\Qwen3-0.6B",
   "train_file": "E:\\agent\\Qwen\\qwen3-code-lab\\data\\p3-limited\\balanced-limited\\train.jsonl",
-  "train_hash": "33f5a1c1a3cba75163d6d1f2b633a1cebd0e7e9d9b035992317b67318b5c0f98",
+  "train_hash": "2c671ed8d6df8f87198c96760cca08f2991861fe96e1a5950a137e85aaffc06c",
   "eval_hash": "b875235c9c59beb22c6739f37b9559d44d06c805fde47c7feb1be4cef09a9942",
   "seed": 42,
   "lora_config": {
@@ -21,21 +21,21 @@
   "max_seq_length": 384,
   "trainable_params": 10092544,
   "total_params": 606142464,
-  "started_at": "2026-07-06T06:32:41.461239+00:00",
-  "finished_at": "2026-07-06T11:29:19.128805+00:00",
-  "train_duration_s": 17771.18773651123,
+  "started_at": "2026-07-07T05:31:59.007174+00:00",
+  "finished_at": "2026-07-07T11:59:55.865778+00:00",
+  "train_duration_s": 23252.726378440857,
   "training_mode": "independent",
   "initial_adapter": null,
   "parent_adapter_sha256": null,
   "assistant_only_loss": true,
   "truncation_policy": "preserve_assistant",
   "token_audit": {
-    "total": 1470,
-    "truncated": 291,
-    "assistant_intact": 1470,
+    "total": 1280,
+    "truncated": 268,
+    "assistant_intact": 1280,
     "assistant_partial": 0,
     "assistant_lost": 0,
     "target_too_long": 0
   },
-  "peak_gpu_mib": 1360.4150390625
+  "peak_gpu_mib": 1342.04833984375
 }

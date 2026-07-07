@@ -1,48 +1,48 @@
 {
-  "step": 160,
-  "epoch": 1,
-  "composite_value": 0.4144444444444445,
+  "step": 320,
+  "epoch": 2,
+  "composite_value": 0.29000000000000004,
   "composite_score": {
-    "code_generation_pass_at_1": 0.044444444444444446,
-    "boundary_pass_at_1": 0.044444444444444446,
-    "static_repair_success": 0.5111111111111111,
+    "code_generation_pass_at_1": 0.022222222222222223,
+    "boundary_pass_at_1": 0.022222222222222223,
+    "static_repair_success": 0.5555555555555556,
     "execution_repair_success": 0.5555555555555556,
     "hidden_pass_rate": 0.3
   },
   "metrics": {
-    "pass_at_1": 0.044444444444444446,
-    "syntax_rate": 0.9777777777777777,
+    "pass_at_1": 0.022222222222222223,
+    "syntax_rate": 0.9944444444444445,
     "hidden_pass_rate": 0.3,
-    "format_compliance_rate": 1.0,
-    "timeout_rate": 0.011111111111111112,
-    "repair_success_rate": 0.5333333333333333,
-    "regression_rate": 0.43333333333333335,
+    "format_compliance_rate": 0.9944444444444445,
+    "timeout_rate": 0.0,
+    "repair_success_rate": 0.5555555555555556,
+    "regression_rate": 0.35555555555555557,
     "n_total": 180.0,
     "n_generation": 90.0,
     "n_repair": 90.0
   },
   "hard_constraint_pass": false,
   "hard_constraint_violations": [
-    "code_generation_pass_at_1 dropped 12.80pp vs P2 final (0.1724 -> 0.0444), max allowed 3.0pp"
+    "code_generation_pass_at_1 dropped 15.02pp vs P2 final (0.1724 -> 0.0222), max allowed 3.0pp"
   ],
   "per_bucket": {
     "code": {
       "n": 45,
-      "pass_at_1": 0.044444444444444446,
+      "pass_at_1": 0.022222222222222223,
       "repair_success_rate": 0.0,
-      "hidden_pass_rate": 0.044444444444444446
+      "hidden_pass_rate": 0.022222222222222223
     },
     "boundary": {
       "n": 45,
-      "pass_at_1": 0.044444444444444446,
+      "pass_at_1": 0.022222222222222223,
       "repair_success_rate": 0.0,
-      "hidden_pass_rate": 0.044444444444444446
+      "hidden_pass_rate": 0.022222222222222223
     },
     "static_repair": {
       "n": 45,
       "pass_at_1": 0.0,
-      "repair_success_rate": 0.5111111111111111,
-      "hidden_pass_rate": 0.5333333333333333
+      "repair_success_rate": 0.5555555555555556,
+      "hidden_pass_rate": 0.5777777777777777
     },
     "execution_repair": {
       "n": 45,
