@@ -24,6 +24,12 @@ from src.agent_tools import (
     tool_read_file,
     tool_search_text,
     tool_inspect_task,
+    PatchObservation,
+    PatchProposalObservation,
+    RollbackError,
+    tool_apply_patch,
+    tool_propose_patch,
+    tool_rollback_patch,
 )
 
 
@@ -229,5 +235,150 @@ def test_tool_inspect_task_readme():
     assert obs.goal == "Fix the add function"
     assert len(obs.constraints) == 2
     assert len(obs.hints) == 1
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+# --- Task 6: patch transaction tests ---
+
+
+def test_apply_patch_success():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"def add(a, b):\n    return a - b\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    obs = tool_apply_patch(ws, "solution.py", "return a - b", "return a + b", action_id="test-patch-1")
+    assert isinstance(obs, PatchObservation)
+    assert obs.success is True
+    assert obs.before_sha256 != obs.after_sha256
+    assert obs.action_id == "test-patch-1"
+    assert "return a + b" in (ws.workspace_root / "solution.py").read_text()
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_apply_patch_not_found():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"def add(a, b):\n    return a + b\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    obs = tool_apply_patch(ws, "solution.py", "return a - b", "return a * b")
+    assert obs.success is False
+    assert "not found" in (obs.error or "")
+    assert (ws.workspace_root / "solution.py").read_bytes() == b"def add(a, b):\n    return a + b\n"
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_apply_patch_ambiguous():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "dup.py", b"x = 1\nx = 1\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    obs = tool_apply_patch(ws, "dup.py", "x = 1", "x = 2")
+    assert obs.success is False
+    assert "unique" in (obs.error or "")
+    assert (ws.workspace_root / "dup.py").read_bytes() == b"x = 1\nx = 1\n"
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_apply_patch_sha_mismatch():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"hello\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    obs = tool_apply_patch(
+        ws,
+        "solution.py",
+        "hello",
+        "world",
+        expected_before_sha256="0000000000000000000000000000000000000000000000000000000000000000",
+    )
+    assert obs.success is False
+    assert "SHA" in (obs.error or "") or "mismatch" in (obs.error or "")
+    assert (ws.workspace_root / "solution.py").read_bytes() == b"hello\n"
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_apply_patch_audit_record():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"a\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    tool_apply_patch(ws, "solution.py", "a", "b", action_id="audit-test")
+
+    audit_file = ws.workspace_root / ".audit" / "patches.jsonl"
+    assert audit_file.exists()
+    import json as _json
+    found = False
+    for line in audit_file.read_text().splitlines():
+        if not line.strip():
+            continue
+        record = _json.loads(line)
+        if record.get("action_id") == "audit-test":
+            assert record.get("success") is True
+            assert record.get("rolled_back") is False
+            found = True
+    assert found, "audit-test record not found in patches.jsonl"
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_propose_patch_does_not_modify():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"a\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    original_sha = ws.file_sha256("solution.py")
+    obs = tool_propose_patch(ws, "solution.py", "a", "b")
+    assert isinstance(obs, PatchProposalObservation)
+    assert obs.would_succeed is True
+    assert obs.before_sha256 == original_sha
+    assert obs.after_sha256 != original_sha
+    assert ws.file_sha256("solution.py") == original_sha
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_rollback_patch_success():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"a\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    original_sha = ws.file_sha256("solution.py")
+    patch_obs = tool_apply_patch(ws, "solution.py", "a", "b", action_id="rollback-test")
+    assert patch_obs.success is True
+    assert ws.file_sha256("solution.py") != original_sha
+
+    rollback_obs = tool_rollback_patch(ws, "rollback-test")
+    assert isinstance(rollback_obs, PatchObservation)
+    assert rollback_obs.success is True
+    assert ws.file_sha256("solution.py") == original_sha
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_rollback_patch_unknown_action_id():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"a\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    with pytest.raises(RollbackError):
+        tool_rollback_patch(ws, "nonexistent-id")
+    ws.cleanup()
+    shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_rollback_patch_double_rollback():
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    _write(source_dir / "solution.py", b"a\n")
+
+    ws = MicroTaskWorkspace.from_task(source_dir)
+    tool_apply_patch(ws, "solution.py", "a", "b", action_id="double-test")
+    tool_rollback_patch(ws, "double-test")  # first rollback succeeds
+    with pytest.raises(RollbackError):
+        tool_rollback_patch(ws, "double-test")  # already rolled back
     ws.cleanup()
     shutil.rmtree(source_dir, ignore_errors=True)

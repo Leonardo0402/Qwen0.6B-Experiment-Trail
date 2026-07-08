@@ -198,3 +198,277 @@ def tool_inspect_task(workspace: MicroTaskWorkspace) -> TaskObservation:
         constraints=constraints,
         hints=hints,
     )
+
+
+# --- Phase C Part 3: patch transactions (apply_patch / propose_patch / rollback_patch) ---
+#
+# Imports below are placed here so the appended block does not modify the
+# existing top-of-file imports. Standard library + Pydantic only.
+import hashlib
+import json
+import shutil
+from datetime import datetime
+from uuid import uuid4
+
+
+class PatchObservation(BaseModel):
+    """Result of ``tool_apply_patch`` and ``tool_rollback_patch``."""
+    file_path: str
+    before_sha256: str
+    after_sha256: str
+    backup_path: str | None
+    action_id: str
+    success: bool
+    error: str | None = None
+
+
+class PatchProposalObservation(BaseModel):
+    """Result of ``tool_propose_patch`` — a dry-run of ``tool_apply_patch``."""
+    file_path: str
+    before_sha256: str
+    after_sha256: str
+    would_succeed: bool
+    error: str | None = None
+
+
+class RollbackError(ValueError):
+    """Raised when ``tool_rollback_patch`` cannot reverse an action_id."""
+    pass
+
+
+def _validate_patch_preconditions(
+    workspace: MicroTaskWorkspace,
+    file_path: str,
+    old_text: str,
+    expected_before_sha256: str | None,
+) -> tuple[bytes, str, str | None, str | None]:
+    """Shared preconditions for ``tool_apply_patch`` and ``tool_propose_patch``.
+
+    Returns ``(content_bytes, before_sha256, error, content_str)``. When
+    ``error`` is not None the caller must fail without modifying the file
+    and ``content_str`` will be None.
+    """
+    abs_path = workspace.resolve_path(file_path)
+    content_bytes = abs_path.read_bytes()
+    before_sha256 = hashlib.sha256(content_bytes).hexdigest()
+
+    if b"\x00" in content_bytes:
+        return content_bytes, before_sha256, "binary file rejected", None
+
+    if expected_before_sha256 is not None and expected_before_sha256 != before_sha256:
+        return content_bytes, before_sha256, "SHA mismatch", None
+
+    try:
+        content_str = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        return content_bytes, before_sha256, "binary file rejected (non-UTF-8)", None
+
+    occurrences = content_str.count(old_text)
+    if occurrences == 0:
+        return content_bytes, before_sha256, "old_text not found", None
+    if occurrences > 1:
+        return content_bytes, before_sha256, "old_text not unique", None
+
+    return content_bytes, before_sha256, None, content_str
+
+
+def tool_apply_patch(
+    workspace: MicroTaskWorkspace,
+    file_path: str,
+    old_text: str,
+    new_text: str,
+    expected_before_sha256: str | None = None,
+    action_id: str | None = None,
+) -> PatchObservation:
+    """Apply a unique-occurrence text patch with backup + audit trail.
+
+    Fails (returns ``success=False``) without modifying the file when the
+    file is binary (NUL byte), ``expected_before_sha256`` does not match,
+    or ``old_text`` is not found / not unique. On success: backs up the
+    file to ``<file_path>.bak.<before_sha256[:8]>``, writes the new
+    content, and appends an audit record to
+    ``workspace_root/.audit/patches.jsonl``.
+    """
+    if action_id is None:
+        action_id = f"patch_{uuid4().hex[:8]}"
+
+    content_bytes, before_sha256, error, content_str = _validate_patch_preconditions(
+        workspace, file_path, old_text, expected_before_sha256
+    )
+
+    if error is not None:
+        return PatchObservation(
+            file_path=file_path,
+            before_sha256=before_sha256,
+            after_sha256=before_sha256,
+            backup_path=None,
+            action_id=action_id,
+            success=False,
+            error=error,
+        )
+
+    new_content = content_str.replace(old_text, new_text, 1)
+    new_bytes = new_content.encode("utf-8")
+    after_sha256 = hashlib.sha256(new_bytes).hexdigest()
+
+    abs_path = workspace.resolve_path(file_path)
+    backup_rel = f"{file_path}.bak.{before_sha256[:8]}"
+    backup_abs = workspace.resolve_path(backup_rel)
+    shutil.copy2(abs_path, backup_abs)
+
+    abs_path.write_bytes(new_bytes)
+
+    audit_dir = workspace.workspace_root / ".audit"
+    audit_dir.mkdir(parents=True, exist_ok=True)
+    audit_file = audit_dir / "patches.jsonl"
+    record = {
+        "timestamp": datetime.now().isoformat(),
+        "action_id": action_id,
+        "file_path": file_path,
+        "before_sha256": before_sha256,
+        "after_sha256": after_sha256,
+        "success": True,
+        "rolled_back": False,
+    }
+    with audit_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+
+    return PatchObservation(
+        file_path=file_path,
+        before_sha256=before_sha256,
+        after_sha256=after_sha256,
+        backup_path=str(backup_abs),
+        action_id=action_id,
+        success=True,
+        error=None,
+    )
+
+
+def tool_propose_patch(
+    workspace: MicroTaskWorkspace,
+    file_path: str,
+    old_text: str,
+    new_text: str,
+    expected_before_sha256: str | None = None,
+) -> PatchProposalObservation:
+    """Validate a patch and report what its SHAs would be — without writing.
+
+    Same validation rules as ``tool_apply_patch``. Does not modify the
+    file, does not create a backup, does not write an audit record.
+    """
+    content_bytes, before_sha256, error, content_str = _validate_patch_preconditions(
+        workspace, file_path, old_text, expected_before_sha256
+    )
+
+    if error is not None:
+        return PatchProposalObservation(
+            file_path=file_path,
+            before_sha256=before_sha256,
+            after_sha256=before_sha256,
+            would_succeed=False,
+            error=error,
+        )
+
+    new_content = content_str.replace(old_text, new_text, 1)
+    new_bytes = new_content.encode("utf-8")
+    after_sha256 = hashlib.sha256(new_bytes).hexdigest()
+
+    return PatchProposalObservation(
+        file_path=file_path,
+        before_sha256=before_sha256,
+        after_sha256=after_sha256,
+        would_succeed=True,
+        error=None,
+    )
+
+
+def tool_rollback_patch(
+    workspace: MicroTaskWorkspace,
+    action_id: str,
+) -> PatchObservation:
+    """Reverse a prior successful ``tool_apply_patch`` by ``action_id``.
+
+    Restores the file from the backup, marks the original audit record
+    ``rolled_back=true``, and appends a new audit line for the rollback.
+    Raises ``RollbackError`` when the action_id is missing, the original
+    patch was not successful, or it was already rolled back.
+    """
+    audit_file = workspace.workspace_root / ".audit" / "patches.jsonl"
+
+    records: list[dict] = []
+    target_idx: int | None = None
+    target_record: dict | None = None
+
+    if audit_file.exists():
+        with audit_file.open("r", encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                record = json.loads(stripped)
+                records.append(record)
+                if record.get("action_id") == action_id:
+                    target_idx = len(records) - 1
+                    target_record = record
+
+    if target_record is None:
+        raise RollbackError(f"action_id not reversible: not found: {action_id}")
+    if not target_record.get("success"):
+        raise RollbackError(
+            f"action_id not reversible: patch was not successful: {action_id}"
+        )
+    if target_record.get("rolled_back"):
+        raise RollbackError(
+            f"action_id not reversible: already rolled back: {action_id}"
+        )
+
+    file_path = target_record["file_path"]
+    before_sha256 = target_record["before_sha256"]
+    after_sha256 = target_record["after_sha256"]
+
+    backup_rel = f"{file_path}.bak.{before_sha256[:8]}"
+    backup_abs = workspace.resolve_path(backup_rel)
+    abs_path = workspace.resolve_path(file_path)
+
+    if not backup_abs.exists():
+        raise RollbackError(
+            f"action_id not reversible: backup file missing: {backup_rel}"
+        )
+
+    shutil.copy2(backup_abs, abs_path)
+
+    restored_bytes = abs_path.read_bytes()
+    restored_sha = hashlib.sha256(restored_bytes).hexdigest()
+    if restored_sha != before_sha256:
+        raise RollbackError(
+            f"action_id not reversible: restored SHA mismatch "
+            f"(expected {before_sha256}, got {restored_sha})"
+        )
+
+    records[target_idx]["rolled_back"] = True
+    with audit_file.open("w", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r) + "\n")
+
+    new_action_id = f"rollback_{uuid4().hex[:8]}"
+    rollback_record = {
+        "timestamp": datetime.now().isoformat(),
+        "action_id": new_action_id,
+        "file_path": file_path,
+        "before_sha256": after_sha256,
+        "after_sha256": before_sha256,
+        "success": True,
+        "rolled_back": False,
+    }
+    with audit_file.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(rollback_record) + "\n")
+
+    return PatchObservation(
+        file_path=file_path,
+        before_sha256=after_sha256,
+        after_sha256=before_sha256,
+        backup_path=None,
+        action_id=new_action_id,
+        success=True,
+        error=None,
+    )
