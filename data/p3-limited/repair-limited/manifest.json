@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "candidate": "repair-limited",
+  "generated_at": "2026-07-07T19:16:45.963516+00:00",
+  "pool_sha256": "c6186afd49df4fa11922e79e6c0992f5ba1a09affee0b71ae3c6288207bcf26b",
+  "pool_source": "data/p3-formal/canonical-pool.jsonl",
+  "total_samples": 1280,
+  "bucket_counts": {
+    "code": 192,
+    "boundary": 192,
+    "static_repair": 384,
+    "execution_repair": 512
+  },
+  "target_ratios": {
+    "code": 0.15,
+    "boundary": 0.15,
+    "static_repair": 0.3,
+    "execution_repair": 0.4
+  },
+  "actual_ratios": {
+    "code": 0.15,
+    "boundary": 0.15,
+    "static_repair": 0.3,
+    "execution_repair": 0.4
+  },
+  "unique_sample_ids": 1280,
+  "unique_families": 349,
+  "seed": 42,
+  "learning_rate": 3e-05,
+  "composite_weights": {
+    "code_generation_pass_at_1": 0.1,
+    "boundary_pass_at_1": 0.1,
+    "static_repair_success": 0.3,
+    "execution_repair_success": 0.4,
+    "hidden_pass_rate": 0.1
+  },
+  "train_file": "data\\p3-limited\\repair-limited\\train.jsonl",
+  "train_sha256": "f3518acf10661bd5ca25a7051ec4088f09b0c199b5eab0bff63f92578ef57ecd",
+  "training_mode": "independent",
+  "initial_adapter": null,
+  "num_train_epochs": 2,
+  "label": "P3-Limited (not formal capability claim)",
+  "frozen_exclusion": {
+    "frozen_eval_path": "data/frozen-eval/v4/test_raw.jsonl",
+    "excluded_frozen_sample_count": 104,
+    "excluded_frozen_family_count": 259,
+    "frozen_sample_ids_in_train": 0,
+    "frozen_family_ids_in_train": 0,
+    "overlap_check_passed": true
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "step": 320,
+  "epoch": 2,
+  "composite_value": 0.29000000000000004,
+  "composite_score": {
+    "code_generation_pass_at_1": 0.022222222222222223,
+    "boundary_pass_at_1": 0.022222222222222223,
+    "static_repair_success": 0.5555555555555556,
+    "execution_repair_success": 0.5555555555555556,
+    "hidden_pass_rate": 0.3
+  },
+  "metrics": {
+    "pass_at_1": 0.022222222222222223,
+    "syntax_rate": 0.9944444444444445,
+    "hidden_pass_rate": 0.3,
+    "format_compliance_rate": 0.9944444444444445,
+    "timeout_rate": 0.0,
+    "repair_success_rate": 0.5555555555555556,
+    "regression_rate": 0.35555555555555557,
+    "n_total": 180.0,
+    "n_generation": 90.0,
+    "n_repair": 90.0
+  },
+  "hard_constraint_pass": false,
+  "hard_constraint_violations": [
+    "code_generation_pass_at_1 dropped 15.02pp vs P2 final (0.1724 -> 0.0222), max allowed 3.0pp"
+  ],
+  "per_bucket": {
+    "code": {
+      "n": 45,
+      "pass_at_1": 0.022222222222222223,
+      "repair_success_rate": 0.0,
+      "hidden_pass_rate": 0.022222222222222223
+    },
+    "boundary": {
+      "n": 45,
+      "pass_at_1": 0.022222222222222223,
+      "repair_success_rate": 0.0,
+      "hidden_pass_rate": 0.022222222222222223
+    },
+    "static_repair": {
+      "n": 45,
+      "pass_at_1": 0.0,
+      "repair_success_rate": 0.5555555555555556,
+      "hidden_pass_rate": 0.5777777777777777
+    },
+    "execution_repair": {
+      "n": 45,
+      "pass_at_1": 0.0,
+      "repair_success_rate": 0.5555555555555556,
+      "hidden_pass_rate": 0.5777777777777777
+    }
+  },
+  "n_samples": 180,
+  "generation_config": {
+    "temperature": 0,
+    "max_new_tokens": 384,
+    "do_sample": false,
+    "num_beams": 1
+  }
+}

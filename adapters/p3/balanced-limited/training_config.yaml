@@ -1,0 +1,97 @@
+# P3 Balanced Limited — controlled experiment (post PR #13 merge)
+# Train: 1280 samples from Formal Canonical Pool v2 (exact 30/20/20/30 ratios, post frozen-v4 exclusion)
+# Validation: 180 samples (4 categories x 45, shared with Repair Limited)
+# Independent training: from base Qwen3-0.6B, NO P2 adapter loaded.
+# LABEL: P3-Limited (NOT a formal capability claim — controlled comparison only)
+training_mode: independent
+model_name_or_path: models/Qwen3-0.6B
+initial_adapter: null  # Independent — no P2 adapter
+
+train_file: data/p3-limited/balanced-limited/train.jsonl
+eval_file: data/p3-curriculum/validation-v2/validation.jsonl
+output_dir: adapters/p3/balanced-limited
+dataset_manifest: data/p3-limited/balanced-limited/manifest.json
+frozen_eval_file: data/frozen-eval/v4/test_raw.jsonl
+frozen_eval_manifest: data/frozen-eval/v4/manifest.json
+
+# RTX 3050 4GB constraints
+# 2 epochs, LR 5e-5 (independent training)
+max_seq_length: 384
+num_train_epochs: 2
+learning_rate: 0.00005  # 5e-5
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 0.3
+
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+gradient_accumulation_steps: 8
+
+# BF16 with explicit FP16 fallback (Amendment A11 — no silent fallback)
+bf16: true  # runtime_check: torch.cuda.is_bf16_supported() called in train_lora.py
+fp16: false  # Only used if bf16 unsupported
+gradient_checkpointing: true
+use_cache: false
+
+# Tier 1 monitoring (Amendment A11 — every 25-50 steps)
+logging_steps: 50
+save_steps: 100
+eval_steps: 50  # Tier 1 eval (loss only, not full validation)
+
+save_total_limit: 5
+
+assistant_only_loss: true
+truncation_policy: preserve_assistant
+
+# LoRA config (Issue #9 §6.1 — rank=16, alpha=32, dropout=0.05, 7 modules)
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+
+seed: 42
+dataloader_num_workers: 0
+report_to: none
+
+# 3-Tier Checkpoint Evaluator (Amendment A11)
+checkpoint_evaluator:
+  tier1:
+    interval_steps: 50
+    metrics: [train_loss, eval_loss, lr, gpu_mem_mb, nan_inf_detected]
+  tier2:
+    interval_epoch_fraction: 0.25  # Every 0.25 epoch
+    probe_size: 75  # 60-90 family-stratified probe (use 75 as midpoint)
+    probe_stratify_by: variant_type
+    probe_seed: 42
+    composite_score: true
+  tier3:
+    interval_epochs: 1  # Every 1 epoch
+    full_validation: true
+    composite_score: true
+
+# Composite Score formula (Issue #12 P5 — 5-component with hidden_pass_rate)
+# Balanced: 0.30/0.15/0.20/0.25/0.10 (CodeGen/Boundary/Static/Exec/HiddenPass)
+composite_score:
+  code_generation_pass_at_1: 0.30
+  boundary_pass_at_1: 0.15  # variant_type="boundary", task_type="code_generation"
+  static_repair_success: 0.20
+  execution_repair_success: 0.25
+  hidden_pass_rate: 0.10  # 5th component (hidden tests pass rate)
+  hard_constraint:
+    code_generation_drop_vs_p2_final_max_pct: 3.0  # informational; P3-Limited trains from Base
+
+# Early stopping (Issue #9 §6.6)
+early_stopping:
+  enabled: true
+  probe_patience: 4  # 4 consecutive probe drops (1.0 epoch)
+  probe_min_delta: 0.005
+  full_validation_confirm: true  # Must confirm with Tier 3 full validation
+  divergence_nan_inf: true  # Immediate stop on NaN/Inf
+  max_epochs: 3  # Hard cap
+
+# Best checkpoint selection (Amendment A11 — by full Validation Composite only)
+best_checkpoint:
+  selection_metric: full_validation_composite
+  never_use: [frozen_v4, probe]  # Best checkpoint NEVER selected by frozen v4 or probe
