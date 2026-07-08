@@ -472,3 +472,183 @@ def tool_rollback_patch(
         success=True,
         error=None,
     )
+
+
+# --- Phase C Part 4: run_tests / inspect_error / write_memory / finish ---
+import os
+import re
+
+from src.agent_state import AgentMemory
+from src.agent_actions import TaskSuccessCriterion, validate_path
+from src.sandbox import run_pytest
+
+
+class ToolUnavailableError(Exception):
+    """Raised when a tool's runtime preconditions are not met (e.g. no
+    network isolation for run_tests).
+
+    NOTE: Inherits from Exception (not ValueError) so it is not caught
+    and re-wrapped by Pydantic validators.
+    """
+
+
+class TestObservation(BaseModel):
+    """Result of ``tool_run_tests``."""
+    passed: bool
+    num_collected: int
+    num_passed: int
+    num_failed: int
+    timed_out: bool
+    stdout: str
+    stderr: str
+    duration_s: float
+
+
+class ErrorObservation(BaseModel):
+    """Result of ``tool_inspect_error``."""
+    source: str
+    content: str
+
+
+class MemoryObservation(BaseModel):
+    """Result of ``tool_write_memory``."""
+    memory_before: AgentMemory
+    memory_after: AgentMemory
+
+
+class FinishObservation(BaseModel):
+    """Result of ``tool_finish``."""
+    success_criterion: str
+    tests_passed: bool
+    identification_verified: bool
+    summary: str
+
+
+_TEST_PATH_RE = re.compile(r"^(test_.*\.py|.*_test\.py)$")
+
+
+def tool_run_tests(
+    workspace: MicroTaskWorkspace,
+    test_path: str | None = None,
+    timeout_s: float = 10.0,
+) -> TestObservation:
+    """Run pytest on the workspace's ``solution.py`` + test file.
+
+    Network hard-fail: if ``P4_ALLOW_NETWORK`` env var is not ``"0"``,
+    raises ``ToolUnavailableError`` — no silent fallback.
+
+    Parameters
+    ----------
+    workspace:
+        The micro-task workspace containing solution.py and test files.
+    test_path:
+        Workspace-relative test file path. Must match ``test_*.py`` or
+        ``*_test.py``. Defaults to ``test_solution.py``.
+    timeout_s:
+        Pytest timeout in seconds. Must be in (0, 30]. Default 10.
+    """
+    # Network hard-fail (user fix #3)
+    if os.environ.get("P4_ALLOW_NETWORK", "1") != "0":
+        raise ToolUnavailableError("network isolation unavailable")
+
+    # Default + validate test_path
+    if test_path is None:
+        test_path = "test_solution.py"
+    validate_path(test_path)
+    if not _TEST_PATH_RE.match(test_path):
+        raise ValueError(
+            f"test_path must match test_*.py or *_test.py: {test_path}"
+        )
+
+    # Validate timeout
+    if timeout_s <= 0 or timeout_s > 30.0:
+        raise ValueError(f"timeout_s must be in (0, 30]: {timeout_s}")
+
+    # Read solution + test code from workspace
+    solution_path = workspace.resolve_path("solution.py")
+    test_abs = workspace.resolve_path(test_path)
+    if not solution_path.exists():
+        raise FileNotFoundError(f"solution.py not found in workspace")
+    if not test_abs.exists():
+        raise FileNotFoundError(f"test file not found: {test_path}")
+
+    solution_code = solution_path.read_text(encoding="utf-8")
+    test_code = test_abs.read_text(encoding="utf-8")
+
+    # Run via sandbox (8 KB output cap per spec §5 line 501)
+    result = run_pytest(
+        target_code=solution_code,
+        test_code=test_code,
+        timeout_s=timeout_s,
+        max_output_chars=8 * 1024,
+    )
+
+    return TestObservation(
+        passed=result.passed,
+        num_collected=result.num_collected,
+        num_passed=result.num_passed,
+        num_failed=result.num_failed,
+        timed_out=result.timed_out,
+        stdout=result.stdout,
+        stderr=result.stderr,
+        duration_s=result.duration_s,
+    )
+
+
+def tool_inspect_error(
+    error_source: str,
+    last_test_observation: "TestObservation | None",
+    last_patch_observation: "PatchObservation | None",
+) -> ErrorObservation:
+    """Return the error content from the last test or patch observation.
+
+    Stateless: the caller passes the last observations; the tool layer
+    does not track history.
+    """
+    if error_source == "last_test":
+        if last_test_observation is None:
+            raise ValueError("no prior run_tests observation")
+        return ErrorObservation(
+            source="last_test",
+            content=last_test_observation.stderr,
+        )
+    elif error_source == "last_patch":
+        if last_patch_observation is None:
+            raise ValueError("no prior patch observation")
+        content = last_patch_observation.error or ""
+        return ErrorObservation(source="last_patch", content=content)
+    else:
+        raise ValueError(
+            f"error_source must be 'last_test' or 'last_patch': {error_source}"
+        )
+
+
+def tool_write_memory(
+    memory_before: AgentMemory,
+    memory: AgentMemory,
+) -> MemoryObservation:
+    """Validate and record a new AgentMemory state.
+
+    Stateless: the caller tracks the prior memory; the tool validates
+    the new schema (Pydantic enforces on construction) and returns both.
+    """
+    return MemoryObservation(memory_before=memory_before, memory_after=memory)
+
+
+def tool_finish(
+    success_criterion: TaskSuccessCriterion,
+    tests_passed: bool,
+    identification_verified: bool,
+    summary: str,
+) -> FinishObservation:
+    """Record the agent's finish declaration.
+
+    Does NOT enforce invariants (tests_passed=True requires last run_tests
+    passed, etc.) — that is the evaluator's job (spec §5 line 551-552).
+    """
+    return FinishObservation(
+        success_criterion=success_criterion,
+        tests_passed=tests_passed,
+        identification_verified=identification_verified,
+        summary=summary,
+    )

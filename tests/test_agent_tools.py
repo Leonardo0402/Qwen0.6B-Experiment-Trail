@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from src.agent_actions import PathValidationError
+from src.agent_actions import PathValidationError, TaskSuccessCriterion
+from src.agent_state import AgentMemory
 from src.agent_workspace import MicroTaskWorkspace
 from src.agent_tools import (
     FileListObservation,
@@ -30,6 +31,15 @@ from src.agent_tools import (
     tool_apply_patch,
     tool_propose_patch,
     tool_rollback_patch,
+    TestObservation,
+    ErrorObservation,
+    MemoryObservation,
+    FinishObservation,
+    ToolUnavailableError,
+    tool_run_tests,
+    tool_inspect_error,
+    tool_write_memory,
+    tool_finish,
 )
 
 
@@ -382,3 +392,129 @@ def test_rollback_patch_double_rollback():
         tool_rollback_patch(ws, "double-test")  # already rolled back
     ws.cleanup()
     shutil.rmtree(source_dir, ignore_errors=True)
+
+
+# --- Task 7: run_tests / inspect_error / write_memory / finish tests ---
+
+
+def test_run_tests_passing(monkeypatch):
+    """A correct solution + test → TestObservation(passed=True)."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    try:
+        _write(source_dir / "solution.py", b"def add(a, b):\n    return a + b\n")
+        _write(source_dir / "test_solution.py",
+               b"from solution import add\n\ndef test_add():\n    assert add(1, 2) == 3\n")
+        workspace = MicroTaskWorkspace.from_task(source_dir)
+        try:
+            obs = tool_run_tests(workspace)
+            assert obs.passed is True
+            assert obs.num_collected >= 1
+            assert obs.num_passed >= 1
+            assert obs.num_failed == 0
+            assert obs.timed_out is False
+        finally:
+            workspace.cleanup()
+    finally:
+        shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_run_tests_failing(monkeypatch):
+    """A broken solution + test → TestObservation(passed=False, num_failed>=1)."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    try:
+        _write(source_dir / "solution.py", b"def add(a, b):\n    return a - b\n")
+        _write(source_dir / "test_solution.py",
+               b"from solution import add\n\ndef test_add():\n    assert add(1, 2) == 3\n")
+        workspace = MicroTaskWorkspace.from_task(source_dir)
+        try:
+            obs = tool_run_tests(workspace)
+            assert obs.passed is False
+            assert obs.num_failed >= 1
+            assert len(obs.stderr) > 0 or len(obs.stdout) > 0
+        finally:
+            workspace.cleanup()
+    finally:
+        shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_run_tests_timeout(monkeypatch):
+    """A solution that hangs → TestObservation(timed_out=True)."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    try:
+        _write(source_dir / "solution.py",
+               b"import time\n\ndef slow():\n    time.sleep(10)\n    return 42\n")
+        _write(source_dir / "test_solution.py",
+               b"from solution import slow\n\ndef test_slow():\n    assert slow() == 42\n")
+        workspace = MicroTaskWorkspace.from_task(source_dir)
+        try:
+            obs = tool_run_tests(workspace, timeout_s=2.0)
+            assert obs.timed_out is True
+            assert obs.passed is False
+        finally:
+            workspace.cleanup()
+    finally:
+        shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_run_tests_network_hard_fail(monkeypatch):
+    """Without P4_ALLOW_NETWORK=0, run_tests raises ToolUnavailableError."""
+    monkeypatch.delenv("P4_ALLOW_NETWORK", raising=False)
+    source_dir = Path(tempfile.mkdtemp(prefix="p4_src_"))
+    try:
+        _write(source_dir / "solution.py", b"def f():\n    return 0\n")
+        _write(source_dir / "test_solution.py",
+               b"from solution import f\n\ndef test_f():\n    assert f() == 0\n")
+        workspace = MicroTaskWorkspace.from_task(source_dir)
+        try:
+            with pytest.raises(ToolUnavailableError, match="network isolation unavailable"):
+                tool_run_tests(workspace)
+        finally:
+            workspace.cleanup()
+    finally:
+        shutil.rmtree(source_dir, ignore_errors=True)
+
+
+def test_inspect_error_last_test():
+    """inspect_error with error_source='last_test' returns the test stderr."""
+    test_obs = TestObservation(
+        passed=False, num_collected=1, num_passed=0, num_failed=1,
+        timed_out=False, stdout="", stderr="AssertionError: expected 3",
+        duration_s=0.1,
+    )
+    err = tool_inspect_error(
+        error_source="last_test",
+        last_test_observation=test_obs,
+        last_patch_observation=None,
+    )
+    assert err.source == "last_test"
+    assert "AssertionError" in err.content
+
+
+def test_write_memory():
+    """write_memory returns MemoryObservation with before + after."""
+    before = AgentMemory(notes="", hypothesis="", failed_attempts=[], last_test_summary="")
+    after = AgentMemory(
+        notes="bug is in add()", hypothesis="sign flipped",
+        failed_attempts=["tried subtraction"], last_test_summary="1 failed",
+    )
+    obs = tool_write_memory(memory_before=before, memory=after)
+    assert obs.memory_before.notes == ""
+    assert obs.memory_after.hypothesis == "sign flipped"
+    assert obs.memory_after.failed_attempts == ["tried subtraction"]
+
+
+def test_finish():
+    """finish returns FinishObservation with declared values."""
+    obs = tool_finish(
+        success_criterion=TaskSuccessCriterion.TEST_PASS,
+        tests_passed=True,
+        identification_verified=False,
+        summary="Fixed the add() function by changing subtraction to addition.",
+    )
+    assert obs.success_criterion == TaskSuccessCriterion.TEST_PASS
+    assert obs.tests_passed is True
+    assert obs.identification_verified is False
+    assert "add()" in obs.summary
