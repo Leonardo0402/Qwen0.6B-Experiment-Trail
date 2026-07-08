@@ -1,0 +1,740 @@
+{
+  "eval_hash": "e774fd7cf93618f4",
+  "config": {
+    "max_steps": 20,
+    "timeout_s": 10
+  },
+  "total_tasks": 40,
+  "metrics": {
+    "task_success_rate": 1.0,
+    "action_validity_rate": 1.0,
+    "tool_error_rate": 0.01388888888888889,
+    "patch_success_rate": 0.8125,
+    "tests_pass_rate": 0.425,
+    "forbidden_action_count": 0,
+    "max_step_exceeded_count": 0,
+    "finish_without_tests_count": 5
+  },
+  "per_task": [
+    {
+      "task_id": "task_001",
+      "trajectory_id": "traj_task_001",
+      "steps_executed": 7,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 0.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 1
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_002",
+      "trajectory_id": "traj_task_002",
+      "steps_executed": 7,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 0.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 1
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_003",
+      "trajectory_id": "traj_task_003",
+      "steps_executed": 7,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 0.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 1
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_004",
+      "trajectory_id": "traj_task_004",
+      "steps_executed": 7,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 0.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 1
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_005",
+      "trajectory_id": "traj_task_005",
+      "steps_executed": 7,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 0.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 1
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_006",
+      "trajectory_id": "traj_task_006",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_007",
+      "trajectory_id": "traj_task_007",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_008",
+      "trajectory_id": "traj_task_008",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_009",
+      "trajectory_id": "traj_task_009",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_010",
+      "trajectory_id": "traj_task_010",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_011",
+      "trajectory_id": "traj_task_011",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_012",
+      "trajectory_id": "traj_task_012",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_013",
+      "trajectory_id": "traj_task_013",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_014",
+      "trajectory_id": "traj_task_014",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_015",
+      "trajectory_id": "traj_task_015",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_016",
+      "trajectory_id": "traj_task_016",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_017",
+      "trajectory_id": "traj_task_017",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_018",
+      "trajectory_id": "traj_task_018",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_019",
+      "trajectory_id": "traj_task_019",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_020",
+      "trajectory_id": "traj_task_020",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_021",
+      "trajectory_id": "traj_task_021",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_022",
+      "trajectory_id": "traj_task_022",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_023",
+      "trajectory_id": "traj_task_023",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.0,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_024",
+      "trajectory_id": "traj_task_024",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_025",
+      "trajectory_id": "traj_task_025",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_026",
+      "trajectory_id": "traj_task_026",
+      "steps_executed": 11,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_027",
+      "trajectory_id": "traj_task_027",
+      "steps_executed": 11,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_028",
+      "trajectory_id": "traj_task_028",
+      "steps_executed": 11,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_029",
+      "trajectory_id": "traj_task_029",
+      "steps_executed": 11,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_030",
+      "trajectory_id": "traj_task_030",
+      "steps_executed": 11,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_031",
+      "trajectory_id": "traj_task_031",
+      "steps_executed": 12,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.1111111111111111,
+        "patch_success_rate": 0.5,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_032",
+      "trajectory_id": "traj_task_032",
+      "steps_executed": 12,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.1111111111111111,
+        "patch_success_rate": 0.5,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_033",
+      "trajectory_id": "traj_task_033",
+      "steps_executed": 12,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.1111111111111111,
+        "patch_success_rate": 0.5,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_034",
+      "trajectory_id": "traj_task_034",
+      "steps_executed": 12,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.1111111111111111,
+        "patch_success_rate": 0.5,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_035",
+      "trajectory_id": "traj_task_035",
+      "steps_executed": 12,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.1111111111111111,
+        "patch_success_rate": 0.5,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_036",
+      "trajectory_id": "traj_task_036",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_037",
+      "trajectory_id": "traj_task_037",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_038",
+      "trajectory_id": "traj_task_038",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_039",
+      "trajectory_id": "traj_task_039",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    },
+    {
+      "task_id": "task_040",
+      "trajectory_id": "traj_task_040",
+      "steps_executed": 10,
+      "success": true,
+      "metrics": {
+        "task_success_rate": 1.0,
+        "action_validity_rate": 1.0,
+        "tool_error_rate": 0.0,
+        "patch_success_rate": 1.0,
+        "tests_pass_rate": 0.5,
+        "forbidden_action_count": 0,
+        "max_step_exceeded_count": 0,
+        "finish_without_tests_count": 0
+      },
+      "errors": [],
+      "max_steps_hit": false
+    }
+  ]
+}
