@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def format_phone(digits):\n    return digits",
+  "new_text": "def format_phone(digits):\n    return f\"({digits[:3]}) {digits[3:6]}-{digits[6:]}\""
+}

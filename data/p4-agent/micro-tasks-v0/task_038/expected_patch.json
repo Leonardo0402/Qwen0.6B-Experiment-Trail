@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if old_max == old_min:\n        return values\n    return [(v - old_min) / (old_max - old_min) * (new_max - new_min) + new_min for v in values]",
+  "new_text": "    if old_max == old_min:\n        return [new_min for _ in values]\n    return [(v - old_min) / (old_max - old_min) * (new_max - new_min) + new_min for v in values]"
+}

@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def format_name(s):\n    return s.lower()",
+  "new_text": "def format_name(s):\n    return s.capitalize()"
+}

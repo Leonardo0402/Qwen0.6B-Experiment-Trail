@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if score >= 90:\n        return \"F\"\n    elif score >= 80:\n        return \"D\"\n    elif score >= 70:\n        return \"C\"\n    elif score >= 60:\n        return \"B\"\n    else:\n        return \"A\"",
+  "new_text": "    if score >= 90:\n        return \"A\"\n    elif score >= 80:\n        return \"B\"\n    elif score >= 70:\n        return \"C\"\n    elif score >= 60:\n        return \"D\"\n    else:\n        return \"F\""
+}

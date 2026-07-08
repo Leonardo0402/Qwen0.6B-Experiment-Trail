@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if x > hi:\n        return lo\n    if x < lo:\n        return hi\n    return x",
+  "new_text": "    if x > hi:\n        return hi\n    if x < lo:\n        return lo\n    return x"
+}

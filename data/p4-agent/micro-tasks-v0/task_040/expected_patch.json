@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if total == 0:\n        return values[idx]\n    return values[idx] / total",
+  "new_text": "    if total == 0:\n        return 0.0\n    return values[idx] / total"
+}

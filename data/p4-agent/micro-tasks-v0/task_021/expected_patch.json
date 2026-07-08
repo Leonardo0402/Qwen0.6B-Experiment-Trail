@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if score > 90:\n        return \"fail\"\n    elif score > 60:\n        return \"pass\"\n    else:\n        return \"excellent\"",
+  "new_text": "    if score > 90:\n        return \"excellent\"\n    elif score > 60:\n        return \"pass\"\n    else:\n        return \"fail\""
+}

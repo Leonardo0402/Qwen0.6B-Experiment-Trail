@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    return a if a < b else b  # BUG: should be a if a > b else b",
+  "new_text": "    return a if a > b else b"
+}

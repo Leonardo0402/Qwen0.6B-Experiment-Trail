@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def format_date(year, month, day):\n    return year * 10000 + month * 100 + day",
+  "new_text": "def format_date(year, month, day):\n    return f\"{year:04d}-{month:02d}-{day:02d}\""
+}

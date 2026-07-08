@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def safe_divide(a, b):\n    return a / b",
+  "new_text": "def safe_divide(a, b):\n    if b == 0:\n        raise ValueError(\"division by zero\")\n    return a / b"
+}

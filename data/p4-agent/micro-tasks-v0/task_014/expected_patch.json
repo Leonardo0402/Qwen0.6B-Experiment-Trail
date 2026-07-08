@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def safe_inverse(x):\n    return 1 / x",
+  "new_text": "def safe_inverse(x):\n    if x == 0:\n        raise ValueError(\"zero denominator\")\n    return 1 / x"
+}

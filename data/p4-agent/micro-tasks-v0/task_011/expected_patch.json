@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def safe_sqrt(x):\n    return x ** 0.5",
+  "new_text": "def safe_sqrt(x):\n    if x < 0:\n        raise ValueError(\"negative input\")\n    return x ** 0.5"
+}

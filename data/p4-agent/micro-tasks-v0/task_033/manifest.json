@@ -1,0 +1,11 @@
+{
+  "task_id": "task_033",
+  "task_type": "recover_from_failed_patch",
+  "difficulty": 3,
+  "readme_sha256": "b36e1720aed37a593013e8b02321c09c9868d04dd1c601d02ae7372c393e0d90",
+  "solution_sha256": "f290d650020b2d587f90584c34f0b93048560b5ce062ab8b94967ce0004e8abd",
+  "test_sha256": "ac6bd65f539c72bda8f0952d6ec479717b8cb0f27c31066a8ce1f0e312f26dc9",
+  "expected_patch_sha256": "b731650f5a0b9c853da82750138ff6986c6ac7bb55c0e37866be3134bbc23c65",
+  "baseline_test_passes": false,
+  "post_patch_test_passes": true
+}
