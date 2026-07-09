@@ -260,6 +260,7 @@ class AgentEvaluator:
         tool_errors = 0
         total_tools = 0
         finish_without_tests = 0
+        invalid_action_count = 0
         ran_tests = False
 
         state = AgentState(
@@ -278,6 +279,12 @@ class AgentEvaluator:
                 break
 
             total_actions += 1
+
+            # Handle SentinelAction (from ModelActionProvider) — invalid, not forbidden
+            if hasattr(action, 'is_invalid') and getattr(action, 'is_invalid', False):
+                invalid_action_count += 1
+                errors.append(f"step {step}: invalid action (sentinel: {getattr(action, 'reason', 'unknown')})")
+                continue
 
             # Validate action (schema + safety)
             try:
@@ -368,7 +375,8 @@ class AgentEvaluator:
                         total_patches, successful_patches,
                         total_tests, passed_tests,
                         tool_errors, total_tools,
-                        finish_without_tests, max_steps_hit=False,
+                        finish_without_tests, invalid_action_count,
+                        max_steps_hit=False,
                         finish_claim_mismatch=finish_claim_mismatch,
                     )
                 else:
@@ -396,7 +404,8 @@ class AgentEvaluator:
             total_patches, successful_patches,
             total_tests, passed_tests,
             tool_errors, total_tools,
-            finish_without_tests, max_steps_hit=True,
+            finish_without_tests, invalid_action_count,
+            max_steps_hit=True,
             finish_claim_mismatch=finish_claim_mismatch,
         )
 
@@ -415,6 +424,7 @@ class AgentEvaluator:
         tool_errors: int,
         total_tools: int,
         finish_without_tests: int,
+        invalid_action_count: int,
         max_steps_hit: bool,
         finish_claim_mismatch: bool = False,
     ) -> EvalResult:
@@ -427,6 +437,7 @@ class AgentEvaluator:
             "forbidden_action_count": forbidden_count,
             "max_step_exceeded_count": 1 if max_steps_hit else 0,
             "finish_without_tests_count": finish_without_tests,
+            "invalid_action_count": invalid_action_count,
         }
         return EvalResult(
             task_id=self._task_id,

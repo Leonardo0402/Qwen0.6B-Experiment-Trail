@@ -102,7 +102,7 @@ def test_corrupted_injection(monkeypatch):
 
 
 def test_all_metrics_present():
-    """EvalResult has all 8 metrics."""
+    """EvalResult has all 9 metrics."""
     traj = _load_first_success_trajectory()
     provider = ScriptedActionProvider(traj)
     # Don't need to run — just check the metric keys are defined
@@ -110,6 +110,7 @@ def test_all_metrics_present():
         "task_success_rate", "action_validity_rate", "tool_error_rate",
         "patch_success_rate", "tests_pass_rate", "forbidden_action_count",
         "max_step_exceeded_count", "finish_without_tests_count",
+        "invalid_action_count",
     }
     # Build a minimal EvalResult to check keys
     result = EvalResult(
@@ -124,6 +125,7 @@ def test_all_metrics_present():
             "forbidden_action_count": 0,
             "max_step_exceeded_count": 0,
             "finish_without_tests_count": 0,
+            "invalid_action_count": 0,
         },
     )
     assert set(result.metrics.keys()) == expected_keys
@@ -566,5 +568,29 @@ def test_corruption_exceed_max_steps(monkeypatch):
         assert result.max_steps_hit, "expected max_steps_hit=True for EXCEED_MAX_STEPS"
         assert result.metrics.get("max_step_exceeded_count", 0) >= 1, \
             "expected max_step_exceeded_count >= 1"
+    finally:
+        ws.cleanup()
+
+
+# --- Task 6: SentinelAction counted as invalid, not forbidden ---
+
+def test_sentinel_action_counted_as_invalid_not_forbidden(monkeypatch):
+    """SentinelAction must increment invalid_action_count, not forbidden_action_count."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        from src.agent_model_provider import SentinelAction
+        # Build a provider that returns SentinelAction then finish
+        sentinel = SentinelAction(reason="test invalid")
+        finish = _make_finish(tests_passed=True)
+        provider = _FixedProvider([sentinel, finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert result.metrics.get("invalid_action_count", 0) >= 1, \
+            "SentinelAction must increment invalid_action_count"
+        assert result.metrics.get("forbidden_action_count", 0) == 0, \
+            "SentinelAction must NOT increment forbidden_action_count"
     finally:
         ws.cleanup()
