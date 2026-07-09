@@ -1,0 +1,9 @@
+{
+  "p4_0_merge_commit": "7ccd06c4d479b269f7708a6a430b9965af5f17e6",
+  "micro_tasks_manifest_sha256": "bdcc2eaa268b8965ff764ac6c710c97ba90298e11b7c05d0133cdb7103f692bc",
+  "scripted_trajectories_sha256": "50485b6df9a6a7eaf6fd2d00b718c32cb52545b402379cc964cd66ee350ec18f",
+  "agent_evaluator_sha256": "9ee5742d535bed14ae7434417ecffa3436e975b96fd48687497f1a010877fe05",
+  "readiness_report_sha256": "e4500cdc46132776cc3730363a671197cff7ca2f7b0ebed4384023337ce5cd11",
+  "p4_0_verdict": "GO_FOR_P4_AGENT_SFT_DATA",
+  "p4_0_test_count": 81
+}
