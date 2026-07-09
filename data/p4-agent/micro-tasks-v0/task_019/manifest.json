@@ -1,0 +1,11 @@
+{
+  "task_id": "task_019",
+  "task_type": "update_helper",
+  "difficulty": 2,
+  "readme_sha256": "7f4aad817f21eef2e4c5b892d11dbfca4ee1710c6b7259ccc96a796d78b5de06",
+  "solution_sha256": "5b3a9c43f96c70b9103526075c9eeedd2f6ee34794d29abb9b35ada0d27c1848",
+  "test_sha256": "46db76c9af8a55457b06dc918a9302ad7516e3019d5827ed0b42b8f6d0c5da6a",
+  "expected_patch_sha256": "d6f46e2fcf7a405214e439e37884db15782cc1b06db64d9c32f5838048133120",
+  "baseline_test_passes": false,
+  "post_patch_test_passes": true
+}

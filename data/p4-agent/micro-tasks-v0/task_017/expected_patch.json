@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def format_percent(ratio):\n    return ratio * 100",
+  "new_text": "def format_percent(ratio):\n    return f\"{ratio * 100:.1f}%\""
+}

@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if bmi >= 30:\n        return \"underweight\"\n    elif bmi >= 25:\n        return \"normal\"\n    elif bmi >= 18.5:\n        return \"overweight\"\n    else:\n        return \"obese\"",
+  "new_text": "    if bmi >= 30:\n        return \"obese\"\n    elif bmi >= 25:\n        return \"overweight\"\n    elif bmi >= 18.5:\n        return \"normal\"\n    else:\n        return \"underweight\""
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "locked_at": "2026-07-08T04:17:49.742477+00:00",
+  "p3_terminal_verdict": "MBPP_FAMILY_OR_VARIANT_LIMIT",
+  "pr_15": {
+    "merge_commit_sha": "d91586e0d31214f4ed3edbdce524e6b0e8067070",
+    "title": "feat(p3-limited): controlled experiment (1280 samples, Issue #16 fixed) (#15)"
+  },
+  "p3_limited_datasets": {
+    "balanced_limited": {
+      "train_sha256": "2c671ed8d6df8f87198c96760cca08f2991861fe96e1a5950a137e85aaffc06c",
+      "manifest_path": "data/p3-limited/balanced-limited/manifest.json",
+      "total_samples": 1280
+    },
+    "repair_limited": {
+      "train_sha256": "f3518acf10661bd5ca25a7051ec4088f09b0c199b5eab0bff63f92578ef57ecd",
+      "manifest_path": "data/p3-limited/repair-limited/manifest.json",
+      "total_samples": 1280
+    }
+  },
+  "validation_v2": {
+    "path": "data\\p3-curriculum\\validation-v2\\validation.jsonl",
+    "sha256": "b875235c9c59beb22c6739f37b9559d44d06c805fde47c7feb1be4cef09a9942",
+    "sample_count": 180
+  },
+  "frozen_v4": {
+    "path": "data\\frozen-eval\\v4\\test_raw.jsonl",
+    "sha256": "2fb453443e698c5d456b059dc8194fb0ec6896f7c1b9ef3256f6bc6b1623cc67",
+    "sample_count": 465
+  },
+  "adapters": {
+    "balanced_limited": {
+      "metrics_path": "adapters\\p3\\balanced-limited\\metrics.json",
+      "metrics_sha256": "fd39d00ff53dacc5426b94fec7cb299d65201729d779fd365ddadd8ed1f71ec6",
+      "train_hash_in_metrics": "2c671ed8d6df8f87198c96760cca08f2991861fe96e1a5950a137e85aaffc06c"
+    },
+    "repair_limited": {
+      "metrics_path": "adapters\\p3\\repair-limited\\metrics.json",
+      "metrics_sha256": "5d7969264f0cc3214bb677171665cd3e95af9c7c5a2e576d4a428ac17702ad77",
+      "train_hash_in_metrics": "f3518acf10661bd5ca25a7051ec4088f09b0c199b5eab0bff63f92578ef57ecd"
+    }
+  },
+  "warnings": [
+    "P3-Limited is NOT a formal capability claim — controlled comparison only.",
+    "Best honest pass@1 = 0.61% (Repair-Limited); 2300-sample formal threshold unreachable.",
+    "No model weights committed; adapter_model.safetensors excluded by .gitignore."
+  ]
+}

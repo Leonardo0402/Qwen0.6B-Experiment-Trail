@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    return x * y",
+  "new_text": "    return x ** y"
+}

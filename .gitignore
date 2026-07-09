@@ -45,3 +45,6 @@ __pycache__/
 # OS
 Thumbs.db
 desktop.ini
+
+# P4.0 audit trails (regenerated at runtime, not committed)
+data/p4-agent/micro-tasks-v0/*/.audit/

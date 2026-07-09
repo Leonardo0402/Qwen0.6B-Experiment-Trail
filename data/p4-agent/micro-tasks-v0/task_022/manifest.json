@@ -1,0 +1,11 @@
+{
+  "task_id": "task_022",
+  "task_type": "repair_after_pytest",
+  "difficulty": 2,
+  "readme_sha256": "69a7248d01b52213150ee560d9026225c7a1d9fbb8057264aa449a6b5820b061",
+  "solution_sha256": "a99081f01b54df139391515eb42d5d84b2c2364dc5f01c73552771056cf0b86d",
+  "test_sha256": "0d5550af8cf8d8de07d8a9808ea335a38f805c74f807aa9554501c1f433829a8",
+  "expected_patch_sha256": "ddcf58fef335d79df1657aab0b0ca155226714508e0df6de9c5085ab821eb6be",
+  "baseline_test_passes": false,
+  "post_patch_test_passes": true
+}

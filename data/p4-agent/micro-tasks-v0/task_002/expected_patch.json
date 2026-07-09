@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    return a % b + 1  # BUG: should be a % b",
+  "new_text": "    return a % b"
+}

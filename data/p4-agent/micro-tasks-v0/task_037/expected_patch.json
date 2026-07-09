@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if mean == 0:\n        return values\n    return [v - mean for v in values]",
+  "new_text": "    if mean == 0:\n        return [0.0 for _ in values]\n    return [v - mean for v in values]"
+}

@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def safe_age(years):\n    return years",
+  "new_text": "def safe_age(years):\n    if years < 0:\n        raise ValueError(\"negative age\")\n    return years"
+}

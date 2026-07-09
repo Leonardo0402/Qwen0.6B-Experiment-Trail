@@ -1,0 +1,11 @@
+{
+  "task_id": "task_037",
+  "task_type": "finish_after_tests_pass",
+  "difficulty": 3,
+  "readme_sha256": "c6bf7e58f141c0cafe2b2942089accee557c65bd903d0d8a89ee57d0e668fa26",
+  "solution_sha256": "dbb1711733bc4e21d3601a4287546f74b415d18a1a936835ccf6eae61540695b",
+  "test_sha256": "8865154659257f053de1cf5f01531f67e4f54eb09e775f6221e61bc11bcd0d91",
+  "expected_patch_sha256": "bc9b74b4129c60b7f6c103bb9e4444b7f95865bc413a24aeced383c7443d4507",
+  "baseline_test_passes": false,
+  "post_patch_test_passes": true
+}

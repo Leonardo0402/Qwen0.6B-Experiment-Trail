@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "def safe_get(lst, idx):\n    return lst[idx]",
+  "new_text": "def safe_get(lst, idx):\n    if idx < 0:\n        raise ValueError(\"negative index\")\n    return lst[idx]"
+}

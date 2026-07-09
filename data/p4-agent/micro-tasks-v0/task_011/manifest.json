@@ -1,0 +1,11 @@
+{
+  "task_id": "task_011",
+  "task_type": "add_boundary_check",
+  "difficulty": 2,
+  "readme_sha256": "d3e73c601f0cb248286566d7c613e4a1bc561875809a591698efdeafe53a1c99",
+  "solution_sha256": "4b5bd04c90fed6275997f9bb6accc8a162e860e4d752a0532336d30cfc0b5c0d",
+  "test_sha256": "31c4953ff39ed9b2201013b5608c3fb694450181c8be9fcbaeb56992643e49cd",
+  "expected_patch_sha256": "ff3b0d88d04c079cd977a11ac78c911b61f813a3fbb46ce9fb2d9e0dd17a90e5",
+  "baseline_test_passes": false,
+  "post_patch_test_passes": true
+}

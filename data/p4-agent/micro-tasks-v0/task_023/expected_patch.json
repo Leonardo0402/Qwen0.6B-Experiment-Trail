@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    if mph > 65:\n        return \"slow\"\n    elif mph > 35:\n        return \"medium\"\n    else:\n        return \"fast\"",
+  "new_text": "    if mph > 65:\n        return \"fast\"\n    elif mph > 35:\n        return \"medium\"\n    else:\n        return \"slow\""
+}

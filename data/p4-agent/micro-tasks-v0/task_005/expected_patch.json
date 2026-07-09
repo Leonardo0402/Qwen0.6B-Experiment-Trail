@@ -1,0 +1,5 @@
+{
+  "file_path": "solution.py",
+  "old_text": "    return (f + 32) * 5.0 / 9.0  # BUG: should be (f - 32) * 5.0 / 9.0",
+  "new_text": "    return (f - 32) * 5.0 / 9.0"
+}
