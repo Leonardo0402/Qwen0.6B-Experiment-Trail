@@ -167,38 +167,31 @@ def is_mutating_action(action_type: str) -> bool:
 
 
 def save_trajectory(traj: Trajectory, path: Path) -> None:
-    """Write a Trajectory as JSONL (one TrajectoryStep per line)."""
+    """Write a Trajectory as one JSONL line (one Trajectory per line)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
-        for step in traj.steps:
-            f.write(step.model_dump_json() + "\n")
+        f.write(traj.model_dump_json() + "\n")
 
 
 def load_trajectory(path: Path) -> Trajectory:
-    """Read a Trajectory from a JSONL file (one TrajectoryStep per line).
-
-    Derives trajectory-level fields (trajectory_id, task_id, workspace_id,
-    goal, source) from the first step.
-    """
+    """Read the first Trajectory from a JSONL file (one Trajectory per line)."""
     path = Path(path)
-    steps: list[TrajectoryStep] = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             stripped = line.strip()
-            if not stripped:
-                continue
-            steps.append(TrajectoryStep.model_validate_json(stripped))
+            if stripped:
+                return Trajectory.model_validate_json(stripped)
+    raise ValueError(f"empty trajectory file: {path}")
 
-    if not steps:
-        raise ValueError(f"empty trajectory file: {path}")
 
-    first = steps[0]
-    return Trajectory(
-        trajectory_id=first.trajectory_id,
-        task_id=first.task_id,
-        workspace_id=first.workspace_id,
-        goal=first.goal,
-        steps=steps,
-        source=first.source,
-    )
+def load_trajectories(path: Path) -> list[Trajectory]:
+    """Read all Trajectories from a JSONL file (one Trajectory per line)."""
+    path = Path(path)
+    trajectories: list[Trajectory] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if stripped:
+                trajectories.append(Trajectory.model_validate_json(stripped))
+    return trajectories
