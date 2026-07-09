@@ -608,10 +608,9 @@ def tool_inspect_error(
     if error_source == "last_test":
         if last_test_observation is None:
             raise ValueError("no prior run_tests observation")
-        return ErrorObservation(
-            source="last_test",
-            content=last_test_observation.stderr,
-        )
+        raw = last_test_observation.stdout + "\n" + last_test_observation.stderr
+        capped = raw[:8192]
+        return ErrorObservation(source="last_test", content=capped)
     elif error_source == "last_patch":
         if last_patch_observation is None:
             raise ValueError("no prior patch observation")
