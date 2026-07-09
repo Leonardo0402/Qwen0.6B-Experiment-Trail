@@ -49,6 +49,7 @@ class EvalResult(BaseModel):
     metrics: dict[str, float | int]
     errors: list[str] = Field(default_factory=list)
     max_steps_hit: bool = False
+    finish_claim_mismatch: bool = False
 
 
 class CorruptionType(str, Enum):
@@ -234,6 +235,7 @@ class AgentEvaluator:
         steps_executed = 0
         success = False
         max_steps_hit = False
+        finish_claim_mismatch = False
 
         # Metric counters
         total_actions = 0
@@ -333,7 +335,9 @@ class AgentEvaluator:
                         finish_without_tests += 1
                     # Check success criterion
                     if fa.success_criterion == TaskSuccessCriterion.TEST_PASS:
-                        success = fa.tests_passed
+                        replay_passed = passed_tests > 0
+                        success = replay_passed
+                        finish_claim_mismatch = (fa.tests_passed != replay_passed)
                     elif fa.success_criterion == TaskSuccessCriterion.IDENTIFY_BUG:
                         success = fa.identification_verified
                     elif fa.success_criterion == TaskSuccessCriterion.PATCH_APPLIED:
@@ -347,6 +351,7 @@ class AgentEvaluator:
                         total_tests, passed_tests,
                         tool_errors, total_tools,
                         finish_without_tests, max_steps_hit=False,
+                        finish_claim_mismatch=finish_claim_mismatch,
                     )
             except Exception as e:
                 tool_errors += 1
@@ -364,6 +369,7 @@ class AgentEvaluator:
             total_tests, passed_tests,
             tool_errors, total_tools,
             finish_without_tests, max_steps_hit=True,
+            finish_claim_mismatch=finish_claim_mismatch,
         )
 
     def _make_result(
@@ -382,6 +388,7 @@ class AgentEvaluator:
         total_tools: int,
         finish_without_tests: int,
         max_steps_hit: bool,
+        finish_claim_mismatch: bool = False,
     ) -> EvalResult:
         metrics = {
             "task_success_rate": 1.0 if success else 0.0,
@@ -401,4 +408,5 @@ class AgentEvaluator:
             metrics=metrics,
             errors=errors,
             max_steps_hit=max_steps_hit,
+            finish_claim_mismatch=finish_claim_mismatch,
         )

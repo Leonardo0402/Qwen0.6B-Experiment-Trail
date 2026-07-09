@@ -300,3 +300,75 @@ def test_tool_error_rate_counts_failed_attempts(monkeypatch):
             f"expected tool_error_rate=1.0 (1 error / 1 attempted), got {result.metrics['tool_error_rate']}"
     finally:
         ws.cleanup()
+
+
+# --- Task 2: TEST_PASS replay-authoritative + finish_claim_mismatch ---
+
+def test_test_pass_success_uses_replay_not_claim(monkeypatch):
+    """finish claims tests_passed=True but replay has 0 passed_tests
+    → success=False, finish_claim_mismatch=True."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        # Strip all run_tests actions so replay passed_tests=0,
+        # but finish still claims tests_passed=True (false claim)
+        actions = [s.action for s in traj.steps
+                   if s.action.action_type != "run_tests"]
+        provider = _FixedProvider(actions)
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert not result.success, \
+            "expected success=False (replay has 0 passed, claim says True)"
+        assert result.finish_claim_mismatch, \
+            "expected finish_claim_mismatch=True (claim≠replay)"
+    finally:
+        ws.cleanup()
+
+
+def test_test_pass_mismatch_claimed_fail_actual_pass(monkeypatch):
+    """finish claims tests_passed=False but replay passed_tests>0
+    → success=True, finish_claim_mismatch=True."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        actions = [s.action for s in traj.steps]
+        original_finish = actions[-1]
+        # Keep run_tests (so replay passes), but finish claims tests_passed=False
+        modified_finish = original_finish.model_copy(update={
+            "arguments": original_finish.arguments.model_copy(update={
+                "tests_passed": False,
+            }),
+        })
+        actions[-1] = modified_finish
+        provider = _FixedProvider(actions)
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert result.success, \
+            "expected success=True (replay passed_tests>0 is authoritative)"
+        assert result.finish_claim_mismatch, \
+            "expected finish_claim_mismatch=True (claim says fail, replay says pass)"
+    finally:
+        ws.cleanup()
+
+
+def test_test_pass_no_mismatch_when_claim_matches_replay(monkeypatch):
+    """finish claims tests_passed=True AND replay passed_tests>0
+    → success=True, finish_claim_mismatch=False."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        actions = [s.action for s in traj.steps]
+        provider = _FixedProvider(actions)
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert result.success
+        assert not result.finish_claim_mismatch, \
+            "expected finish_claim_mismatch=False (claim matches replay)"
+    finally:
+        ws.cleanup()
