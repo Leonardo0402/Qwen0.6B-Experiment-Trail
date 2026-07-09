@@ -12,10 +12,12 @@ import re
 import time
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 
 from src.agent_actions import Action, SafetyFlags
 from src.agent_evaluator import AgentState, ActionProvider
+
+_ACTION_ADAPTER = TypeAdapter(Action)
 
 
 class ModelStepDiagnostics(BaseModel):
@@ -241,6 +243,6 @@ class ModelActionProvider(ActionProvider):
 def _validate_action(data: dict) -> Action | None:
     """Validate a dict against the Action union. Returns the Action or None."""
     try:
-        return Action.model_validate(data)
+        return _ACTION_ADAPTER.validate_python(data)
     except Exception:
         return None
