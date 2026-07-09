@@ -372,3 +372,82 @@ def test_test_pass_no_mismatch_when_claim_matches_replay(monkeypatch):
             "expected finish_claim_mismatch=False (claim matches replay)"
     finally:
         ws.cleanup()
+
+
+# --- Task 3: 11-action allowlist + unknown hard-fail + dispatch ---
+
+from src.agent_evaluator import _ALLOWED_ACTION_TYPES  # noqa: E402
+
+
+def test_allowed_action_types_has_exactly_11():
+    expected = {
+        "list_files", "read_file", "search_text", "inspect_task",
+        "propose_patch", "apply_patch", "rollback_patch", "run_tests",
+        "inspect_error", "write_memory", "finish",
+    }
+    assert _ALLOWED_ACTION_TYPES == expected
+    assert len(_ALLOWED_ACTION_TYPES) == 11
+
+
+def test_unknown_action_type_recorded_as_forbidden(monkeypatch):
+    """If an action with an unknown action_type somehow reaches dispatch
+    (bypassing re-validation), the else branch must record it as forbidden,
+    not silently no-op. We test the guard by mocking model_validate to pass."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        # Create a valid FinishAction, then patch its action_type attribute
+        # and mock re-validation to let it through (simulates a future action
+        # type slipping past the Literal check).
+        finish = _make_finish(tests_passed=True)
+        object.__setattr__(finish, "action_type", "shell_exec")
+        provider = _FixedProvider([finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        import unittest.mock as mock
+        with mock.patch.object(type(finish), 'model_validate', return_value=finish):
+            result = evaluator.run()
+        assert result.metrics.get("forbidden_action_count", 0) >= 1, \
+            "unknown action type must be counted as forbidden"
+        assert any("shell_exec" in e for e in result.errors), \
+            "unknown action type must be recorded in errors"
+    finally:
+        ws.cleanup()
+
+
+def test_search_text_dispatched(monkeypatch):
+    """search_text action must produce a real tool call to tool_search_text."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        from src.agent_actions import SearchTextAction, SearchTextArgs
+        import src.agent_evaluator as evaluator_mod
+
+        # Spy on tool_search_text to verify it actually gets called.
+        call_count = {"n": 0}
+        original = evaluator_mod.tool_search_text
+
+        def spy(workspace, query, *args, **kwargs):
+            call_count["n"] += 1
+            return original(workspace, query, *args, **kwargs)
+
+        monkeypatch.setattr(evaluator_mod, "tool_search_text", spy)
+
+        search_action = SearchTextAction(
+            action_id="search_1",
+            reason_short="search",
+            expected_observation="matches",
+            safety_flags=_make_safe_safety_flags(is_terminal=False),
+            arguments=SearchTextArgs(query="def"),
+        )
+        finish = _make_finish(tests_passed=True)
+        provider = _FixedProvider([search_action, finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        evaluator.run()
+        assert call_count["n"] >= 1, \
+            f"expected tool_search_text to be called, got {call_count['n']}"
+    finally:
+        ws.cleanup()

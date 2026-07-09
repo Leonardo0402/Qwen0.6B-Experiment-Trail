@@ -28,8 +28,20 @@ from src.agent_tools import (
     tool_list_files,
     tool_propose_patch,
     tool_read_file,
+    tool_rollback_patch,
     tool_run_tests,
+    tool_search_text,
 )
+
+
+# Phase B allowlist: every action_type the evaluator dispatches.
+# Any action_type not in this set is recorded as forbidden by the
+# dispatch loop's defensive `else` branch.
+_ALLOWED_ACTION_TYPES = frozenset({
+    "list_files", "read_file", "search_text", "inspect_task",
+    "propose_patch", "apply_patch", "rollback_patch", "run_tests",
+    "inspect_error", "write_memory", "finish",
+})
 
 
 class AgentState(BaseModel):
@@ -329,6 +341,12 @@ class AgentEvaluator:
                 elif at == "write_memory":
                     # Stateless — update state memory
                     state.memory = action.arguments.memory
+                elif at == "search_text":
+                    total_tools += 1
+                    tool_search_text(self._ws, action.arguments.query)
+                elif at == "rollback_patch":
+                    total_tools += 1
+                    tool_rollback_patch(self._ws, action.arguments.action_id)
                 elif at == "finish":
                     fa = action.arguments
                     if not ran_tests:
@@ -352,6 +370,16 @@ class AgentEvaluator:
                         tool_errors, total_tools,
                         finish_without_tests, max_steps_hit=False,
                         finish_claim_mismatch=finish_claim_mismatch,
+                    )
+                else:
+                    # Defensive guard: any action_type not in the 11-action
+                    # allowlist is recorded as forbidden. (Unreachable via
+                    # valid Pydantic actions — every Literal action_type is
+                    # one of the 11 above.)
+                    forbidden_count += 1
+                    errors.append(
+                        f"step {step}: unknown action type (not in 11-action "
+                        f"allowlist): {at}"
                     )
             except Exception as e:
                 tool_errors += 1
