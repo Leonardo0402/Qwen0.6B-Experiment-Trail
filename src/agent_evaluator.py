@@ -246,6 +246,7 @@ class AgentEvaluator:
         tool_errors = 0
         total_tools = 0
         finish_without_tests = 0
+        ran_tests = False
 
         state = AgentState(
             memory=AgentMemory(),
@@ -284,23 +285,24 @@ class AgentEvaluator:
             at = action.action_type
             try:
                 if at == "list_files":
+                    total_tools += 1
                     tool_list_files(self._ws)
-                    total_tools += 1
                 elif at == "read_file":
+                    total_tools += 1
                     tool_read_file(self._ws, action.arguments.path)
-                    total_tools += 1
                 elif at == "inspect_task":
-                    tool_inspect_task(self._ws)
                     total_tools += 1
+                    tool_inspect_task(self._ws)
                 elif at == "propose_patch":
+                    total_tools += 1
                     tool_propose_patch(
                         self._ws,
                         action.arguments.file_path,
                         action.arguments.old_text,
                         action.arguments.new_text,
                     )
-                    total_tools += 1
                 elif at == "apply_patch":
+                    total_tools += 1
                     obs = tool_apply_patch(
                         self._ws,
                         action.arguments.file_path,
@@ -308,15 +310,15 @@ class AgentEvaluator:
                         action.arguments.new_text,
                     )
                     total_patches += 1
-                    total_tools += 1
                     if obs.success:
                         successful_patches += 1
                     else:
                         tool_errors += 1
                 elif at == "run_tests":
+                    total_tools += 1
+                    ran_tests = True
                     obs = tool_run_tests(self._ws, timeout_s=10.0)
                     total_tests += 1
-                    total_tools += 1
                     if obs.passed:
                         passed_tests += 1
                 elif at == "inspect_error":
@@ -327,13 +329,15 @@ class AgentEvaluator:
                     state.memory = action.arguments.memory
                 elif at == "finish":
                     fa = action.arguments
-                    if not fa.tests_passed:
+                    if not ran_tests:
                         finish_without_tests += 1
                     # Check success criterion
                     if fa.success_criterion == TaskSuccessCriterion.TEST_PASS:
                         success = fa.tests_passed
                     elif fa.success_criterion == TaskSuccessCriterion.IDENTIFY_BUG:
                         success = fa.identification_verified
+                    elif fa.success_criterion == TaskSuccessCriterion.PATCH_APPLIED:
+                        success = successful_patches > 0
                     steps_executed = step + 1
                     # Compute metrics and return
                     return self._make_result(

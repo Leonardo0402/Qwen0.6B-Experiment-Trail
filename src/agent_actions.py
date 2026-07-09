@@ -92,9 +92,11 @@ def validate_path(rel_path: str) -> str:
     parts = rel_path.replace("\\", "/").split("/")
     if ".." in parts:
         raise PathValidationError(f"parent traversal not allowed: {rel_path}")
-    basename = parts[-1].lower()
-    if basename in _SECRET_BASENAMES:
-        raise PathValidationError(f"sensitive path not allowed: {rel_path}")
+    lower_parts = [p.lower() for p in parts]
+    for part in lower_parts:
+        if part in _SECRET_BASENAMES:
+            raise PathValidationError(f"sensitive path not allowed: {rel_path}")
+    basename = lower_parts[-1]
     for pat in _SECRET_PATTERNS:
         if pat.search(basename):
             raise PathValidationError(f"sensitive path not allowed: {rel_path}")

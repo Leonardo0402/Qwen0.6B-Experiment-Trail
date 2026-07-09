@@ -1,5 +1,5 @@
 {
-  "eval_hash": "e774fd7cf93618f4",
+  "eval_hash": "5a8d345c5f471f19",
   "config": {
     "max_steps": 20,
     "timeout_s": 10
@@ -10,10 +10,10 @@
     "action_validity_rate": 1.0,
     "tool_error_rate": 0.01388888888888889,
     "patch_success_rate": 0.8125,
-    "tests_pass_rate": 0.425,
+    "tests_pass_rate": 0.4375,
     "forbidden_action_count": 0,
     "max_step_exceeded_count": 0,
-    "finish_without_tests_count": 5
+    "finish_without_tests_count": 0
   },
   "per_task": [
     {
@@ -29,7 +29,7 @@
         "tests_pass_rate": 0.0,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
-        "finish_without_tests_count": 1
+        "finish_without_tests_count": 0
       },
       "errors": [],
       "max_steps_hit": false
@@ -47,7 +47,7 @@
         "tests_pass_rate": 0.0,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
-        "finish_without_tests_count": 1
+        "finish_without_tests_count": 0
       },
       "errors": [],
       "max_steps_hit": false
@@ -65,7 +65,7 @@
         "tests_pass_rate": 0.0,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
-        "finish_without_tests_count": 1
+        "finish_without_tests_count": 0
       },
       "errors": [],
       "max_steps_hit": false
@@ -83,7 +83,7 @@
         "tests_pass_rate": 0.0,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
-        "finish_without_tests_count": 1
+        "finish_without_tests_count": 0
       },
       "errors": [],
       "max_steps_hit": false
@@ -101,7 +101,7 @@
         "tests_pass_rate": 0.0,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
-        "finish_without_tests_count": 1
+        "finish_without_tests_count": 0
       },
       "errors": [],
       "max_steps_hit": false
@@ -422,7 +422,7 @@
         "action_validity_rate": 1.0,
         "tool_error_rate": 0.0,
         "patch_success_rate": 1.0,
-        "tests_pass_rate": 0.0,
+        "tests_pass_rate": 0.5,
         "forbidden_action_count": 0,
         "max_step_exceeded_count": 0,
         "finish_without_tests_count": 0

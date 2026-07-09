@@ -1,6 +1,6 @@
 # P4.0 Agentic Coder Foundation — Readiness Report
 
-**Date:** 2026-07-09T13:43:25.955215
+**Date:** 2026-07-09T14:33:07.488712
 **Branch:** feat/p4-agent-foundation
 **Verdict:** `GO_FOR_P4_AGENT_SFT_DATA`
 
@@ -9,15 +9,15 @@
 | # | Gate | Status | Evidence |
 |---|------|--------|----------|
 | 1 | P3 exit baseline locked | PASS | locked, PR #15 merge d91586e |
-| 2 | Action schema tests pass | PASS | ============================= 17 passed in 0.74s ============================== |
-| 3 | Tool layer safety tests pass | PASS | ============================= 28 passed in 24.00s ============================= |
-| 4 | Trajectory schema tests pass | PASS | ============================== 7 passed in 0.79s ============================== |
-| 5 | Micro task suite verified | PASS | 40 tasks, ============================= 6 passed in 33.92s ============================== |
+| 2 | Action schema tests pass | PASS | ============================= 18 passed in 0.65s ============================== |
+| 3 | Tool layer safety tests pass | PASS | ============================= 28 passed in 42.72s ============================= |
+| 4 | Trajectory schema tests pass | PASS | ============================== 7 passed in 0.85s ============================== |
+| 5 | Micro task suite verified | PASS | 40 tasks, ======================== 6 passed in 60.05s (0:01:00) ========================= |
 | 6 | Scripted trajectories verified | PASS | 40 trajectories, 400 steps, all verified=True |
 | 7 | Evaluator replay success = 100% | PASS | 100% replay success, eval_hash=e774fd7cf93618f4 |
 | 8 | Corrupted trajectory tests fail as expected | PASS | test_corrupted_injection passes (WRONG_PATCH detected) |
 | 9 | No forbidden shell/network/git actions | PASS | no forbidden shell/network/git patterns in P4-agent files |
-| 10 | CI green (P4-agent tests) | PASS | ======================== 72 passed in 88.09s (0:01:28) ======================== |
+| 10 | CI green (P4-agent tests) | PASS | ======================= 78 passed in 203.14s (0:03:23) ======================== |
 | 11 | State transition consistency | PASS | all 40 trajectories, state transitions consistent |
 
 ## Summary
@@ -41,11 +41,14 @@
    platform-specific issues (CRLF, subprocess timeout) but pass on CI's Linux.
 4. **40 trajectories are NOT training data:** Per spec section 15, these are
    foundation verification artifacts only. P4.1 will produce 1000+ trajectories.
-5. **Evaluator trusts finish.tests_passed (trust gap):** The evaluator's
-   `task_success_rate` is computed from the scripted trajectory's `finish.tests_passed`
-   declaration, not cross-checked against actual replay `run_tests` results. This is
-   acceptable for P4.0 (scripted teachers don't lie) but enforcement is a P4.1
-   prerequisite for model-generated trajectories.
+5. **Evaluator trust gap (partially resolved):** Three metric issues were fixed:
+   `finish_without_tests_count` now tracks actual `run_tests` execution (not
+   `finish.tests_passed`); `PATCH_APPLIED` success is based on actual patch results
+   (`successful_patches > 0`); `tool_error_rate` denominator now counts failed tool
+   attempts. Residual gap: `task_success_rate` for `TEST_PASS` criterion still uses
+   the scripted `finish.tests_passed` declaration, not cross-checked against actual
+   replay `passed_tests`. Acceptable for P4.0 (scripted teachers don't lie);
+   enforcement is a P4.1 prerequisite for model-generated trajectories.
 6. **Evaluator dispatch omits search_text and rollback_patch:** The evaluator's
    `run()` method does not dispatch `search_text` or `rollback_patch` actions. No
    scripted trajectory uses these actions, so P4.0 is unaffected, but P4.1 trajectories

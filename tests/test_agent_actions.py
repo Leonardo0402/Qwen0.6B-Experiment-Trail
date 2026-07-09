@@ -86,6 +86,19 @@ def test_validate_path_rejects_secret_basename():
             validate_path(name)
 
 
+def test_validate_path_rejects_secret_in_any_component():
+    """Secret basenames must be rejected in ANY path component, not just the leaf."""
+    for path in [
+        ".git/config",              # .git as directory component
+        ".ssh/id_rsa",              # .ssh as directory component
+        "nested/.env/value",        # .env as mid-path component
+        "nested/secrets/file.txt",  # secrets as directory component
+        "nested/token/value",       # token as directory component
+    ]:
+        with pytest.raises(PathValidationError, match="sensitive"):
+            validate_path(path)
+
+
 def test_validate_path_accepts_normal():
     assert validate_path("src/foo.py") == "src/foo.py"
     assert validate_path("solution.py") == "solution.py"
