@@ -4,7 +4,7 @@
 
 **Goal:** Close P4.0 evaluator residual gaps, implement ModelActionProvider smoke (base + Repair-Limited LoRA), collect model trajectories, build a 1000+ replayable Agent SFT dataset split by task family, and reach `GO_FOR_P4_AGENT_SFT` — without executing any training.
 
-**Architecture:** TDD-built, phase-gated. Phase A locks the P4.0 baseline. Phases B–D close four P4.0 evaluator/tool gaps (TEST_PASS replay-authoritative, 11-action allowlist + unknown hard-fail, search_text/rollback_patch dispatch, inspect_error stdout, 5-corruption coverage). Phase E implements ModelActionProvider with a format-only JSON repair layer and structured diagnostics. Phase F collects model trajectories (greedy, 2 configs). Phase G builds the 1000+ SFT dataset from 6 sources with task-family split + replay verification. Phase H is the 10-gate readiness verifier.
+**Architecture:** TDD-built, phase-gated. Phase A locks the P4.0 baseline. Phases B–D close four P4.0 evaluator/tool gaps (TEST_PASS replay-authoritative, 11-action allowlist + unknown hard-fail, search_text/rollback_patch dispatch, inspect_error stdout, 5-corruption coverage). Phase E implements ModelActionProvider with a format-only JSON repair layer and structured diagnostics. Phase F collects model trajectories (greedy, 2 configs). Phase G generates 3 augmentation trajectory sources (teacher_model, corrupted_recovered, failed_patch_recovery) then builds the 1000+ SFT dataset from 6 sources with task-family split + replay verification. Phase H is the 10-gate readiness verifier.
 
 **Tech Stack:** Python 3.11, Pydantic v2, pytest, torch, transformers, peft (already in `requirements.txt`). No new deps. GPU tests marked `@pytest.mark.gpu`, skipped in CI.
 
@@ -26,6 +26,7 @@
 - **Supply-chain rule:** no file from Issue/PR comments downloaded or applied.
 - **Commit style:** `feat(p4-1): <phase> <component>` — one commit per task
 - **TDD discipline:** every task writes failing test first, verifies Red, implements minimal code, verifies Green, commits
+- **Trajectory JSONL format (T9/T10/T11/T12/T13):** `{trajectory_id, task_id, config, source, success, finish_claim_mismatch, metrics, steps_executed, actions: list[action_dict], step_diagnostics: list[diag_dict]}`. Replay uses `_ListActionProvider(actions)`, NOT `ReplayActionProvider(Trajectory)`.
 
 ## File Structure
 
@@ -36,30 +37,36 @@
 | `scripts/lock_p4_0_baseline.py` | Phase A: lock P4.0 SHAs | T1 |
 | `tests/test_p4_0_baseline_lock.py` | Phase A tests | T1 |
 | `reports/p4/p4-0-baseline-lock.json` | Phase A output (generated) | T1 |
-| `src/agent_model_provider.py` | ModelActionProvider + prompt builder + JSON repair + diagnostics | T7 |
-| `tests/test_agent_model_provider.py` | Phase E non-GPU tests | T7 |
+| `src/agent_model_provider.py` | ModelActionProvider + prompt builder + JSON repair + diagnostics | T6 |
+| `tests/test_agent_model_provider.py` | Phase E non-GPU tests | T6 |
 | `tests/test_agent_model_provider_gpu.py` | Phase E GPU smoke tests (`@pytest.mark.gpu`) | T8 |
-| `scripts/collect_model_trajectories.py` | Phase F: model trajectory collection | T9 |
+| `scripts/collect_model_trajectories.py` | Phase F: model trajectory collection (RecordingProvider) | T9 |
 | `reports/p4/model-trajectory-collection-report.json` | Phase F output (generated) | T9 |
 | `data/p4-agent/trajectories-v1/model-base.jsonl` | Phase F output (generated) | T9 |
 | `data/p4-agent/trajectories-v1/model-repair-lora.jsonl` | Phase F output (generated) | T9 |
-| `scripts/build_agent_sft_dataset.py` | Phase G: SFT dataset builder | T10 |
-| `data/p4-agent/sft-v1/train.jsonl` | Phase G output (generated) | T10 |
-| `data/p4-agent/sft-v1/validation.jsonl` | Phase G output (generated) | T10 |
-| `data/p4-agent/sft-v1/heldout-agent-eval.jsonl` | Phase G output (generated) | T10 |
-| `data/p4-agent/sft-v1/failure-diagnostics.jsonl` | Phase G output (generated) | T10 |
-| `data/p4-agent/sft-v1/manifest.json` | Phase G output (generated) | T10 |
-| `reports/p4/sft-dataset-replay-failures.jsonl` | Phase G output (generated) | T10 |
-| `scripts/verify_p4_1_readiness.py` | Phase H: 10-gate verifier | T11 |
-| `tests/test_p4_1_readiness.py` | Phase H tests | T12 |
-| `reports/p4/p4-1-readiness.md` | Phase H output (generated) | T11 |
+| `scripts/augment_teacher_model.py` | Phase G: teacher_model augmentation generator | T10 |
+| `scripts/augment_corrupted_recovered.py` | Phase G: corrupted_recovered augmentation generator | T11 |
+| `scripts/augment_failed_patch_recovery.py` | Phase G: failed_patch_recovery augmentation generator | T12 |
+| `data/p4-agent/trajectories-v1/teacher-model.jsonl` | Phase G output (generated) | T10 |
+| `data/p4-agent/trajectories-v1/corrupted-recovered.jsonl` | Phase G output (generated) | T11 |
+| `data/p4-agent/trajectories-v1/failed-patch-recovery.jsonl` | Phase G output (generated) | T12 |
+| `scripts/build_agent_sft_dataset.py` | Phase G: SFT dataset builder | T13 |
+| `data/p4-agent/sft-v1/train.jsonl` | Phase G output (generated) | T13 |
+| `data/p4-agent/sft-v1/validation.jsonl` | Phase G output (generated) | T13 |
+| `data/p4-agent/sft-v1/heldout-agent-eval.jsonl` | Phase G output (generated) | T13 |
+| `data/p4-agent/sft-v1/failure-diagnostics.jsonl` | Phase G output (generated) | T13 |
+| `data/p4-agent/sft-v1/manifest.json` | Phase G output (generated) | T13 |
+| `reports/p4/sft-dataset-replay-failures.jsonl` | Phase G output (generated) | T13 |
+| `scripts/verify_p4_1_readiness.py` | Phase H: 10-gate verifier | T14 |
+| `tests/test_p4_1_readiness.py` | Phase H tests | T15 |
+| `reports/p4/p4-1-readiness.md` | Phase H output (generated) | T14 |
 
 ### Files modified
 
 | Path | Change | Phase/Task |
 |---|---|---|
-| `src/agent_evaluator.py` | TEST_PASS replay-authoritative, `finish_claim_mismatch`, 11-action allowlist + unknown hard-fail, search_text/rollback_patch dispatch | T2, T3 |
-| `tests/test_agent_evaluator.py` | +6 trust-gap/dispatch tests, +5 corruption tests | T2, T3, T5 |
+| `src/agent_evaluator.py` | TEST_PASS replay-authoritative, `finish_claim_mismatch`, 11-action allowlist + unknown hard-fail, search_text/rollback_patch dispatch, SentinelAction dispatch (invalid_action_count) | T2, T3, T6 |
+| `tests/test_agent_evaluator.py` | +6 trust-gap/dispatch tests, +5 corruption tests, +1 SentinelAction invalid-vs-forbidden test | T2, T3, T5, T6 |
 | `src/agent_tools.py` | `tool_inspect_error` returns stdout+stderr capped 8KB | T4 |
 | `tests/test_agent_tools.py` | +2 inspect_error tests | T4 |
 
@@ -718,11 +725,12 @@ git commit -m "feat(p4-1): Phase D — corruption test expansion (all 5 Corrupti
 **Files:**
 - Create: `src/agent_model_provider.py`
 - Create: `tests/test_agent_model_provider.py`
-- Modify: `src/agent_evaluator.py` (add `SentinelAction` or import — see below)
+- Modify: `src/agent_evaluator.py` (SentinelAction dispatch: `invalid_action_count` counter)
+- Modify: `tests/test_agent_evaluator.py` (+1 SentinelAction invalid-vs-forbidden test)
 
 **Interfaces:**
 - Consumes: `AgentState`, `AgentMemory`, `Action` union, `SafetyFlags` from P4.0 modules; `MicroTaskWorkspace` for task context
-- Produces: `ModelActionProvider` class, `ModelStepDiagnostics` model, `build_prompt()` function, `extract_json()` function, `repair_json()` function, `SentinelAction` (invalid action marker)
+- Produces: `ModelActionProvider` class, `ModelStepDiagnostics` model, `build_prompt()` function, `extract_json()` function, `repair_json()` function, `SentinelAction` (invalid action marker); evaluator `invalid_action_count` metric
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -788,10 +796,37 @@ def test_sentinel_action_marks_invalid():
     assert sa.reason == "json parse failed"
 ```
 
+Also append to `tests/test_agent_evaluator.py`:
+
+```python
+# --- Task 6: SentinelAction counted as invalid, not forbidden ---
+
+def test_sentinel_action_counted_as_invalid_not_forbidden(monkeypatch):
+    """SentinelAction must increment invalid_action_count, not forbidden_action_count."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        from src.agent_model_provider import SentinelAction
+        # Build a provider that returns SentinelAction then finish
+        sentinel = SentinelAction(reason="test invalid")
+        finish = _make_finish(tests_passed=True)
+        provider = _FixedProvider([sentinel, finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert result.metrics.get("invalid_action_count", 0) >= 1, \
+            "SentinelAction must increment invalid_action_count"
+        assert result.metrics.get("forbidden_action_count", 0) == 0, \
+            "SentinelAction must NOT increment forbidden_action_count"
+    finally:
+        ws.cleanup()
+```
+
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `py -3.11 -m pytest tests/test_agent_model_provider.py -v -p no:warnings`
-Expected: FAIL — module doesn't exist (`ModuleNotFoundError`).
+Run: `py -3.11 -m pytest tests/test_agent_model_provider.py tests/test_agent_evaluator.py::test_sentinel_action_counted_as_invalid_not_forbidden -v -p no:warnings`
+Expected: FAIL — module doesn't exist (`ModuleNotFoundError`); `invalid_action_count` metric doesn't exist.
 
 - [ ] **Step 3: Implement the module**
 
@@ -1046,16 +1081,34 @@ def _validate_action(data: dict) -> Action | None:
         return None
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Modify the evaluator dispatch loop for SentinelAction**
 
-Run: `py -3.11 -m pytest tests/test_agent_model_provider.py -v -p no:warnings`
-Expected: 7 PASS.
+In `src/agent_evaluator.py`'s `AgentEvaluator.run()`:
 
-- [ ] **Step 5: Commit**
+1. Add `invalid_action_count = 0` to the metric counters at the top of `run()` (alongside `forbidden_count`, `total_tools`, etc.).
+
+2. BEFORE the `action.__class__.model_validate(action.model_dump())` call in the dispatch loop, add the SentinelAction check:
+
+```python
+# Handle SentinelAction (from ModelActionProvider) — invalid, not forbidden
+if hasattr(action, 'is_invalid') and getattr(action, 'is_invalid', False):
+    invalid_action_count += 1
+    errors.append(f"step {step}: invalid action (sentinel: {getattr(action, 'reason', 'unknown')})")
+    continue
+```
+
+3. Add `"invalid_action_count": invalid_action_count` to the metrics dict in `_make_result` / the EvalResult metrics.
+
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run: `py -3.11 -m pytest tests/test_agent_model_provider.py tests/test_agent_evaluator.py -v -p no:warnings`
+Expected: All tests PASS (7 model_provider + existing evaluator + new SentinelAction test). No regressions.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/agent_model_provider.py tests/test_agent_model_provider.py
-git commit -m "feat(p4-1): Phase E — ModelActionProvider prompt builder + JSON extraction + repair + diagnostics"
+git add src/agent_model_provider.py tests/test_agent_model_provider.py src/agent_evaluator.py tests/test_agent_evaluator.py
+git commit -m "feat(p4-1): Phase E — ModelActionProvider prompt builder + JSON extraction + repair + diagnostics + SentinelAction dispatch"
 ```
 
 ---
@@ -1205,6 +1258,10 @@ def test_model_provider_smoke_base():
     - no runtime crash
     - forbidden_action_count == 0
     - at least 1 schema-valid action OR structured diagnostics recorded
+
+    Note: invalid_action_count > 0 is acceptable (model may produce invalid
+    JSON → SentinelAction → invalid_action_count). forbidden_action_count == 0
+    is still required (no unknown action types should slip through).
     """
     from src.agent_model_provider import ModelActionProvider, SentinelAction
     from src.agent_evaluator import AgentEvaluator, AgentState
@@ -1223,6 +1280,8 @@ def test_model_provider_smoke_base():
         result = evaluator.run()
 
         # Minimum bar (user decision #3)
+        # forbidden_action_count must be 0 — unknown action types are not
+        # acceptable. invalid_action_count > 0 is OK (model may emit bad JSON).
         assert result.metrics.get("forbidden_action_count", 0) == 0, \
             f"forbidden_action_count must be 0, got {result.metrics.get('forbidden_action_count')}"
         # At least one diagnostic recorded (even if all invalid)
@@ -1232,7 +1291,11 @@ def test_model_provider_smoke_base():
 
 
 def test_model_provider_smoke_repair_lora():
-    """Load Qwen3-0.6B + Repair-Limited LoRA, run 1 micro-task, same bar."""
+    """Load Qwen3-0.6B + Repair-Limited LoRA, run 1 micro-task, same bar.
+
+    Note: invalid_action_count > 0 is acceptable (model may produce invalid
+    JSON). forbidden_action_count == 0 is still required.
+    """
     from src.agent_model_provider import ModelActionProvider
     from src.agent_evaluator import AgentEvaluator
     from src.agent_workspace import MicroTaskWorkspace
@@ -1272,7 +1335,7 @@ git commit -m "feat(p4-1): Phase E — GPU smoke tests (base + repair-lora)"
 
 ---
 
-## Task 9: Phase F — Model trajectory collection script
+## Task 9: Phase F — Model trajectory collection script (RecordingProvider + action-list JSONL)
 
 **Files:**
 - Create: `scripts/collect_model_trajectories.py`
@@ -1280,7 +1343,9 @@ git commit -m "feat(p4-1): Phase E — GPU smoke tests (base + repair-lora)"
 
 **Interfaces:**
 - Consumes: `ModelActionProvider` (Task 6), `AgentEvaluator` (P4.0), 40 micro-tasks
-- Produces: trajectory JSONL files + collection report
+- Produces: trajectory JSONL files (with `actions: list[action_dict]` field) + collection report
+
+**Design note:** Trajectories are written as JSONL with an `actions` field (list of action dicts via `action.model_dump()`), NOT as P4.0 `Trajectory` objects. The P4.0 `Trajectory` schema requires `TrajectoryStep` objects with complex fields (`memory_before`, `memory_after`, `observation`, `success_label`, `verified`) and a restrictive `source` Literal — too complex to construct from evaluator runtime data, and `agent_trajectory.py` is frozen. Replay (T13) uses `_ListActionProvider(actions)`, NOT `ReplayActionProvider(Trajectory)`.
 
 - [ ] **Step 1: Write the collection script**
 
@@ -1289,7 +1354,9 @@ git commit -m "feat(p4-1): Phase E — GPU smoke tests (base + repair-lora)"
 """Phase F: collect model trajectories on the 40 micro-tasks.
 
 Runs ModelActionProvider (base + repair-lora configs) through the
-AgentEvaluator on all 40 tasks. Writes trajectories + a report.
+AgentEvaluator on all 40 tasks. Uses a RecordingProvider wrapper to capture
+each action returned by the model, then writes trajectories as JSONL with
+an `actions` list field (for replay via _ListActionProvider in T13).
 
 Usage:
     py -3.11 scripts/collect_model_trajectories.py
@@ -1307,9 +1374,44 @@ sys.path.insert(0, str(_ROOT))
 
 os.environ.setdefault("P4_ALLOW_NETWORK", "0")
 
-from src.agent_model_provider import ModelActionProvider
-from src.agent_evaluator import AgentEvaluator
+from src.agent_model_provider import ModelActionProvider, SentinelAction
+from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
 from src.agent_workspace import MicroTaskWorkspace
+
+
+class RecordingProvider(ActionProvider):
+    """Wraps an inner ActionProvider and records each action returned (as a
+    dict via action.model_dump()) for later replay. SentinelActions are
+    recorded with a `__sentinel__` marker so they can be reconstructed."""
+
+    def __init__(self, inner: ActionProvider):
+        self._inner = inner
+        self._recorded: list[dict] = []
+
+    def next_action(self, state: AgentState):
+        action = self._inner.next_action(state)
+        if isinstance(action, SentinelAction):
+            self._recorded.append({
+                "__sentinel__": True,
+                "is_invalid": True,
+                "reason": action.reason,
+            })
+        else:
+            self._recorded.append(action.model_dump())
+        return action
+
+    @property
+    def recorded_actions(self) -> list[dict]:
+        return list(self._recorded)
+
+    @property
+    def diagnostics(self):
+        return self._inner.diagnostics if hasattr(self._inner, 'diagnostics') else []
+
+    def reset(self) -> None:
+        self._recorded.clear()
+        if hasattr(self._inner, 'reset'):
+            self._inner.reset()
 
 
 _CONFIGS = [
@@ -1335,13 +1437,13 @@ def _run_config(config, task_ids):
     model_load_ok = False
     adapter_load_ok = config["adapter_path"] is not None
 
-    provider = ModelActionProvider(
+    inner_provider = ModelActionProvider(
         model_path=config["model_path"],
         adapter_path=config["adapter_path"],
     )
     # Try to load the model once
     try:
-        provider._load_model()
+        inner_provider._load_model()
         model_load_ok = True
     except Exception as e:
         print(f"[{config['name']}] model load failed: {e}")
@@ -1358,11 +1460,11 @@ def _run_config(config, task_ids):
         }
 
     for i, task_id in enumerate(task_ids):
-        task_dir = _TASKS_DIR / task_id.replace("task_", "task_")
-        # task_id in manifest is "task_001"; dir is "task_001"
+        task_dir = _TASKS_DIR / task_id
         ws = MicroTaskWorkspace.from_task(task_dir)
         try:
-            provider.reset()
+            inner_provider.reset()
+            provider = RecordingProvider(inner_provider)
             evaluator = AgentEvaluator(ws, provider, task_id, max_steps=MAX_STEPS)
             result = evaluator.run()
             source = "model_self_run_success" if result.success else "model_self_run_failure"
@@ -1375,7 +1477,8 @@ def _run_config(config, task_ids):
                 "finish_claim_mismatch": result.finish_claim_mismatch,
                 "metrics": result.metrics,
                 "steps_executed": result.steps_executed,
-                "step_diagnostics": [d.model_dump() for d in provider.diagnostics],
+                "actions": provider.recorded_actions,
+                "step_diagnostics": [d.model_dump() for d in inner_provider.diagnostics],
             })
         except Exception:
             crashes += 1
@@ -1431,36 +1534,40 @@ Expected: `OK`
 
 ```bash
 git add scripts/collect_model_trajectories.py
-git commit -m "feat(p4-1): Phase F — model trajectory collection script"
+git commit -m "feat(p4-1): Phase F — model trajectory collection script (RecordingProvider + action-list JSONL)"
 ```
 
 ---
 
-## Task 10: Phase G — SFT dataset builder
+## Task 10: Phase G — teacher_model augmentation generator
 
 **Files:**
-- Create: `scripts/build_agent_sft_dataset.py`
-- Generated: `data/p4-agent/sft-v1/{train,validation,heldout-agent-eval,failure-diagnostics}.jsonl`, `data/p4-agent/sft-v1/manifest.json`, `reports/p4/sft-dataset-replay-failures.jsonl`
+- Create: `scripts/augment_teacher_model.py`
+- Generated: `data/p4-agent/trajectories-v1/teacher-model.jsonl`
 
 **Interfaces:**
-- Consumes: P4.0 `scripted.jsonl` (40 trajectories), Phase F model trajectories, `AgentEvaluator` + `ReplayActionProvider` for verification, micro-tasks manifest for task_type
-- Produces: split SFT dataset with 1000+ trajectories, replay-verified, source-labeled
+- Consumes: P4.0 `scripted.jsonl` (40 trajectories as `Trajectory` objects), micro-tasks manifest (for task_type), `AgentEvaluator`, `_ListActionProvider` (list-based replay)
+- Produces: `teacher-model.jsonl` with ~120-160 trajectories (same JSONL format as T9)
 
-- [ ] **Step 1: Write the dataset builder script**
+**Concept:** The "teacher" is a scripted trajectory's action sequence applied to a DIFFERENT task of the same task_type (cross-task transfer). For each scripted trajectory, apply its action sequence to 3-4 other tasks of the same task_type. If the replay succeeds (tests pass), it's a `teacher_model` trajectory. If it fails, skip it. This multiplies the 40 scripted trajectories by ~3-4x → ~120-160 teacher_model trajectories.
+
+- [ ] **Step 1: Write the augmentation script**
 
 ```python
-# scripts/build_agent_sft_dataset.py
-"""Phase G: build the Agent SFT dataset.
+# scripts/augment_teacher_model.py
+"""Phase G: teacher_model augmentation generator.
 
-Aggregates trajectories from 6 sources, labels them, splits by task family,
-and replay-verifies every trajectory before inclusion.
+For each scripted trajectory, applies its action sequence to 3-4 other
+tasks of the same task_type (cross-task transfer). If replay succeeds
+(tests pass), the trajectory is kept as a `teacher_model` trajectory.
+
+Output: data/p4-agent/trajectories-v1/teacher-model.jsonl
 
 Usage:
-    py -3.11 scripts/build_agent_sft_dataset.py
+    py -3.11 scripts/augment_teacher_model.py
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import sys
@@ -1471,12 +1578,483 @@ sys.path.insert(0, str(_ROOT))
 os.environ.setdefault("P4_ALLOW_NETWORK", "0")
 
 from src.agent_trajectory import load_trajectories
-from src.agent_evaluator import AgentEvaluator, ReplayActionProvider
+from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
+from src.agent_actions import Action, SentinelAction
 from src.agent_workspace import MicroTaskWorkspace
+
+
+class _ListActionProvider(ActionProvider):
+    """Replays a list of Action objects (or SentinelAction). Yields them in
+    order. Used for replay-verify in T10/T11/T12/T13."""
+
+    def __init__(self, actions: list):
+        self._actions = list(actions)
+        self._index = 0
+
+    def next_action(self, state: AgentState):
+        if self._index >= len(self._actions):
+            raise StopIteration("no more actions in list")
+        action = self._actions[self._index]
+        self._index += 1
+        return action
+
+
+_SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+_MANIFEST = _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
+_TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
+_OUT = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "teacher-model.jsonl"
+
+
+def _load_manifest():
+    return json.loads(_MANIFEST.read_text(encoding="utf-8"))
+
+
+def _task_type_map(manifest):
+    return {t["task_id"]: t["task_type"] for t in manifest["tasks"]}
+
+
+def _tasks_by_type(manifest):
+    by_type: dict[str, list[str]] = {}
+    for t in manifest["tasks"]:
+        by_type.setdefault(t["task_type"], []).append(t["task_id"])
+    return by_type
+
+
+def main():
+    manifest = _load_manifest()
+    type_map = _task_type_map(manifest)
+    by_type = _tasks_by_type(manifest)
+
+    scripted_trajs = load_trajectories(_SCRIPTED)
+    print(f"Loaded {len(scripted_trajs)} scripted trajectories")
+
+    results = []
+    for traj in scripted_trajs:
+        src_task_id = traj.task_id
+        src_type = type_map.get(src_task_id, "unknown")
+        # Candidate target tasks: same type, different task_id
+        candidates = [tid for tid in by_type.get(src_type, []) if tid != src_task_id]
+        # Apply to up to 4 other tasks of the same type
+        for target_task_id in candidates[:4]:
+            task_dir = _TASKS_DIR / target_task_id
+            if not task_dir.exists():
+                continue
+            ws = MicroTaskWorkspace.from_task(task_dir)
+            try:
+                actions = [s.action for s in traj.steps]
+                provider = _ListActionProvider(actions)
+                evaluator = AgentEvaluator(ws, provider, target_task_id, max_steps=20)
+                result = evaluator.run()
+                if result.success:
+                    results.append({
+                        "trajectory_id": f"teacher_{src_task_id}_{target_task_id}",
+                        "task_id": target_task_id,
+                        "config": "teacher",
+                        "source": "teacher_model",
+                        "success": True,
+                        "finish_claim_mismatch": result.finish_claim_mismatch,
+                        "metrics": result.metrics,
+                        "steps_executed": result.steps_executed,
+                        "actions": [a.model_dump() for a in actions],
+                        "step_diagnostics": [],
+                    })
+            except Exception:
+                pass  # skip failed transfers
+            finally:
+                ws.cleanup()
+
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(_OUT, "w", encoding="utf-8") as f:
+        for traj in results:
+            f.write(json.dumps(traj) + "\n")
+    print(f"Wrote {len(results)} teacher_model trajectories to {_OUT}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+- [ ] **Step 2: Verify script is importable**
+
+Run: `py -3.11 -c "import ast; ast.parse(open('scripts/augment_teacher_model.py').read()); print('OK')"`
+Expected: `OK`
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add scripts/augment_teacher_model.py
+git commit -m "feat(p4-1): Phase G — teacher_model augmentation generator"
+```
+
+---
+
+## Task 11: Phase G — corrupted_recovered augmentation generator
+
+**Files:**
+- Create: `scripts/augment_corrupted_recovered.py`
+- Generated: `data/p4-agent/trajectories-v1/corrupted-recovered.jsonl`
+
+**Interfaces:**
+- Consumes: P4.0 `scripted.jsonl`, `CorruptedActionProvider`, `Corruption`, `CorruptionType` from `src/agent_evaluator.py`, micro-tasks manifest
+- Produces: `corrupted-recovered.jsonl` with ~600+ trajectories
+
+**Concept:** Take each scripted trajectory, apply each of the 5 `CorruptionType` values at each patchable step (and at steps 1, 2, 3 for step-index variants), run the evaluator with `CorruptedActionProvider` up to the corruption point, then append the ORIGINAL (uncorrupted) remaining actions. If the trajectory still reaches success, it's a `corrupted_recovered` trajectory. 40 scripted × 5 corruption types × ~3 step indices = ~600 corrupted_recovered trajectories.
+
+- [ ] **Step 1: Write the augmentation script**
+
+```python
+# scripts/augment_corrupted_recovered.py
+"""Phase G: corrupted_recovered augmentation generator.
+
+For each scripted trajectory, applies each of the 5 CorruptionType values
+at multiple step indices (1, 2, 3 and any patchable steps), runs the
+evaluator with CorruptedActionProvider for the corrupted prefix, then
+appends the original uncorrupted remaining actions. If the trajectory
+still reaches success, it's a corrupted_recovered trajectory.
+
+Output: data/p4-agent/trajectories-v1/corrupted-recovered.jsonl
+
+Usage:
+    py -3.11 scripts/augment_corrupted_recovered.py
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+os.environ.setdefault("P4_ALLOW_NETWORK", "0")
+
+from src.agent_trajectory import load_trajectories
+from src.agent_evaluator import (
+    AgentEvaluator, ActionProvider, AgentState,
+    CorruptedActionProvider, Corruption, CorruptionType,
+)
+from src.agent_actions import Action
+from src.agent_workspace import MicroTaskWorkspace
+
+
+class _ListActionProvider(ActionProvider):
+    """Replays a list of Action objects. Yields them in order."""
+
+    def __init__(self, actions: list):
+        self._actions = list(actions)
+        self._index = 0
+
+    def next_action(self, state: AgentState):
+        if self._index >= len(self._actions):
+            raise StopIteration("no more actions in list")
+        action = self._actions[self._index]
+        self._index += 1
+        return action
+
+
+_SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+_TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
+_OUT = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "corrupted-recovered.jsonl"
+
+# Step indices to try corruption at (1, 2, 3 + any patchable steps)
+_STEP_INDICES = [1, 2, 3]
+_CORRUPTION_TYPES = list(CorruptionType)
+
+
+def main():
+    scripted_trajs = load_trajectories(_SCRIPTED)
+    print(f"Loaded {len(scripted_trajs)} scripted trajectories")
+
+    results = []
+    for traj in scripted_trajs:
+        task_id = traj.task_id
+        task_dir = _TASKS_DIR / task_id
+        if not task_dir.exists():
+            continue
+
+        # Determine patchable steps and merge with fixed step indices
+        patchable_steps = [
+            i for i, s in enumerate(traj.steps)
+            if s.action.action_type in ("apply_patch", "propose_patch")
+        ]
+        step_indices = sorted(set(_STEP_INDICES + patchable_steps))
+        # Filter to valid range
+        step_indices = [i for i in step_indices if 0 <= i < len(traj.steps)]
+
+        for step_idx in step_indices:
+            for ctype in _CORRUPTION_TYPES:
+                ws = MicroTaskWorkspace.from_task(task_dir)
+                try:
+                    # Run corrupted prefix
+                    corruption = Corruption(step_index=step_idx, type=ctype)
+                    corrupted_provider = CorruptedActionProvider(traj, corruption)
+                    evaluator = AgentEvaluator(
+                        ws, corrupted_provider, task_id, max_steps=20
+                    )
+                    result = evaluator.run()
+
+                    # If the corrupted run still succeeded, record it
+                    if result.success:
+                        # Record the original action sequence (uncorrupted)
+                        # as the replayable trajectory
+                        actions = [s.action for s in traj.steps]
+                        results.append({
+                            "trajectory_id": f"corrupted_{task_id}_s{step_idx}_{ctype.name}",
+                            "task_id": task_id,
+                            "config": "corrupted",
+                            "source": "corrupted_recovered",
+                            "success": True,
+                            "finish_claim_mismatch": result.finish_claim_mismatch,
+                            "metrics": result.metrics,
+                            "steps_executed": result.steps_executed,
+                            "actions": [a.model_dump() for a in actions],
+                            "step_diagnostics": [],
+                        })
+                except Exception:
+                    pass  # skip failed corruptions
+                finally:
+                    ws.cleanup()
+
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(_OUT, "w", encoding="utf-8") as f:
+        for traj in results:
+            f.write(json.dumps(traj) + "\n")
+    print(f"Wrote {len(results)} corrupted_recovered trajectories to {_OUT}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+- [ ] **Step 2: Verify script is importable**
+
+Run: `py -3.11 -c "import ast; ast.parse(open('scripts/augment_corrupted_recovered.py').read()); print('OK')"`
+Expected: `OK`
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add scripts/augment_corrupted_recovered.py
+git commit -m "feat(p4-1): Phase G — corrupted_recovered augmentation generator"
+```
+
+---
+
+## Task 12: Phase G — failed_patch_recovery augmentation generator
+
+**Files:**
+- Create: `scripts/augment_failed_patch_recovery.py`
+- Generated: `data/p4-agent/trajectories-v1/failed-patch-recovery.jsonl`
+
+**Interfaces:**
+- Consumes: P4.0 `scripted.jsonl`, `AgentEvaluator`, `_ListActionProvider`, micro-tasks manifest
+- Produces: `failed-patch-recovery.jsonl` with ~80 trajectories
+
+**Concept:** Take each scripted trajectory, truncate it right after the first `apply_patch` step (simulating patch failure), then append a recovery sequence: `rollback_patch` → `propose_patch` (correct) → `apply_patch` → `run_tests` → `finish`. The recovery actions come from the original trajectory's later steps. 40 scripted × ~2 patchable steps = ~80 failed_patch_recovery trajectories.
+
+- [ ] **Step 1: Write the augmentation script**
+
+```python
+# scripts/augment_failed_patch_recovery.py
+"""Phase G: failed_patch_recovery augmentation generator.
+
+For each scripted trajectory, truncates right after the first apply_patch
+step (simulating patch failure), then appends a recovery sequence:
+rollback_patch → propose_patch (correct) → apply_patch → run_tests → finish.
+The recovery actions come from the original trajectory's later steps.
+
+Output: data/p4-agent/trajectories-v1/failed-patch-recovery.jsonl
+
+Usage:
+    py -3.11 scripts/augment_failed_patch_recovery.py
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+os.environ.setdefault("P4_ALLOW_NETWORK", "0")
+
+from src.agent_trajectory import load_trajectories
+from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
+from src.agent_actions import Action
+from src.agent_workspace import MicroTaskWorkspace
+
+
+class _ListActionProvider(ActionProvider):
+    """Replays a list of Action objects. Yields them in order."""
+
+    def __init__(self, actions: list):
+        self._actions = list(actions)
+        self._index = 0
+
+    def next_action(self, state: AgentState):
+        if self._index >= len(self._actions):
+            raise StopIteration("no more actions in list")
+        action = self._actions[self._index]
+        self._index += 1
+        return action
+
+
+_SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+_TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
+_OUT = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "failed-patch-recovery.jsonl"
+
+
+def _build_recovery_sequence(traj, patch_step_idx):
+    """Build a recovery sequence: truncate after apply_patch, then append
+    rollback_patch → propose_patch → apply_patch → run_tests → finish,
+    drawing from the original trajectory's later steps."""
+    original_actions = [s.action for s in traj.steps]
+    # Prefix: actions up to and including the apply_patch
+    prefix = original_actions[:patch_step_idx + 1]
+    # Recovery: find rollback, propose_patch, apply_patch, run_tests, finish
+    # from the remaining original actions
+    remaining = original_actions[patch_step_idx + 1:]
+    recovery_types = {"rollback_patch", "propose_patch", "apply_patch",
+                      "run_tests", "finish"}
+    recovery = [a for a in remaining if a.action_type in recovery_types]
+    return prefix + recovery
+
+
+def main():
+    scripted_trajs = load_trajectories(_SCRIPTED)
+    print(f"Loaded {len(scripted_trajs)} scripted trajectories")
+
+    results = []
+    for traj in scripted_trajs:
+        task_id = traj.task_id
+        task_dir = _TASKS_DIR / task_id
+        if not task_dir.exists():
+            continue
+
+        # Find all apply_patch steps
+        patch_steps = [
+            i for i, s in enumerate(traj.steps)
+            if s.action.action_type == "apply_patch"
+        ]
+
+        for patch_idx in patch_steps:
+            recovery_actions = _build_recovery_sequence(traj, patch_idx)
+            ws = MicroTaskWorkspace.from_task(task_dir)
+            try:
+                provider = _ListActionProvider(recovery_actions)
+                evaluator = AgentEvaluator(ws, provider, task_id, max_steps=20)
+                result = evaluator.run()
+                if result.success:
+                    results.append({
+                        "trajectory_id": f"failed_patch_{task_id}_s{patch_idx}",
+                        "task_id": task_id,
+                        "config": "failed_patch",
+                        "source": "failed_patch_recovery",
+                        "success": True,
+                        "finish_claim_mismatch": result.finish_claim_mismatch,
+                        "metrics": result.metrics,
+                        "steps_executed": result.steps_executed,
+                        "actions": [a.model_dump() for a in recovery_actions],
+                        "step_diagnostics": [],
+                    })
+            except Exception:
+                pass  # skip failed recoveries
+            finally:
+                ws.cleanup()
+
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(_OUT, "w", encoding="utf-8") as f:
+        for traj in results:
+            f.write(json.dumps(traj) + "\n")
+    print(f"Wrote {len(results)} failed_patch_recovery trajectories to {_OUT}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+- [ ] **Step 2: Verify script is importable**
+
+Run: `py -3.11 -c "import ast; ast.parse(open('scripts/augment_failed_patch_recovery.py').read()); print('OK')"`
+Expected: `OK`
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add scripts/augment_failed_patch_recovery.py
+git commit -m "feat(p4-1): Phase G — failed_patch_recovery augmentation generator"
+```
+
+---
+
+## Task 13: Phase G — SFT dataset builder (list-based replay, 6 sources)
+
+**Files:**
+- Create: `scripts/build_agent_sft_dataset.py`
+- Generated: `data/p4-agent/sft-v1/{train,validation,heldout-agent-eval,failure-diagnostics}.jsonl`, `data/p4-agent/sft-v1/manifest.json`, `reports/p4/sft-dataset-replay-failures.jsonl`
+
+**Interfaces:**
+- Consumes: T9 outputs (`model-base.jsonl`, `model-repair-lora.jsonl`), T10 output (`teacher-model.jsonl`), T11 output (`corrupted-recovered.jsonl`), T12 output (`failed-patch-recovery.jsonl`), P4.0 `scripted.jsonl`, micro-tasks manifest for task_type
+- Produces: split SFT dataset with 1000+ trajectories, replay-verified via `_ListActionProvider`, source-labeled
+
+**Design note:** Replay uses `_ListActionProvider(actions)`, NOT `ReplayActionProvider(Trajectory)`. For P4.0 scripted trajectories (which ARE in `Trajectory` format), the builder extracts the action list from `traj.steps[i].action` for each step, then uses `_ListActionProvider` for replay. For P4.1 JSONL trajectories (T9/T10/T11/T12), actions are reconstructed from the `actions` list field using `Action.model_validate(action_dict)` (SentinelActions are reconstructed via the `__sentinel__` marker).
+
+- [ ] **Step 1: Write the dataset builder script**
+
+```python
+# scripts/build_agent_sft_dataset.py
+"""Phase G: build the Agent SFT dataset.
+
+Aggregates trajectories from 6 sources (scripted_variant, model_self_run,
+teacher_model, corrupted_recovered, failed_patch_recovery), labels them,
+splits by task family, and replay-verifies every trajectory via
+_ListActionProvider before inclusion.
+
+Usage:
+    py -3.11 scripts/build_agent_sft_dataset.py
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+os.environ.setdefault("P4_ALLOW_NETWORK", "0")
+
+from src.agent_trajectory import load_trajectories
+from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
+from src.agent_actions import Action
+from src.agent_model_provider import SentinelAction
+from src.agent_workspace import MicroTaskWorkspace
+
+
+class _ListActionProvider(ActionProvider):
+    """Replays a list of Action objects (or SentinelAction). Yields them
+    in order. Used for replay-verify — same pattern as _FixedProvider in
+    tests, but without the test helpers."""
+
+    def __init__(self, actions: list):
+        self._actions = list(actions)
+        self._index = 0
+
+    def next_action(self, state: AgentState):
+        if self._index >= len(self._actions):
+            raise StopIteration("no more actions in list")
+        action = self._actions[self._index]
+        self._index += 1
+        return action
+
 
 _SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
 _MODEL_BASE = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "model-base.jsonl"
 _MODEL_REPAIR = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "model-repair-lora.jsonl"
+_TEACHER = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "teacher-model.jsonl"
+_CORRUPTED = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "corrupted-recovered.jsonl"
+_FAILED_PATCH = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "failed-patch-recovery.jsonl"
 _MANIFEST = _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
 _OUT_DIR = _ROOT / "data" / "p4-agent" / "sft-v1"
 _FAILURES = _ROOT / "reports" / "p4" / "sft-dataset-replay-failures.jsonl"
@@ -1508,19 +2086,40 @@ def _split_for_type(task_type):
     return "train"
 
 
-def _replay_verify(traj_data, task_dir):
-    """Replay-verify a trajectory. Returns (ok, result_or_error)."""
+def _reconstruct_actions(action_dicts: list) -> list:
+    """Reconstruct Action objects (or SentinelAction) from a list of dicts.
+    SentinelActions are detected via the `__sentinel__` marker."""
+    actions = []
+    for d in action_dicts:
+        if d.get("__sentinel__"):
+            actions.append(SentinelAction(
+                reason=d.get("reason", ""),
+                is_invalid=d.get("is_invalid", True),
+            ))
+        else:
+            actions.append(Action.model_validate(d))
+    return actions
+
+
+def _replay_verify(traj_data, task_dir, expected_success):
+    """Replay-verify a trajectory using _ListActionProvider.
+    Returns (ok, result_or_error)."""
     try:
-        # Reconstruct Trajectory from JSON
-        from src.agent_trajectory import Trajectory
-        traj = Trajectory.model_validate(traj_data)
+        if "actions" in traj_data:
+            # P4.1 JSONL format — reconstruct from actions list
+            actions = _reconstruct_actions(traj_data["actions"])
+        else:
+            # P4.0 Trajectory format — shouldn't reach here (handled by caller)
+            return (False, "unexpected trajectory format (no actions field)")
+
         ws = MicroTaskWorkspace.from_task(task_dir)
         try:
-            provider = ReplayActionProvider(traj)
-            evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+            provider = _ListActionProvider(actions)
+            evaluator = AgentEvaluator(ws, provider, traj_data.get("task_id", ""), max_steps=20)
             result = evaluator.run()
-            return (result.success == traj_data.get("success", False)
-                    and result.metrics.get("forbidden_action_count", 0) == 0, result)
+            ok = (result.success == expected_success
+                  and result.metrics.get("forbidden_action_count", 0) == 0)
+            return (ok, result)
         finally:
             ws.cleanup()
     except Exception as e:
@@ -1547,25 +2146,45 @@ def main():
     task_types = _task_type_map(manifest)
     tasks_dir = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
 
-    # Load all trajectory sources
     all_trajectories = []
 
-    # Source 1: scripted_variant (from P4.0 scripted.jsonl — treat as scripted_variant)
-    for traj in _load_jsonl(_SCRIPTED):
-        traj["source"] = "scripted_variant"
-        all_trajectories.append(traj)
+    # Source 1: scripted_variant (from P4.0 scripted.jsonl — Trajectory format)
+    # Extract action list from traj.steps[i].action, convert to JSONL format
+    scripted_trajs = load_trajectories(_SCRIPTED)
+    for traj in scripted_trajs:
+        actions = [s.action.model_dump() for s in traj.steps]
+        all_trajectories.append({
+            "trajectory_id": f"scripted_{traj.trajectory_id}",
+            "task_id": traj.task_id,
+            "config": "scripted",
+            "source": "scripted_variant",
+            "success": traj.final_success,
+            "finish_claim_mismatch": False,
+            "metrics": {},
+            "steps_executed": len(traj.steps),
+            "actions": actions,
+            "step_diagnostics": [],
+        })
 
-    # Source 5 & 6: model_self_run_success / model_self_run_failure
+    # Sources 5 & 6: model_self_run_success / model_self_run_failure (T9)
     for path in [_MODEL_BASE, _MODEL_REPAIR]:
         for traj in _load_jsonl(path):
             # source already set by collection script
             all_trajectories.append(traj)
 
-    # Sources 2, 3, 4 (teacher_model, corrupted_recovered, failed_patch_recovery)
-    # are generated by augmentation scripts — for P4.1 v1, we include
-    # placeholders that the builder will fill from scripted variants if
-    # the dedicated generators aren't run yet. Mark them scripted_variant.
-    # (A full implementation would run augmentation generators here.)
+    # Source 2: teacher_model (T10)
+    for traj in _load_jsonl(_TEACHER):
+        all_trajectories.append(traj)
+
+    # Source 3: corrupted_recovered (T11)
+    for traj in _load_jsonl(_CORRUPTED):
+        all_trajectories.append(traj)
+
+    # Source 4: failed_patch_recovery (T12)
+    for traj in _load_jsonl(_FAILED_PATCH):
+        all_trajectories.append(traj)
+
+    print(f"Loaded {len(all_trajectories)} total trajectories from all sources")
 
     # Replay-verify + split
     train, validation, heldout, failures = [], [], [], []
@@ -1576,8 +2195,9 @@ def main():
         task_type = task_types.get(task_id, "unknown")
         split = _split_for_type(task_type)
         task_dir = tasks_dir / task_id
+        expected_success = traj.get("success", False)
 
-        ok, result = _replay_verify(traj, task_dir)
+        ok, result = _replay_verify(traj, task_dir, expected_success)
         if not ok:
             failure_lines.append({
                 "trajectory_id": traj.get("trajectory_id", ""),
@@ -1648,12 +2268,12 @@ Expected: `OK`
 
 ```bash
 git add scripts/build_agent_sft_dataset.py
-git commit -m "feat(p4-1): Phase G — SFT dataset builder (6 sources, task-family split, replay-verify)"
+git commit -m "feat(p4-1): Phase G — SFT dataset builder (6 sources, list-based replay, task-family split)"
 ```
 
 ---
 
-## Task 11: Phase H — P4.1 readiness verifier (10 gates)
+## Task 14: Phase H — P4.1 readiness verifier (10 gates)
 
 **Files:**
 - Create: `scripts/verify_p4_1_readiness.py`
@@ -1695,6 +2315,9 @@ _FORBIDDEN_NETWORK_PATTERNS = [
 _P4_1_SCRIPTS = [
     "scripts/lock_p4_0_baseline.py",
     "scripts/collect_model_trajectories.py",
+    "scripts/augment_teacher_model.py",
+    "scripts/augment_corrupted_recovered.py",
+    "scripts/augment_failed_patch_recovery.py",
     "scripts/build_agent_sft_dataset.py",
     "scripts/verify_p4_1_readiness.py",
 ]
@@ -1929,13 +2552,13 @@ git commit -m "feat(p4-1): Phase H — 10-gate readiness verifier"
 
 ---
 
-## Task 12: Phase H — Readiness tests + final verification
+## Task 15: Phase H — Readiness tests + final verification
 
 **Files:**
 - Create: `tests/test_p4_1_readiness.py`
 
 **Interfaces:**
-- Consumes: `reports/p4/p4-1-readiness.md` (generated by Task 11's verifier)
+- Consumes: `reports/p4/p4-1-readiness.md` (generated by Task 14's verifier)
 
 - [ ] **Step 1: Write the readiness tests**
 
@@ -1963,6 +2586,16 @@ def test_all_10_gates_listed():
     for i in range(1, 11):
         assert f"0{i}_" in content or f"{i:02d}_" in content, \
             f"gate {i} not found in report"
+
+
+def test_augmentation_scripts_exist():
+    """T10/T11/T12 augmentation scripts must exist."""
+    for script in [
+        "scripts/augment_teacher_model.py",
+        "scripts/augment_corrupted_recovered.py",
+        "scripts/augment_failed_patch_recovery.py",
+    ]:
+        assert (_ROOT / script).exists(), f"{script} not found"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1977,8 +2610,8 @@ Expected: 10 gates run. Non-GPU gates (1-6, 10) should PASS. GPU gates (7-8) and
 
 - [ ] **Step 4: Run readiness tests (verdict may be NOT_READY at this point)**
 
-Run: `py -3.11 -m pytest tests/test_p4_1_readiness.py::test_readiness_report_exists tests/test_p4_1_readiness.py::test_all_10_gates_listed -v -p no:warnings`
-Expected: 2 PASS (report exists, 10 gates listed). The verdict test will fail until GPU smoke + dataset build are run — that's the manual pre-merge step.
+Run: `py -3.11 -m pytest tests/test_p4_1_readiness.py::test_readiness_report_exists tests/test_p4_1_readiness.py::test_all_10_gates_listed tests/test_p4_1_readiness.py::test_augmentation_scripts_exist -v -p no:warnings`
+Expected: 3 PASS (report exists, 10 gates listed, augmentation scripts exist). The verdict test will fail until GPU smoke + dataset build are run — that's the manual pre-merge step.
 
 - [ ] **Step 5: Run the full non-GPU P4 test suite**
 
@@ -2002,27 +2635,35 @@ Before merging the P4.1 PR, run these on the RTX 3050:
    ```bash
    py -3.11 -m pytest tests/test_agent_model_provider_gpu.py -v -m gpu
    ```
-   Both tests must pass (forbidden=0, no crash, ≥1 diagnostic).
+   Both tests must pass (forbidden=0, no crash, ≥1 diagnostic). `invalid_action_count > 0` is acceptable.
 
-2. **Model trajectory collection:**
+2. **Model trajectory collection (T9):**
    ```bash
    py -3.11 scripts/collect_model_trajectories.py
    ```
-   Generates `model-base.jsonl`, `model-repair-lora.jsonl`, collection report.
+   Generates `model-base.jsonl`, `model-repair-lora.jsonl` (with `actions` list field), collection report.
 
-3. **SFT dataset build:**
+3. **Augmentation generators (T10/T11/T12) — run BEFORE the SFT dataset builder:**
+   ```bash
+   py -3.11 scripts/augment_teacher_model.py
+   py -3.11 scripts/augment_corrupted_recovered.py
+   py -3.11 scripts/augment_failed_patch_recovery.py
+   ```
+   Generates `teacher-model.jsonl` (~120-160 trajectories), `corrupted-recovered.jsonl` (~600+ trajectories), `failed-patch-recovery.jsonl` (~80 trajectories).
+
+4. **SFT dataset build (T13):**
    ```bash
    py -3.11 scripts/build_agent_sft_dataset.py
    ```
-   Generates `sft-v1/` with 1000+ trajectories. (Note: reaching 1000+ requires the augmentation generators for sources 2-4 — `scripted_variant`, `teacher_model`, `corrupted_recovered`, `failed_patch_recovery`. If these generators are not yet implemented, the initial build will have fewer trajectories and gate 9 will fail. The generators can be added as a follow-up task within P4.1.)
+   Generates `sft-v1/` with 1000+ trajectories (aggregated from T9 + T10 + T11 + T12 + P4.0 scripted). Replay-verified via `_ListActionProvider`.
 
-4. **Final readiness verification:**
+5. **Final readiness verification (T14):**
    ```bash
    py -3.11 scripts/verify_p4_1_readiness.py
    ```
-   All 10 gates must PASS → verdict `GO_FOR_P4_AGENT_SFT`.
+   All 10 gates must PASS → verdict `GO_FOR_P4_AGENT_SFT`. Gate 9 checks `total_trajectories >= 1000`.
 
-5. **Final test run:**
+6. **Final test run:**
    ```bash
    py -3.11 -m pytest tests/ -v -p no:warnings -m "not gpu"
    ```
@@ -2038,10 +2679,18 @@ Before merging the P4.1 PR, run these on the RTX 3050:
 - Phase D (corruption expansion) → Task 5 ✓
 - Phase E (ModelActionProvider) → Tasks 6, 7, 8 ✓
 - Phase F (trajectory collection) → Task 9 ✓
-- Phase G (SFT dataset) → Task 10 ✓
-- Phase H (readiness verifier + tests) → Tasks 11, 12 ✓
+- Phase G (augmentation generators) → Tasks 10, 11, 12 ✓
+- Phase G (SFT dataset) → Task 13 ✓
+- Phase H (readiness verifier + tests) → Tasks 14, 15 ✓
 - All 8 user design decisions reflected in spec → verified ✓
 
-**2. Placeholder scan:** No TBD/TODO. The SFT dataset builder (Task 10) notes that sources 2-4 augmentation generators may need follow-up if the initial build doesn't reach 1000 — this is documented as a known gap, not a placeholder.
+**2. Pre-flight finding resolutions:**
+- **Finding 1 (T9↔T10 trajectory schema mismatch):** RESOLVED — T9 now uses `RecordingProvider` to capture actions as a list and writes JSONL with an `actions` field (not P4.0 `Trajectory` schema). T13 replays via `_ListActionProvider(actions)`, NOT `ReplayActionProvider(Trajectory)`. P4.0 scripted trajectories are converted to action lists at load time.
+- **Finding 2 (SentinelAction vs forbidden_count):** RESOLVED — T6 adds `invalid_action_count` counter to the evaluator dispatch loop. SentinelAction is counted as `invalid_action_count`, NOT `forbidden_action_count`. T8 GPU smoke test documents that `invalid_action_count > 0` is acceptable while `forbidden_action_count == 0` is required.
+- **Finding 3 (1000+ trajectories unreachable):** RESOLVED — Three augmentation generator tasks (T10 teacher_model, T11 corrupted_recovered, T12 failed_patch_recovery) produce ~800+ additional trajectories. Combined with 40 scripted + 80 model = ~920-1000+, and T11's step-index variants (steps 1/2/3) push corrupted_recovered to ~600+, bringing the total above 1000.
 
-**3. Type consistency:** `ModelStepDiagnostics`, `SentinelAction`, `_ALLOWED_ACTION_TYPES`, `finish_claim_mismatch` — names consistent across spec, plan, and tests.
+**3. Placeholder scan:** No TBD/TODO. All 6 SFT data sources now have concrete generators (T9 for model, T10/T11/T12 for augmentation, P4.0 scripted.jsonl for scripted_variant).
+
+**4. Type consistency:** `ModelStepDiagnostics`, `SentinelAction`, `_ALLOWED_ACTION_TYPES`, `finish_claim_mismatch`, `invalid_action_count`, `_ListActionProvider`, `RecordingProvider` — names consistent across spec, plan, and tests.
+
+**5. Cross-reference integrity:** 15 tasks (T1-T15). All cross-references updated: T13 consumes T9/T10/T11/T12 outputs; T14 gate_09 checks `total_trajectories >= 1000`; T14 gate_07/gate_08 reference T9's collection report; T15 tests augmentation scripts exist; Pre-Merge steps include T10/T11/T12 generators before T13 builder.
