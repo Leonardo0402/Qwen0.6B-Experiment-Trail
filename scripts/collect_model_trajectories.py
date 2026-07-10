@@ -79,6 +79,91 @@ def _load_task_ids():
     return [t["task_id"] for t in manifest["tasks"]]
 
 
+def _aggregate_metrics(
+    trajectories: list[dict],
+    crashes: int,
+    model_load_ok: bool = True,
+    adapter_load_ok: bool = False,
+    generation_ok: bool = True,
+) -> dict:
+    """Compute §2.3 smoke success metrics from collected trajectory data.
+
+    Aggregates per-trajectory ``step_diagnostics`` and ``metrics`` into the
+    11 required fields listed in roadmap §2.3:
+
+    - model_load_ok / adapter_load_ok / generation_ok (passed through)
+    - json_parse_rate / schema_valid_rate / safety_valid_rate /
+      action_type_valid_rate / arguments_valid_rate (from step_diagnostics)
+    - forbidden_action_count (summed from per-trajectory metrics)
+    - tool_dispatch_ok (1 - mean(tool_error_rate))
+    - max_step_stop_ok (count of trajectories that hit max_steps cleanly)
+    - runtime_crash_count (from ``crashes``)
+    """
+    # Collect all step_diagnostics across trajectories
+    all_diags: list[dict] = []
+    for traj in trajectories:
+        all_diags.extend(traj.get("step_diagnostics", []))
+
+    total_diags = len(all_diags)
+    if total_diags > 0:
+        json_parse_rate = sum(
+            1 for d in all_diags if d.get("json_parse_ok")
+        ) / total_diags
+        schema_valid_rate = sum(
+            1 for d in all_diags if d.get("schema_valid")
+        ) / total_diags
+        safety_valid_rate = sum(
+            1 for d in all_diags if d.get("safety_valid")
+        ) / total_diags
+        action_type_valid_rate = sum(
+            1 for d in all_diags if d.get("action_type_valid")
+        ) / total_diags
+        arguments_valid_rate = sum(
+            1 for d in all_diags if d.get("arguments_valid")
+        ) / total_diags
+    else:
+        json_parse_rate = 0.0
+        schema_valid_rate = 0.0
+        safety_valid_rate = 0.0
+        action_type_valid_rate = 0.0
+        arguments_valid_rate = 0.0
+
+    # forbidden_action_count: sum across trajectories
+    forbidden_action_count = sum(
+        t.get("metrics", {}).get("forbidden_action_count", 0) for t in trajectories
+    )
+
+    # tool_dispatch_ok: 1 - mean(tool_error_rate) across trajectories
+    tool_error_rates = [
+        t.get("metrics", {}).get("tool_error_rate", 0.0) for t in trajectories
+    ]
+    if tool_error_rates:
+        mean_tool_error_rate = sum(tool_error_rates) / len(tool_error_rates)
+    else:
+        mean_tool_error_rate = 0.0
+    tool_dispatch_ok = 1.0 - mean_tool_error_rate
+
+    # max_step_stop_ok: count of trajectories that hit max_steps and stopped cleanly
+    max_step_stop_ok = sum(
+        t.get("metrics", {}).get("max_step_exceeded_count", 0) for t in trajectories
+    )
+
+    return {
+        "model_load_ok": model_load_ok,
+        "adapter_load_ok": adapter_load_ok,
+        "generation_ok": generation_ok,
+        "json_parse_rate": json_parse_rate,
+        "schema_valid_rate": schema_valid_rate,
+        "safety_valid_rate": safety_valid_rate,
+        "action_type_valid_rate": action_type_valid_rate,
+        "arguments_valid_rate": arguments_valid_rate,
+        "forbidden_action_count": forbidden_action_count,
+        "tool_dispatch_ok": tool_dispatch_ok,
+        "max_step_stop_ok": max_step_stop_ok,
+        "runtime_crash_count": crashes,
+    }
+
+
 def _run_config(config, task_ids):
     trajectories = []
     crashes = 0
@@ -99,11 +184,11 @@ def _run_config(config, task_ids):
             "config": config["name"],
             "total_tasks": len(task_ids),
             "trajectories_written": 0,
-            "model_load_ok": False,
-            "adapter_load_ok": adapter_load_ok,
-            "generation_ok": False,
-            "crashes": len(task_ids),
-            "aggregate_metrics": {},
+            **_aggregate_metrics(
+                [], crashes=len(task_ids),
+                model_load_ok=False, adapter_load_ok=adapter_load_ok,
+                generation_ok=False,
+            ),
             "trajectories": [],
         }
 
@@ -140,10 +225,11 @@ def _run_config(config, task_ids):
         "config": config["name"],
         "total_tasks": len(task_ids),
         "trajectories_written": len(trajectories),
-        "model_load_ok": model_load_ok,
-        "adapter_load_ok": adapter_load_ok,
-        "generation_ok": len(trajectories) > 0,
-        "crashes": crashes,
+        **_aggregate_metrics(
+            trajectories, crashes=crashes,
+            model_load_ok=model_load_ok, adapter_load_ok=adapter_load_ok,
+            generation_ok=len(trajectories) > 0,
+        ),
         "trajectories": trajectories,
     }
 

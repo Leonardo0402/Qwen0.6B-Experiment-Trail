@@ -103,9 +103,15 @@ def _reconstruct_actions(action_dicts: list) -> list:
     return actions
 
 
-def _replay_verify(traj_data, task_dir, expected_success):
+def _replay_verify(traj_data, task_dir):
     """Replay-verify a trajectory using _ListActionProvider.
-    Returns (ok, result_or_error)."""
+    Returns (ok, result_or_error).
+
+    §2.5: success is derived from replay evidence, not from a pre-set expected
+    value. The only gate is safety: forbidden_action_count must be 0.
+    Trajectories that crash or have forbidden actions are rejected; all others
+    are accepted with success/finish_claim_mismatch/metrics from the replay result.
+    """
     try:
         if "actions" in traj_data:
             # P4.1 JSONL format — reconstruct from actions list
@@ -119,8 +125,7 @@ def _replay_verify(traj_data, task_dir, expected_success):
             provider = _ListActionProvider(actions)
             evaluator = AgentEvaluator(ws, provider, traj_data.get("task_id", ""), max_steps=20)
             result = evaluator.run()
-            ok = (result.success == expected_success
-                  and result.metrics.get("forbidden_action_count", 0) == 0)
+            ok = result.metrics.get("forbidden_action_count", 0) == 0
             return (ok, result)
         finally:
             ws.cleanup()
@@ -152,11 +157,8 @@ def main():
 
     # Source 1: scripted_variant (from P4.0 scripted.jsonl — Trajectory format)
     # Extract action list from traj.steps[i].action, convert to JSONL format.
-    # NOTE: traj.final_success may be False for tasks affected by CRLF/LF
-    # mismatch in P4.0. With the CRLF normalization fix in agent_tools.py,
-    # replaying these scripted actions now correctly succeeds. We set
-    # success=True because scripted trajectories are designed as correct
-    # solutions — the stored final_success=False was a P4.0 bug.
+    # §2.5: success is NOT assigned here — it is derived from replay evidence
+    # below. The initial values are placeholders overwritten after replay.
     scripted_trajs = load_trajectories(_SCRIPTED)
     for traj in scripted_trajs:
         actions = [s.action.model_dump() for s in traj.steps]
@@ -165,9 +167,9 @@ def main():
             "task_id": traj.task_id,
             "config": "scripted",
             "source": "scripted_variant",
-            "success": True,
-            "finish_claim_mismatch": False,
-            "metrics": {},
+            "success": False,  # placeholder — overwritten by replay
+            "finish_claim_mismatch": False,  # placeholder
+            "metrics": {},  # placeholder
             "steps_executed": len(traj.steps),
             "actions": actions,
             "step_diagnostics": [],
@@ -202,9 +204,8 @@ def main():
         task_type = task_types.get(task_id, "unknown")
         split = _split_for_type(task_type)
         task_dir = tasks_dir / task_id
-        expected_success = traj.get("success", False)
 
-        ok, result = _replay_verify(traj, task_dir, expected_success)
+        ok, result = _replay_verify(traj, task_dir)
         if not ok:
             failure_lines.append({
                 "trajectory_id": traj.get("trajectory_id", ""),
@@ -213,6 +214,10 @@ def main():
             })
             continue
 
+        # §2.5: success/finish_claim_mismatch/metrics derived from replay evidence
+        traj["success"] = result.success
+        traj["finish_claim_mismatch"] = result.finish_claim_mismatch
+        traj["metrics"] = result.metrics
         traj["split"] = split
         traj["task_type"] = task_type
 
@@ -250,7 +255,15 @@ def main():
     }
 
     dataset_manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
+        # §2.1: Dataset accounting invariant
+        #   total_generated == accepted_count + rejected_count + quarantined_count
+        #   accepted_count  == train_count + validation_count + heldout_count
+        "total_generated": len(all_trajectories),
+        "accepted_count": len(train) + len(validation) + len(heldout),
+        "rejected_count": len(failure_lines),
+        "quarantined_count": len(failures),
+        # Legacy fields (kept for compatibility, derived from above)
         "total_trajectories": len(train) + len(validation) + len(heldout) + len(failures),
         "train_count": len(train),
         "validation_count": len(validation),
@@ -277,6 +290,8 @@ def main():
             "failure-diagnostics": {
                 "sha256": _sha256_of_file(split_files["failure-diagnostics"]),
                 "file": "failure-diagnostics.jsonl",
+                "classification": "quarantined",
+                "description": "model_self_run_failure trajectories — valid replay, excluded from training",
             },
         },
         "sources": sorted(SOURCES),

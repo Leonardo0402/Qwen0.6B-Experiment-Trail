@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -161,6 +162,8 @@ def main():
 
     _OUT.parent.mkdir(parents=True, exist_ok=True)
     total_count = 0
+    rejected_count = 0
+    gen_timestamp = datetime.now(timezone.utc).isoformat()
 
     # Open output file in write mode (truncate any previous content)
     with open(_OUT, "w", encoding="utf-8") as fout:
@@ -194,6 +197,7 @@ def main():
                     if result.success:
                         task_successes += 1
                         total_count += 1
+                        task_type = type_map.get(task_id, "unknown")
                         traj_data = {
                             "trajectory_id": f"teacher_{task_id}_v{variant_idx}",
                             "task_id": task_id,
@@ -206,34 +210,46 @@ def main():
                             "actions": [a.model_dump() for a in all_actions],
                             "step_diagnostics": [],
                             "teacher_metadata": {
-                                "model": "scripted_replay",
-                                "prompt_template": None,
-                                "generation_config": {},
+                                # §2.4: All 11 required provenance fields
+                                "source_label": "teacher_model",
+                                "generator_identity": "augment_teacher_model.py",
+                                "generator_version": "P4.1",
+                                "model_identifier": "scripted_replay",
+                                "prompt_template_version": None,  # no prompt — scripted replay
+                                "generation_config": {},  # no generation config — scripted replay
+                                "seed": None,  # deterministic — no seed
+                                "generation_timestamp": gen_timestamp,
+                                "raw_artifact_sha256": "",  # filled below
                                 "replay_result": {
                                     "passed": result.success,
                                     "metrics": result.metrics,
                                     "finish_claim_mismatch": result.finish_claim_mismatch,
                                 },
                                 "acceptance_status": "accepted",
+                                "task_family": task_type,
+                                "accepted_count_so_far": total_count,
+                                "rejected_count_so_far": rejected_count,
                             },
                         }
                         # SHA256 of trajectory content (before adding sha256 field)
                         content_bytes = json.dumps(
                             traj_data, sort_keys=True
                         ).encode("utf-8")
-                        traj_data["teacher_metadata"]["sha256"] = (
+                        traj_data["teacher_metadata"]["raw_artifact_sha256"] = (
                             hashlib.sha256(content_bytes).hexdigest()
                         )
                         fout.write(json.dumps(traj_data) + "\n")
                         fout.flush()
+                    else:
+                        rejected_count += 1
                 except Exception:
-                    pass
+                    rejected_count += 1
                 finally:
                     ws.cleanup()
 
             print(f"  [{ti+1}/{len(scripted_trajs)}] {task_id}: {task_successes} variants (total: {total_count})", flush=True)
 
-    print(f"Wrote {total_count} teacher_model trajectories to {_OUT}", flush=True)
+    print(f"Wrote {total_count} teacher_model trajectories to {_OUT} (rejected: {rejected_count})", flush=True)
 
 
 if __name__ == "__main__":

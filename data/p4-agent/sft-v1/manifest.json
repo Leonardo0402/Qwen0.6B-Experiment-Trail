@@ -1,5 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "total_generated": 1350,
+  "accepted_count": 1270,
+  "rejected_count": 0,
+  "quarantined_count": 80,
   "total_trajectories": 1350,
   "train_count": 920,
   "validation_count": 130,
@@ -16,26 +20,28 @@
         "repair_after_pytest",
         "update_helper"
       ],
-      "sha256": "086ee3fb14254a8ba62ad9dc2b0ce60e740df3c987c3764094f5ee9a73159eec",
+      "sha256": "1912b8ad678f98ea9be39008f88fc6c04f90e5647e9f3c85458a0ca2f74e5c8b",
       "file": "train.jsonl"
     },
     "validation": {
       "task_types": [
         "recover_from_failed_patch"
       ],
-      "sha256": "a7105b4055771d3cc5e1e19f3080c922853d69d86fb06a09f2c0c16ac392ecdd",
+      "sha256": "f52b5f70221cd3e3a927319befb5eb6c163abaae2ed8ba5b5ec044e780cf60b1",
       "file": "validation.jsonl"
     },
     "heldout-agent-eval": {
       "task_types": [
         "avoid_editing_tests"
       ],
-      "sha256": "0262ada7f6a880e9bceb2450bdab2aa399c8d73446038ccac58f1124464fa842",
+      "sha256": "84310108e78e0f5cfb83fd7979660115939ece747cab403cf6d6fd149de75597",
       "file": "heldout-agent-eval.jsonl"
     },
     "failure-diagnostics": {
       "sha256": "77f7d3f48790a5975458533b379c314aae3aec6f014472a6fad6f8d7d711f538",
-      "file": "failure-diagnostics.jsonl"
+      "file": "failure-diagnostics.jsonl",
+      "classification": "quarantined",
+      "description": "model_self_run_failure trajectories \u2014 valid replay, excluded from training"
     }
   },
   "sources": [

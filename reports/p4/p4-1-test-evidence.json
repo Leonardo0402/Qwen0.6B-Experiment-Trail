@@ -1,0 +1,20 @@
+{
+  "exact_command": "C:\\Users\\20385\\AppData\\Local\\Programs\\Python\\Python311\\python.exe -m pytest tests/ -p no:warnings --tb=no -q -m \"not gpu\" --timeout=120 --ignore=tests/test_data_pipeline.py --ignore=tests/test_p3_readiness_gate.py --junit-xml=C:\\Users\\20385\\AppData\\Local\\Temp\\pytest_junit_du04vmi5.xml",
+  "test_count": 1285,
+  "pass_count": 1284,
+  "fail_count": 0,
+  "skip_count": 1,
+  "warning_count": 0,
+  "error_count": 0,
+  "runtime_seconds": 1074.17,
+  "environment": {
+    "python": "3.11.7",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "machine": "AMD64"
+  },
+  "commit_sha": "071ab2a",
+  "ci_status": {
+    "local": "completed",
+    "github_ci": "not run (local execution)"
+  }
+}
