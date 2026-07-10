@@ -241,35 +241,43 @@ def _validate_patch_preconditions(
     file_path: str,
     old_text: str,
     expected_before_sha256: str | None,
-) -> tuple[bytes, str, str | None, str | None]:
+) -> tuple[bytes, str, str | None, str | None, str]:
     """Shared preconditions for ``tool_apply_patch`` and ``tool_propose_patch``.
 
-    Returns ``(content_bytes, before_sha256, error, content_str)``. When
-    ``error`` is not None the caller must fail without modifying the file
-    and ``content_str`` will be None.
+    Returns ``(content_bytes, before_sha256, error, content_str,
+    normalized_old_text)``. When ``error`` is not None the caller must fail
+    without modifying the file and ``content_str`` will be None.
+    ``normalized_old_text`` has its line endings adjusted to match the file's
+    style (CRLF vs LF) so that exact-string matching succeeds.
     """
     abs_path = workspace.resolve_path(file_path)
     content_bytes = abs_path.read_bytes()
     before_sha256 = hashlib.sha256(content_bytes).hexdigest()
 
     if b"\x00" in content_bytes:
-        return content_bytes, before_sha256, "binary file rejected", None
+        return content_bytes, before_sha256, "binary file rejected", None, old_text
 
     if expected_before_sha256 is not None and expected_before_sha256 != before_sha256:
-        return content_bytes, before_sha256, "SHA mismatch", None
+        return content_bytes, before_sha256, "SHA mismatch", None, old_text
 
     try:
         content_str = content_bytes.decode("utf-8")
     except UnicodeDecodeError:
-        return content_bytes, before_sha256, "binary file rejected (non-UTF-8)", None
+        return content_bytes, before_sha256, "binary file rejected (non-UTF-8)", None, old_text
+
+    # Normalize old_text line endings to match the file's style
+    if "\r\n" in content_str and "\r\n" not in old_text:
+        old_text = old_text.replace("\n", "\r\n")
+    elif "\r\n" not in content_str and "\r\n" in old_text:
+        old_text = old_text.replace("\r\n", "\n")
 
     occurrences = content_str.count(old_text)
     if occurrences == 0:
-        return content_bytes, before_sha256, "old_text not found", None
+        return content_bytes, before_sha256, "old_text not found", None, old_text
     if occurrences > 1:
-        return content_bytes, before_sha256, "old_text not unique", None
+        return content_bytes, before_sha256, "old_text not unique", None, old_text
 
-    return content_bytes, before_sha256, None, content_str
+    return content_bytes, before_sha256, None, content_str, old_text
 
 
 def tool_apply_patch(
@@ -292,7 +300,7 @@ def tool_apply_patch(
     if action_id is None:
         action_id = f"patch_{uuid4().hex[:8]}"
 
-    content_bytes, before_sha256, error, content_str = _validate_patch_preconditions(
+    content_bytes, before_sha256, error, content_str, old_text = _validate_patch_preconditions(
         workspace, file_path, old_text, expected_before_sha256
     )
 
@@ -356,7 +364,7 @@ def tool_propose_patch(
     Same validation rules as ``tool_apply_patch``. Does not modify the
     file, does not create a backup, does not write an audit record.
     """
-    content_bytes, before_sha256, error, content_str = _validate_patch_preconditions(
+    content_bytes, before_sha256, error, content_str, old_text = _validate_patch_preconditions(
         workspace, file_path, old_text, expected_before_sha256
     )
 
@@ -608,10 +616,9 @@ def tool_inspect_error(
     if error_source == "last_test":
         if last_test_observation is None:
             raise ValueError("no prior run_tests observation")
-        return ErrorObservation(
-            source="last_test",
-            content=last_test_observation.stderr,
-        )
+        raw = last_test_observation.stdout + "\n" + last_test_observation.stderr
+        capped = raw[:8192]
+        return ErrorObservation(source="last_test", content=capped)
     elif error_source == "last_patch":
         if last_patch_observation is None:
             raise ValueError("no prior patch observation")

@@ -1,243 +1,173 @@
-# Task 10 Brief: Canonical Verified Sample Pool
+## Task 10: Phase G — teacher_model augmentation generator
 
-## Context
-- Project: e:\agent\Qwen\qwen3-code-lab
-- Branch: feat/p3-capability-expansion-v2 (Tasks 1-9 complete)
-- Plan: .superpowers/sdd/p3-plan.md (Global Constraint #10; Amendment A6)
-- Task 9 produced `data/p3-curriculum/family-partition.json` with:
-  - p3_train_new: 219 families (from test split, tagged `p3_train`)
-  - p3_train_replay: 206 families (from p2_train, tagged `p3_train_replay`)
+**Files:**
+- Create: `scripts/augment_teacher_model.py`
 
-## Goal
+**Interfaces:**
+- Consumes: P4.0 `scripted.jsonl` (40 trajectories as `Trajectory` objects), micro-tasks manifest (for task_type), `AgentEvaluator`, `_ListActionProvider` (list-based replay, defined inline)
+- Produces: `data/p4-agent/trajectories-v1/teacher-model.jsonl` with ~120-160 trajectories (same JSONL format as T9) — generated at runtime, NOT committed
 
-Build two new files:
-1. `src/sample_pool.py` — SamplePool class (load, dedup, index, cap, query)
-2. `scripts/build_sample_pool.py` — orchestrator that builds the pool from sources
+**Concept:** The "teacher" is a scripted trajectory's action sequence applied to a DIFFERENT task of the same task_type (cross-task transfer). For each scripted trajectory, apply its action sequence to 3-4 other tasks of the same task_type. If the replay succeeds (tests pass), it's a `teacher_model` trajectory. If it fails, skip it. This multiplies the 40 scripted trajectories by ~3-4x → ~120-160 teacher_model trajectories.
 
-And produce one new data file:
-3. `data/p3-curriculum/canonical-pool.jsonl` — the deduplicated, capped pool
+**Global Constraints:**
+1. ONLY create `scripts/augment_teacher_model.py`. Do NOT touch any source files in `src/`.
+2. `src/agent_trajectory.py` is FROZEN — do not modify.
+3. The script does NOT require GPU (it uses `_ListActionProvider` for replay, no model inference). However, only verify syntax via `ast.parse` in this environment. The actual run happens before PR merge.
+4. `_ListActionProvider` goes INSIDE the script file, NOT in a separate module.
+5. No emojis, no incidental docstrings beyond what's in the brief code, no refactors.
+6. Use `py -3.11` for all Python commands.
 
-Plus one manifest:
-4. `data/p3-curriculum/canonical-pool-manifest.json` — pool statistics
+**Verified dependencies (pre-flight):**
+- `load_trajectories(path: Path) -> list[Trajectory]` — exists at src/agent_trajectory.py:188
+- `Trajectory` has `.task_id: str` (line 87) and `.steps: list[TrajectoryStep]`
+- `TrajectoryStep` has `.action: Action` (line 54)
+- `Trajectory` validator requires last step to be `finish` action (line 120) — so _ListActionProvider will always yield a finish action
+- `scripted.jsonl` exists at data/p4-agent/trajectories-v0/scripted.jsonl
+- `Action` is in src/agent_actions.py (line 260, Annotated union alias)
+- `AgentEvaluator`, `ActionProvider`, `AgentState` — all in src/agent_evaluator.py
+- `MicroTaskWorkspace.from_task(task_dir)` — exists
 
-Plus tests:
-5. `tests/test_sample_pool.py` — unit tests for SamplePool
-6. `tests/test_build_sample_pool.py` — integration tests for the orchestrator
-
-## Pool sources (binding per Amendment A6 — NO direct Stage manifest concatenation)
-
-### Source 1: P2 Replay Samples (from 206 replay families)
-Load from these P2 stage train.jsonl files (DO NOT load stage3-repair-v3 — it's a remix):
-- `data/p2-curriculum/stage1-code/train.jsonl` (84 samples)
-- `data/p2-curriculum/stage2-boundary/train.jsonl` (280 samples)
-- `data/p2-curriculum/stage3-repair/train.jsonl` (560 samples)
-
-**Filter**: only include samples whose `family_id` is in the 206 replay families
-(from `data/p3-curriculum/family-partition.json::p3_train_replay.family_ids`).
-This EXCLUDES the 18 quarantined p2_train families.
-
-### Source 2: P3 New Train Samples (from 219 train_new families)
-Load from `data/external/mbpp/verified/test.jsonl` (365 samples total, but only 219
-belong to train_new families).
-
-**Filter**: only include samples whose `family_id` is in the 219 train_new families
-(from `data/p3-curriculum/family-partition.json::p3_train_new.family_ids`).
-
-These are raw code_generation samples with `variant_type=None` (needs normalization).
-
-## variant_type Normalization (binding)
-
-The P2 samples don't have `variant_type` set (it was added in Task 2). The pool
-must normalize variant_type for EVERY sample based on:
-
-| Condition | variant_type |
-|---|---|
-| `task_type == "code_generation"` AND `"boundary" in skill_tags` OR `sample_id` ends with `_boundary` | `"boundary"` |
-| `task_type == "code_generation"` AND NOT boundary | `"code"` |
-| `task_type == "static_repair"` | `"static_repair"` |
-| `task_type == "execution_repair"` | `"execution_repair"` |
-
-Also extract `bug_type` from `sample_id` using regex `.*_(sr|er)_(.+)$` → group 2.
-If no match, `bug_type = None`.
-
-For P3 new train samples (from verified MBPP): set `variant_type = "code"`,
-`bug_type = None`, `source_split = "test"`.
-
-Use `sample.model_copy(update={"variant_type": ..., "bug_type": ...})` to set fields.
-
-## Pool construction pipeline (binding per Amendment A6)
-
-```
-1. Load all source samples (P2 stages + P3 verified)
-2. Filter to partition families (206 replay + 219 new = 425 families)
-3. Normalize variant_type + bug_type on every sample
-4. Deduplicate by sample_id (first occurrence wins; log duplicates)
-5. Index by (family_id, variant_type, bug_type)
-6. Apply per-family contribution cap (default=7, configurable via --cap)
-   - If a family has > cap samples, keep the first `cap` by sample_id ascending
-   - Log capped families and excess counts
-7. Write canonical-pool.jsonl (one Sample per line, sorted by sample_id)
-8. Write canonical-pool-manifest.json (statistics)
+**Pre-flight Correction 1 (SentinelAction import):**
+The original plan code had `from src.agent_actions import Action, SentinelAction`. This is WRONG: `SentinelAction` is defined in `src/agent_model_provider.py`, NOT in `src/agent_actions.py`. Furthermore, `SentinelAction` is NOT used anywhere in the script body (dead import). Correction: import ONLY `Action` from `src.agent_actions`:
+```python
+from src.agent_actions import Action
 ```
 
-## Per-family cap (binding)
+- [ ] **Step 1: Write the augmentation script**
 
-Default cap = 7. This means at most 7 samples per family in the pool.
-Rationale: 425 families × 7 = 2975 (within 2300-3100 capacity estimate).
-Actual yield will be lower because not all families have 7 variants.
-
-The cap is a MAX, not a MIN. Families with fewer samples are included as-is.
-Families with more than `cap` samples have excess samples DROPPED (not duplicated).
-
-## Output: data/p3-curriculum/canonical-pool.jsonl
-
-One Sample JSON per line, sorted by `sample_id` ascending. Each sample is a
-complete Sample object with `variant_type` and `bug_type` set.
-
-## Output: data/p3-curriculum/canonical-pool-manifest.json
-
-```json
-{
-  "schema_version": 1,
-  "generated_at": "<ISO 8601 UTC>",
-  "generator": "build_sample_pool.py",
-  "sources": {
-    "p2_stage1_code": {"path": "data/p2-curriculum/stage1-code/train.jsonl", "loaded": 84, "after_filter": "<count>"},
-    "p2_stage2_boundary": {"path": "data/p2-curriculum/stage2-boundary/train.jsonl", "loaded": 280, "after_filter": "<count>"},
-    "p2_stage3_repair": {"path": "data/p2-curriculum/stage3-repair/train.jsonl", "loaded": 560, "after_filter": "<count>"},
-    "p3_verified_test": {"path": "data/external/mbpp/verified/test.jsonl", "loaded": 365, "after_filter": 219}
-  },
-  "total_loaded": "<sum of loaded>",
-  "total_after_family_filter": "<sum of after_filter>",
-  "total_after_dedup": "<count after removing duplicate sample_ids>",
-  "duplicates_removed": "<count>",
-  "total_after_cap": "<final count>",
-  "families_capped": "<count of families that had samples dropped>",
-  "samples_dropped_by_cap": "<count>",
-  "per_family_cap": 7,
-  "family_count": 425,
-  "variant_distribution": {
-    "code": "<count>",
-    "boundary": "<count>",
-    "static_repair": "<count>",
-    "execution_repair": "<count>"
-  },
-  "bug_type_distribution": {"<bug_type>": "<count>", ...},
-  "family_distribution": {
-    "min_samples_per_family": "<int>",
-    "max_samples_per_family": "<int>",
-    "mean_samples_per_family": "<float>",
-    "median_samples_per_family": "<float>"
-  },
-  "pool_sha256": "<SHA256 of canonical-pool.jsonl>"
-}
-```
-
-## SamplePool class (src/sample_pool.py)
+Create `scripts/augment_teacher_model.py` with EXACTLY this content (Correction 1 applied — `SentinelAction` removed from import):
 
 ```python
-class SamplePool:
-    """Canonical verified sample pool with dedup, index, and per-family cap."""
+# scripts/augment_teacher_model.py
+"""Phase G: teacher_model augmentation generator.
 
-    def __init__(self):
-        self._samples: list[Sample] = []
-        self._index: dict[str, list[int]] = {}  # sample_id -> [positions]
-        self._family_index: dict[str, list[int]] = {}  # family_id -> [positions]
+For each scripted trajectory, applies its action sequence to 3-4 other
+tasks of the same task_type (cross-task transfer). If replay succeeds
+(tests pass), the trajectory is kept as a `teacher_model` trajectory.
 
-    def add(self, sample: Sample) -> bool:
-        """Add a sample. Returns True if added, False if duplicate sample_id."""
+Output: data/p4-agent/trajectories-v1/teacher-model.jsonl
 
-    def dedup(self) -> int:
-        """Remove duplicates by sample_id (keep first). Returns count removed."""
+Usage:
+    py -3.11 scripts/augment_teacher_model.py
+"""
+from __future__ import annotations
 
-    def normalize_variant_type(self) -> int:
-        """Set variant_type + bug_type on all samples. Returns count normalized."""
+import json
+import os
+import sys
+from pathlib import Path
 
-    def apply_family_cap(self, cap: int = 7) -> int:
-        """Cap samples per family. Returns count dropped."""
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+os.environ.setdefault("P4_ALLOW_NETWORK", "0")
 
-    def filter_families(self, family_ids: set[str]) -> int:
-        """Keep only samples whose family_id is in the set. Returns count kept."""
+from src.agent_trajectory import load_trajectories
+from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
+from src.agent_actions import Action
+from src.agent_workspace import MicroTaskWorkspace
 
-    def to_jsonl(self, path: Path) -> None:
-        """Write samples sorted by sample_id ascending."""
 
-    @classmethod
-    def from_jsonl(cls, path: Path) -> "SamplePool":
-        """Load from JSONL file."""
+class _ListActionProvider(ActionProvider):
+    """Replays a list of Action objects (or SentinelAction). Yields them in
+    order. Used for replay-verify in T10/T11/T12/T13."""
 
-    def stats(self) -> dict:
-        """Return statistics dict for manifest."""
+    def __init__(self, actions: list):
+        self._actions = list(actions)
+        self._index = 0
 
-    def __len__(self) -> int:
-        return len(self._samples)
+    def next_action(self, state: AgentState):
+        if self._index >= len(self._actions):
+            raise StopIteration("no more actions in list")
+        action = self._actions[self._index]
+        self._index += 1
+        return action
 
-    def __iter__(self):
-        return iter(self._samples)
+
+_SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+_MANIFEST = _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
+_TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
+_OUT = _ROOT / "data" / "p4-agent" / "trajectories-v1" / "teacher-model.jsonl"
+
+
+def _load_manifest():
+    return json.loads(_MANIFEST.read_text(encoding="utf-8"))
+
+
+def _task_type_map(manifest):
+    return {t["task_id"]: t["task_type"] for t in manifest["tasks"]}
+
+
+def _tasks_by_type(manifest):
+    by_type: dict[str, list[str]] = {}
+    for t in manifest["tasks"]:
+        by_type.setdefault(t["task_type"], []).append(t["task_id"])
+    return by_type
+
+
+def main():
+    manifest = _load_manifest()
+    type_map = _task_type_map(manifest)
+    by_type = _tasks_by_type(manifest)
+
+    scripted_trajs = load_trajectories(_SCRIPTED)
+    print(f"Loaded {len(scripted_trajs)} scripted trajectories")
+
+    results = []
+    for traj in scripted_trajs:
+        src_task_id = traj.task_id
+        src_type = type_map.get(src_task_id, "unknown")
+        # Candidate target tasks: same type, different task_id
+        candidates = [tid for tid in by_type.get(src_type, []) if tid != src_task_id]
+        # Apply to up to 4 other tasks of the same type
+        for target_task_id in candidates[:4]:
+            task_dir = _TASKS_DIR / target_task_id
+            if not task_dir.exists():
+                continue
+            ws = MicroTaskWorkspace.from_task(task_dir)
+            try:
+                actions = [s.action for s in traj.steps]
+                provider = _ListActionProvider(actions)
+                evaluator = AgentEvaluator(ws, provider, target_task_id, max_steps=20)
+                result = evaluator.run()
+                if result.success:
+                    results.append({
+                        "trajectory_id": f"teacher_{src_task_id}_{target_task_id}",
+                        "task_id": target_task_id,
+                        "config": "teacher",
+                        "source": "teacher_model",
+                        "success": True,
+                        "finish_claim_mismatch": result.finish_claim_mismatch,
+                        "metrics": result.metrics,
+                        "steps_executed": result.steps_executed,
+                        "actions": [a.model_dump() for a in actions],
+                        "step_diagnostics": [],
+                    })
+            except Exception:
+                pass  # skip failed transfers
+            finally:
+                ws.cleanup()
+
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    with open(_OUT, "w", encoding="utf-8") as f:
+        for traj in results:
+            f.write(json.dumps(traj) + "\n")
+    print(f"Wrote {len(results)} teacher_model trajectories to {_OUT}")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-## Tests (binding — minimum 8 tests)
+- [ ] **Step 2: Verify script is importable**
 
-### tests/test_sample_pool.py (unit tests for SamplePool)
-1. `test_add_and_dedup` — add samples with duplicate sample_id, dedup removes the right count
-2. `test_normalize_variant_type_code` — code_generation without boundary → variant_type="code"
-3. `test_normalize_variant_type_boundary` — code_generation with "boundary" in skill_tags → variant_type="boundary"
-4. `test_normalize_variant_type_static_repair` — static_repair → variant_type="static_repair" + bug_type extracted
-5. `test_normalize_variant_type_execution_repair` — execution_repair → variant_type="execution_repair" + bug_type extracted
-6. `test_apply_family_cap` — family with 10 samples, cap=7, drops 3
-7. `test_filter_families` — keeps only samples in the family set
-8. `test_to_jsonl_sorted` — output is sorted by sample_id
+Run: `py -3.11 -c "import ast; ast.parse(open('scripts/augment_teacher_model.py').read()); print('OK')"`
+Expected: `OK`
 
-### tests/test_build_sample_pool.py (integration tests)
-9. `test_pool_loads_from_all_sources` — pool has samples from P2 stages + P3 verified
-10. `test_pool_no_duplicate_sample_ids` — all sample_ids unique
-11. `test_pool_variant_distribution` — all 4 variant types present (code/boundary/static/exec)
-12. `test_pool_family_cap_enforced` — no family has > 7 samples
-13. `test_pool_manifest_correct` — manifest counts match actual pool
-14. `test_pool_only_partition_families` — no family outside the 425 partition families
+- [ ] **Step 3: Commit**
 
-## Hard gates (binding — abort with exit 1 if any fail)
+```bash
+git add scripts/augment_teacher_model.py
+git commit -m "feat(p4-1): Phase G — teacher_model augmentation generator"
+```
 
-1. Pool total >= 400 (minimum viable for training)
-2. All variant_type values are in {code, boundary, static_repair, execution_repair}
-3. No duplicate sample_ids
-4. No family has > cap samples
-5. All families in pool are in the 425 partition families
-6. No quarantined family in pool
-
-## Existing infrastructure (use these — do NOT reimplement)
-1. `src/schemas.py::Sample` — use `Sample.from_json_line(line)` and `sample.to_json_line()` for I/O
-2. `data/p3-curriculum/family-partition.json` — partition family lists (read-only)
-3. P2 stage manifests in `data/p2-curriculum/stage*/manifest.json` (for SHA verification if needed)
-4. `data/external/mbpp/verified/test.jsonl` — P3 verified samples
-
-## Important notes
-- Use `from __future__ import annotations` at top of all .py files
-- The pool is the INPUT to Tasks 11/12. Do NOT sample at ratios here — just build the pool.
-- The pool is NOT immutable (unlike frozen v3). It can be rebuilt if sources change.
-- If actual yield < 2300, document it in the manifest. Do NOT duplicate samples to pad.
-- The `canonical-pool.jsonl` file can be large (~1000+ lines). Use streaming I/O.
-- For SHA computation: read the entire file as bytes, compute SHA256.
-
-## Commit message
-`feat(p3): build canonical verified sample pool (dedup + index + per-family cap)`
-
-## Deviations / clarifications
-
-1. **P3 new train samples are code-only**. The verified MBPP samples for the 219
-   train_new families are raw code_generation (no boundary/repair variants).
-   Variant generation for P3 new train is OUT OF SCOPE for Task 10. The pool
-   will have code samples from P3 new train and all 4 variant types from P2 replay.
-   If the variant distribution is skewed (too few static/exec), Tasks 11/12 will
-   document the deviation and the Readiness Gate (Task 14) will assess sufficiency.
-
-2. **stage3-repair-v3 is EXCLUDED**. It's a remix of stage1+2+3 samples and would
-   introduce duplicates. The canonical pool uses the ORIGINAL stage outputs only.
-
-3. **Duplicate sample_ids across stages**. Some samples might appear in multiple
-   stages (e.g., a code sample in stage1 might also appear in stage3-repair's
-   code_generation subset). Dedup by sample_id keeps the FIRST occurrence (stage1
-   before stage2 before stage3) and logs the duplicates.
-
-4. **Per-family cap is a MAX, not a MIN**. Families with 1-2 samples are included
-   as-is. The cap only drops excess samples from families with > 7.
+---

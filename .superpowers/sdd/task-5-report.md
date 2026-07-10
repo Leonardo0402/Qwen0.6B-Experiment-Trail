@@ -1,154 +1,244 @@
-# Task 5 Report: Cross-Split Semantic Dedup Audit
+# Task 5 Report — Phase D: Corruption test expansion (all 5 CorruptionType values)
 
-## Status: DONE (v2.1 rework — re-run on pad-then-verify verified set)
+**Status:** DONE
 
-The cross-split semantic dedup audit script + tests + 3 output files are
-complete. The audit concludes **PASS** with `unresolved=0` (all
-high-similarity pairs auto-quarantined per P3 plan Global Constraint
-#15 / v2.1 Amendment A9), satisfying the hard requirement that must be
-met before the P3 Train/Val/Frozen partition (Task 9) can proceed.
+**Commit SHA:** `439c0977a159c704bcb13ceb17140fa42c2bb9c0`
 
-## Work Completed
+**BASE (T4 HEAD):** `50ec3af0c75a8cf147d07c2933bcfea59222c325`
 
-1. Wrote `scripts/audit_cross_split_dedup.py` -- implements 6 dedup checks
-   (3 exact + 3 high-similarity) with bucketing to keep the n-gram
-   comparison sub-quadratic.
-2. Wrote `tests/test_cross_split_dedup.py` -- 10 tests using synthetic
-   samples covering every check, the quarantine list, the
-   `unresolved=0` invariant, and the disjoint-splits PASS path.
-3. Re-ran the audit on the **714 pad-then-verify verified MBPP samples**
-   (`data/external/mbpp/verified/{train,test,validation}.jsonl`, post
-   v2.1 Amendment A2 re-verification).
-4. Re-wrote the 3 required output files under `reports/p3/`.
+---
 
-## Audit Results (real run on 714 samples, v2.1 redo)
+## 1. What was implemented
 
-| Metric                       | Value |
-|------------------------------|-------|
-| Total samples checked        | 714   |
-| Splits checked               | train (281), test (365), validation (68) |
-| Exact duplicate pairs        | 6     |
-| High-similarity pairs        | 34    |
-| Quarantined families         | 50    |
-| Unresolved pairs             | 0     |
-| Conclusion                   | PASS  |
+### `tests/test_agent_evaluator.py` (+117 lines, appended after `test_search_text_dispatched`)
 
-### Exact duplicates by method (6 total)
+Appended one section comment, one helper, and five regression tests covering all
+5 `CorruptionType` values. No other files were modified.
 
-| Method            | Count |
-|-------------------|-------|
-| instruction_hash  | 3     |
-| code_hash         | 3     |
-| test_hash         | 0     |
+- **`_run_corrupted(monkeypatch, corruption_type, step_index=2)`** — shared helper
+  that loads the first success trajectory, builds a `MicroTaskWorkspace`, runs the
+  evaluator with a `CorruptedActionProvider`, and returns the `EvalResult`. Cleans
+  up the workspace in a `finally`.
+- **`test_corruption_wrong_action_type`** — `WRONG_ACTION_TYPE` at the default
+  step; asserts no crash, metrics present, `steps_executed > 0`.
+- **`test_corruption_invalid_path`** — dynamically finds the first step whose
+  action arguments expose `path` or `file_path` (avoids the no-op when
+  `step_index=2` misses the right action type). Asserts `len(result.errors) > 0`
+  and a path/invalid/sensitive keyword in at least one error message.
+- **`test_corruption_wrong_patch`** — finds the first `apply_patch` step
+  (strengthened from the brief's `apply_patch OR propose_patch` — see Corrections
+  below) and asserts `tool_error_rate > 0 OR patch_success_rate < 1`.
+- **`test_corruption_skip_tests_before_finish`** — dynamically finds the first
+  `run_tests` step so the corruption converts it to `finish` and has a real
+  effect. Strengthens the brief's always-true assertion to
+  `finish_without_tests_count >= 1` AND `steps_executed < len(traj.steps)`.
+- **`test_corruption_exceed_max_steps`** — `step_index=0`, `max_steps=5`;
+  asserts `result.max_steps_hit` and `max_step_exceeded_count >= 1`.
 
-Pairs (excerpt -- full list in `cross-split-dedup-audit.json`):
+### `src/agent_evaluator.py`
 
-- `mbpp_217` (test) ↔ `mbpp_602` (train) -- instruction_hash
-- `mbpp_248` (test) ↔ `mbpp_704` (train) -- instruction_hash + code_hash
-- `mbpp_216` (test) ↔ `mbpp_872` (train) -- instruction_hash
-- `mbpp_625` (train) ↔ `mbpp_591` (validation) -- code_hash
-- `mbpp_699` (train) ↔ `mbpp_595` (validation) -- code_hash
+**Not modified.** All five tests pass against the existing P4.0 infrastructure.
+The `max_step_exceeded_count` metric was already computed at line 428
+(`"max_step_exceeded_count": 1 if max_steps_hit else 0`), and the loop already
+sets `max_steps_hit = True` after the for-loop exhausts `max_steps` without a
+`finish` (line 392). No evaluator bugs were found.
 
-### High-similarity pairs by method (34 total)
+---
 
-| Method           | Count | Score range |
-|------------------|-------|-------------|
-| func_signature   | 25    | 1.0         |
-| ast_structural   | 6     | 1.0         |
-| ngram_3          | 3     | 1.0         |
+## 2. TDD evidence
 
-All high-similarity pairs were assigned `status="auto_quarantined"`
-in `cross-split-dedup-review-queue.jsonl` (34 lines, one JSON object
-per pair). The 3 n-gram hits overlap with instruction-hash exact
-duplicates (same 3 instruction pairs), which is the expected
-consistency check -- exact duplicate instructions trivially yield
-Jaccard = 1.0.
+### RED (tests not yet defined — collection error)
 
-### Quarantine summary
-
-- 50 unique `mbpp_fam_*` family IDs quarantined (full list in
-  `cross-split-dedup-quarantine.json`).
-- Quarantine reason: "Cross-split semantic duplicates or high-similarity
-  pairs (unconfirmed). Excluded from P3 Frozen/Val/Train partition."
-- Auto-quarantine rules applied:
-  1. `exact_duplicate` -- both families of any exact-dup pair.
-  2. `high_similarity_unconfirmed` -- both families of any
-     func_signature / ast_structural / n-gram > 0.7 pair (per P3 plan:
-     "未人工确认的高相似 family 一律 quarantine").
-
-### `unresolved=0` justification
-
-Per P3 plan Global Constraint #15, "unconfirmed high-similarity families
-→ quarantine". The script auto-quarantines every high-similarity pair,
-so no pair is left in a `pending_review` state. The `unresolved.count`
-field is hard-coded to `0` with the explanatory note. This satisfies the
-"unresolved=0 before partition" gate for Task 6 (Family Registry) and
-Task 9 (partition).
-
-## Files Touched
-
-- New: `scripts/audit_cross_split_dedup.py`
-- New: `tests/test_cross_split_dedup.py`
-- New: `reports/p3/cross-split-dedup-audit.json`
-- New: `reports/p3/cross-split-dedup-review-queue.jsonl`
-- New: `reports/p3/cross-split-dedup-quarantine.json`
-- Untouched: `src/` (read-only per Task 5 constraints)
-- Untouched: existing `scripts/`, `tests/`, `reports/` files
-
-## Test Summary
-
+Command:
 ```
-$ python -m pytest tests/test_cross_split_dedup.py -v
-============================= 10 passed in 0.25s ==============================
+py -3.11 -m pytest tests/test_agent_evaluator.py::test_corruption_wrong_action_type tests/test_agent_evaluator.py::test_corruption_invalid_path tests/test_agent_evaluator.py::test_corruption_wrong_patch tests/test_agent_evaluator.py::test_corruption_skip_tests_before_finish tests/test_agent_evaluator.py::test_corruption_exceed_max_steps -v -p no:warnings
 ```
 
-All 10 required tests pass:
-
-1. `test_exact_instruction_duplicate_detected`
-2. `test_exact_code_duplicate_detected`
-3. `test_exact_test_duplicate_detected`
-4. `test_func_signature_match_detected`
-5. `test_ast_structural_match_detected`
-6. `test_ngram_high_similarity_detected`
-7. `test_ngram_low_similarity_not_flagged`
-8. `test_quarantine_list_built`
-9. `test_unresolved_always_zero`
-10. `test_disjoint_splits_no_duplicates`
-
-## Commit
-
-Single commit on `feat/p3-capability-expansion-v2` with the 5 staged
-files specified in the brief:
-
+Output (exit code 4):
 ```
-feat(p3): cross-split semantic dedup audit with quarantine
+ERROR: not found: E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_corruption_wrong_action_type
+(no match in any of [<Module test_agent_evaluator.py>])
+ERROR: not found: E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_corruption_invalid_path
+(no match in any of [<Module test_agent_evaluator.py>])
+ERROR: not found: E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_corruption_wrong_patch
+(no match in any of [<Module test_agent_evaluator.py>])
+ERROR: not found: E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_corruption_skip_tests_before_finish
+(no match in any of [<Module test_agent_evaluator.py>])
+ERROR: not found: E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_corruption_exceed_max_steps
+(no match in any of [<Module test_agent_evaluator.py>])
+collected 0 items
+============================ no tests ran in 0.62s ============================
 ```
 
-Files staged (exactly 5, per brief):
+### First GREEN attempt (1 genuine failure found → fixed)
 
-- `scripts/audit_cross_split_dedup.py`
-- `tests/test_cross_split_dedup.py`
-- `reports/p3/cross-split-dedup-audit.json`
-- `reports/p3/cross-split-dedup-review-queue.jsonl`
-- `reports/p3/cross-split-dedup-quarantine.json`
+After appending the brief's code verbatim (minus the duplicate import), the
+`test_corruption_wrong_patch` test FAILED because the brief's search finds
+`propose_patch` (step 5) before `apply_patch` (step 6). Corrupting
+`propose_patch` is a no-op for metrics: `tool_propose_patch` does not raise, and
+`propose_patch` is not counted in `total_patches`, so `tool_error_rate=0.0` and
+`patch_success_rate=1.0` (from the uncorrupted `apply_patch` at step 6).
 
-## Concerns / Deviations
+Failure output (exit code 1, abbreviated):
+```
+tests\test_agent_evaluator.py ..F..                                      [100%]
+FAILED tests/test_agent_evaluator.py::test_corruption_wrong_patch
+    assert (0.0 > 0 or 1.0 < 1)
+1 failed, 4 passed in 7.87s
+```
 
-None. All brief requirements met:
+### Fix applied
 
-- 6 dedup methods implemented exactly per spec (3 exact + 3 high-sim).
-- Normalization rules match the brief verbatim.
-- AST parsing handles `SyntaxError` gracefully (sample skipped, no crash).
-- n-gram comparison uses bucketing on the first 2 hex chars of the
-  instruction SHA256 to avoid O(n^2) on 955 samples.
-- Quarantine list is the union of all families involved in any
-  duplicate or high-sim pair (50 unique families).
-- `unresolved=0` and `conclusion=PASS`.
-- All 10 tests pass.
-- Redo commit supersedes 4d3cb23 (which ran on 955 soft-warning samples).
+Changed `test_corruption_wrong_patch` to search for `apply_patch` specifically
+(matching the existing `test_corrupted_injection` pattern) so the corruption
+produces a real, measurable patch failure. `propose_patch` corruption is
+documented in a comment as a metric no-op. This is the strengthening the task
+instructions asked for ("Where the corruption actually has an effect,
+strengthen the assertion to verify the effect").
 
-## Recommendation for Next Step
+### GREEN (all 5 pass)
 
-Task 5-redo is complete and the gate for Task 6 (Family Registry) is open.
-Task 6 should read `cross-split-dedup-quarantine.json` and exclude the
-50 quarantined families from the Frozen/Val/Train partition claims.
+Command:
+```
+py -3.11 -m pytest tests/test_agent_evaluator.py::test_corruption_wrong_action_type tests/test_agent_evaluator.py::test_corruption_invalid_path tests/test_agent_evaluator.py::test_corruption_wrong_patch tests/test_agent_evaluator.py::test_corruption_skip_tests_before_finish tests/test_agent_evaluator.py::test_corruption_exceed_max_steps -v -p no:warnings
+```
+
+Output (exit code 0):
+```
+collected 5 items
+tests\test_agent_evaluator.py .....                                      [100%]
+============================== 5 passed in 7.19s ==============================
+```
+
+---
+
+## 3. Broader regression check
+
+Command:
+```
+py -3.11 -m pytest tests/test_agent_evaluator.py tests/test_agent_tools.py tests/test_agent_actions.py -p no:warnings -q --timeout=120
+```
+
+Output (exit code 0):
+```
+E:\agent\Qwen\qwen3-code-lab\src\agent_tools.py:495: PytestCollectionWarning: cannot collect test class 'TestObservation' because it has a __init__ constructor (from: tests/test_agent_tools.py)
+  class TestObservation(BaseModel):
+....................................................................     [100%]
+============================== 68 passed in 8.16s ==============================
+```
+
+68 tests passed, 0 failed, 0 errors. The `PytestCollectionWarning` about
+`TestObservation` is pre-existing (it's a pydantic model in
+`src/agent_tools.py`, not a test class) and unrelated to this task.
+
+---
+
+## 4. Diffstat
+
+```
+439c0977a159c704bcb13ceb17140fa42c2bb9c0
+ tests/test_agent_evaluator.py | 117 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 117 insertions(+)
+```
+
+Only `tests/test_agent_evaluator.py` was staged and committed. No
+`src/agent_evaluator.py` changes. No `.superpowers/sdd/` docs staged.
+
+---
+
+## 5. Corrections applied
+
+1. **Duplicate import NOT added.** The brief's Step 1 began with
+   `from src.agent_evaluator import CorruptedActionProvider, Corruption, CorruptionType`.
+   This is a duplicate of the existing import block at lines 14-18 of the test
+   file. Per the pre-flight correction, I did NOT add this line — the names were
+   already in scope. Only the section comment, the `_run_corrupted` helper, and
+   the 5 test functions were appended.
+
+2. **`SKIP_TESTS_BEFORE_FINISH` step_index adjustment.** The brief's default
+   `step_index=2` targets `read_file` in the loaded trajectory (`task_006`),
+   which is a no-op for `SKIP_TESTS_BEFORE_FINISH` (the corruption only fires on
+   `run_tests` actions). I added a search loop to find the first `run_tests`
+   step (step 3 in this trajectory) and pass it as `step_index`. Without this,
+   the trajectory would complete normally with `finish_without_tests_count=0`
+   and the strengthened assertion would fail. Also strengthened the assertion
+   from `"finish_without_tests_count" in result.metrics` (always true) to
+   `finish_without_tests_count >= 1 AND steps_executed < len(traj.steps)`.
+
+3. **`INVALID_PATH` step_index adjustment.** The brief's default `step_index=2`
+   happens to target `read_file` (which has a `path` argument) in this
+   trajectory, so it works. However, per the task guidance, I added a dynamic
+   search for the first step whose arguments expose `path` or `file_path`, with
+   a `pytest.skip` fallback if none exists. This makes the test robust to
+   trajectory changes. For `task_006` it resolves to step 2 (`read_file`).
+
+4. **`WRONG_PATCH` search narrowed to `apply_patch`.** The brief searched for
+   `apply_patch OR propose_patch` and found `propose_patch` first (step 5).
+   Corrupting `propose_patch` is a metric no-op (`tool_propose_patch` returns an
+   observation without raising, and `propose_patch` isn't counted in
+   `total_patches`), so the brief's assertion `tool_error_rate > 0 OR
+   patch_success_rate < 1` failed (both were `0.0` and `1.0` respectively). I
+   narrowed the search to `apply_patch` specifically (step 6 in this
+   trajectory), where the corruption causes a real patch failure
+   (`tool_apply_patch` returns `obs.success=False` → `tool_errors += 1`,
+   `successful_patches` stays 0 → `patch_success_rate = 0.0 < 1`). A comment
+   documents why `propose_patch` was excluded.
+
+5. **`WRONG_ACTION_TYPE` and `EXCEED_MAX_STEPS`** — used the brief's code as-is.
+   Both produced the expected behavior on the first run. No adjustments needed.
+
+6. **`src/agent_evaluator.py` NOT modified.** All metric infrastructure
+   (`max_step_exceeded_count`, `max_steps_hit`, `finish_without_tests_count`)
+   already existed from P4.0. No evaluator bugs were found.
+
+---
+
+## 6. Self-review findings
+
+### Correctness
+
+- All 5 `CorruptionType` enum values are exercised: `WRONG_ACTION_TYPE`,
+  `INVALID_PATH`, `WRONG_PATCH`, `SKIP_TESTS_BEFORE_FINISH`, `EXCEED_MAX_STEPS`.
+- Each test uses `monkeypatch.setenv("P4_ALLOW_NETWORK", "0")` (via the helper
+  or inline) to prevent network calls during replay.
+- Each test cleans up its `MicroTaskWorkspace` in a `finally` block — no
+  workspace leaks.
+- The trajectory used (`task_006`, 10 steps) has the action diversity needed
+  for all 5 corruption types: `read_file` (path), `run_tests`, `apply_patch`,
+  `finish`.
+- The strengthened `SKIP_TESTS_BEFORE_FINISH` assertion verifies both the
+  metric effect (`finish_without_tests_count >= 1`) and the structural effect
+  (`steps_executed < len(traj.steps)` — the trajectory finishes early at step 4
+  instead of step 10).
+- The `INVALID_PATH` assertion passes because the evaluator wraps the
+  `PathValidationError` as `"step N: invalid action: parent traversal not
+  allowed: ../etc/passwd"`, which contains the substring `"invalid"`.
+
+### Style
+
+- Matches existing test file conventions: `monkeypatch` fixture, `_load_first_success_trajectory()`
+  helper, `MicroTaskWorkspace.from_task`, `try/finally` cleanup, inline
+  assertion messages with `f"expected ..., got ..."`.
+- No emojis. No docstrings added to existing code. No incidental refactors.
+- Comments explain the *why* of non-obvious choices (why `apply_patch` not
+  `propose_patch`, why dynamic step search for `SKIP_TESTS`/`INVALID_PATH`).
+
+### Surgical-changes check
+
+- Only `tests/test_agent_evaluator.py` was modified (+117 lines, all appended).
+- No changes to `src/agent_evaluator.py`, `src/agent_trajectory.py`, or any
+  other source file.
+- Every changed line traces to the task brief's 5 test functions + 1 helper.
+- The `WRONG_PATCH` narrowing and `SKIP_TESTS`/`INVALID_PATH` dynamic search are
+  explicitly authorized by the task instructions ("If the default
+  `step_index=2` doesn't target the right action type ... find the correct step
+  index" and "strengthen the assertion to verify the effect").
+- Only `tests/test_agent_evaluator.py` was staged for commit (verified via
+  `git diff --stat 50ec3af HEAD` showing a single file).
+
+---
+
+## 7. One-line test summary
+
+All 5 new corruption regression tests pass (plus 63 pre-existing tests in the
+broader suite = 68 passed, 0 failed); no evaluator changes were needed.

@@ -1,108 +1,193 @@
-# Task 3 Report: Split Import / Verify Pipeline + Per-Split Manifest
+# Task 3 Report — Phase B: 11-action allowlist + unknown hard-fail + search_text/rollback_patch dispatch
 
-## Status
-DONE
+**Status:** DONE_WITH_CONCERNS
+**Commit SHA:** `41a0d05`
+**Branch:** `feat/p4-1-model-action-provider`
+**Date:** 2026-07-09
 
-## Commit
-- Hash: `e1466bf`
-- Branch: `feat/p3-capability-expansion-v2`
-- Parent: `5b88a6e` (Task 2: Extend Sample Schema)
-- Message: `fix(p3): split import/verify pipeline, per-split manifest, real verification`
-- Files staged (only these):
-  - `scripts/import_mbpp.py` (modified)
-  - `scripts/verify_imported_mbpp.py` (new)
-  - `tests/test_import_mbpp_p3.py` (new)
-  - `tests/test_import_mbpp.py` (surgical regression fix)
+---
 
-## Test Summary
-- **New P3 tests** (`tests/test_import_mbpp_p3.py`): **11/11 passed**
-  - `TestImporterP3` (5): verified_false_by_default, per_split_manifest_no_overwrite, contamination_flag_only_on_test, source_split_field_populated, no_pytest_in_importer
-  - `TestVerifierP3` (6): passes_all_checks, low_public_count_rejected, low_hidden_count_rejected, repair_broken_is_broken, exec_repair_feedback_marker, manifest_updated_with_verified_fields
-- **Existing import_mbpp tests** (`tests/test_import_mbpp.py`): **53/53 passed** (5 surgical regression fixes for the new `build_manifest()` signature; 2 already-fixed tests for `verified=False` default)
-- **Schema tests** (`tests/test_schemas.py`): **48/48 passed** (no impact)
-- **Pre-existing unrelated failures** (NOT caused by this task, confirmed via `git stash`): 45 failures in `tests/test_mutate_code.py` + `tests/test_p2_data_factory.py` + `tests/test_validators.py::TestRuffCheck/TestMypyCheck` — all environment issues (`ruff` binary not installed, mypy not installed, mutator library returning `None`). Verified these fail identically on the clean parent commit `5b88a6e` after `git stash`.
+## What was implemented
 
-## Changes Made
+### `src/agent_evaluator.py`
 
-### `scripts/import_mbpp.py` (modified — contract change, surgical)
+1. **Imports** (`src/agent_evaluator.py:25-34`): Added `tool_rollback_patch` and `tool_search_text` to the existing `from src.agent_tools import (...)` block. Kept alphabetical ordering within the block.
 
-**Fix 1: `verified=false` default (P3 constraint).**
-- `_VERIFIED_VER` preset changed from `Verification(syntax_ok=True, pytest_ok=True, ruff_ok=False, timeout=False)` to `Verification(syntax_ok=False, pytest_ok=False, ruff_ok=False, timeout=False)`. The importer no longer claims any verification.
-- `mbpp_record_to_sample`: `verified=True` → `verified=False`. Added new `source_split` parameter (passes through to `Sample.source_split`).
+2. **`_ALLOWED_ACTION_TYPES` constant** (`src/agent_evaluator.py:37-44`): Module-level `frozenset` of exactly 11 action type strings:
+   ```python
+   _ALLOWED_ACTION_TYPES = frozenset({
+       "list_files", "read_file", "search_text", "inspect_task",
+       "propose_patch", "apply_patch", "rollback_patch", "run_tests",
+       "inspect_error", "write_memory", "finish",
+   })
+   ```
 
-**Fix 2: Per-split manifest (P3 constraint #20 — non-overwrite).**
-- `build_manifest()` signature rewritten to the per-split schema: `source`, `source_revision`, `dataset_fingerprint`, `split`, `sample_count`, `normalized_sha256`, `normalized_file`, `license`, `imported_at`, `benchmark_contaminated`, `standard_mbpp_test_claims_disallowed`. Verifier-filled fields (`verified_sha256`, `verified_count`, `rejected_count`, `rejected_sha256`, `verified_at`) emitted as `None` placeholders — never fabricated by the importer.
-- New helpers: `build_manifest_index()`, `update_manifest_index()` (merge semantics for the shared `manifest.index.json`), `extract_dataset_fingerprint()` (best-effort, returns `None` when unavailable — P3: do NOT fabricate).
-- `main()` writes `manifest.{split}.json` (per-split, never overwritten) and merges the split's entry into the shared `manifest.index.json`.
+3. **`search_text` dispatch branch** (`src/agent_evaluator.py:344-346`): Placed before the `finish` branch (per brief Step 3.3). Uses `action.arguments.query` (NOT `pattern` — per Correction 1, `SearchTextArgs` defines `query: str`):
+   ```python
+   elif at == "search_text":
+       total_tools += 1
+       tool_search_text(self._ws, action.arguments.query)
+   ```
 
-**Fix 3: HF source revision pin (P3 constraint #16).**
-- New constant `_SOURCE_REVISION = "main"`. `_load_dataset(_SOURCE_REPO, split=split, revision=_SOURCE_REVISION)` pins the HF branch.
+4. **`rollback_patch` dispatch branch** (`src/agent_evaluator.py:347-349`): Uses `action.arguments.action_id` (matches `RollbackPatchArgs.action_id: str`):
+   ```python
+   elif at == "rollback_patch":
+       total_tools += 1
+       tool_rollback_patch(self._ws, action.arguments.action_id)
+   ```
 
-**Fix 4: `benchmark_contaminated` flag (P3 constraint #17 — test split only).**
-- `is_test_split = split == "test"` drives `benchmark_contaminated` and `standard_mbpp_test_claims_disallowed`. Only the test split is flagged as contaminated (P3 will reuse it for training); train/validation remain clean.
+5. **`else` defensive guard** (`src/agent_evaluator.py:374-383`): Placed after the `finish` branch (per brief Step 3.4). Increments `forbidden_count` and appends an error message — does NOT raise (per Correction 4; raising would be caught by the surrounding `try/except Exception` and mis-recorded as `tool_error`):
+   ```python
+   else:
+       forbidden_count += 1
+       errors.append(
+           f"step {step}: unknown action type (not in 11-action "
+           f"allowlist): {at}"
+       )
+   ```
 
-**Fix 5: NO pytest in importer (P3 constraint #20).**
-- Importer ONLY downloads + normalizes. No `verify_sample()`, no `pytest`, no sandbox execution. Real verification is delegated to `scripts/verify_imported_mbpp.py`.
+### `tests/test_agent_evaluator.py`
 
-### `scripts/verify_imported_mbpp.py` (new — ~410 lines, standalone verifier)
+Appended 3 tests at the end of the file (lines 377-453):
 
-Standalone verifier that reads normalized JSONL produced by the importer and runs real verification. Exits 0 on success (even with rejections), 1 on hard I/O error, 2 on argument error.
+1. **`test_allowed_action_types_has_exactly_11`** (lines 382-389): Asserts `_ALLOWED_ACTION_TYPES` equals the expected set of 11 names and has length 11. (Per brief, unmodified.)
 
-**Hard checks** (in order, first failure short-circuits rejection):
-1. `public_tests.count("assert ") >= 2` (P3 minimum)
-2. `hidden_tests.count("assert ") >= 3` (P3 minimum)
-3. `verify_broken_is_broken(sample)` for repair samples (`variant_type in {"repair","exec_repair"}`) — broken_code must fail at least one test
-4. Execution-feedback failure marker (exec_repair only) — `execution_feedback` must contain a case-insensitive marker from `_FAILURE_MARKERS = ("error","assert","traceback","failed","exception","fail")`
-5. Real `src.validators.verify_sample(sample)` — populates the genuine `SampleVerification`
+2. **`test_unknown_action_type_recorded_as_forbidden`** (lines 392-416): Replaces the brief's `test_unknown_action_type_raises` (per Correction 2). Uses `unittest.mock.patch.object(type(finish), 'model_validate', return_value=finish)` to bypass the evaluator's re-validation at line 273, then verifies the `else` branch records the unknown `"shell_exec"` action_type as forbidden (`forbidden_action_count >= 1`) and appends to `errors`.
 
-**I/O**:
-- Reads `<output-dir>/normalized/<split>.jsonl`
-- Writes `<output-dir>/verified/<split>.jsonl` (accepted samples with `verified=True` + real verification)
-- Writes `<output-dir>/rejected/<split>.jsonl` (rejected samples with `rejection_reason` field)
-- Updates `manifest.<split>.json` with `verified_sha256`, `verified_count`, `rejected_count`, `rejected_sha256`, `verified_at`
+3. **`test_search_text_dispatched`** (lines 419-453): Deviates from the brief's test body (see "5th brief bug" below). Uses a spy on `tool_search_text` (via `monkeypatch.setattr`) to verify the dispatch actually calls the tool, rather than checking `result.metrics["total_tools"]` (which doesn't exist in the metrics dict).
 
-### `tests/test_import_mbpp_p3.py` (new — 11 tests)
+---
 
-Two test classes using `monkeypatch.setattr(import_mbpp, "_load_dataset", ...)` and `_DATASETS_AVAILABLE=True` to mock network access. Helpers: `_mbpp_record()`, `_verification_all_false()`, `_make_sample(**kwargs)`, `_run_importer_cli(monkeypatch, tmp_path, split)`.
+## TDD evidence
 
-### `tests/test_import_mbpp.py` (surgical regression fix)
+### RED (before implementation)
 
-7 tests broke due to the contract change in `build_manifest()`. Surgical updates:
-- `test_verified_is_true` → renamed to `test_verified_is_false_by_default` (asserts `verified is False`)
-- `test_verification_flags` → asserts all-false Verification preset
-- `TestBuildManifest._make` helper → new defaults matching new signature
-- `TestBuildManifest.test_required_keys` → updated key list
-- `TestBuildManifest.test_values_preserved` → updated kwargs + assertions
-- `TestWriteHelpers.test_jsonl_sha_matches_manifest` → updated `build_manifest()` call + assertion (`sha256` → `normalized_sha256`)
+Command:
+```
+py -3.11 -m pytest tests/test_agent_evaluator.py::test_allowed_action_types_has_exactly_11 tests/test_agent_evaluator.py::test_unknown_action_type_recorded_as_forbidden tests/test_agent_evaluator.py::test_search_text_dispatched -v -p no:warnings
+```
 
-No other tests modified. No pre-existing dead code removed.
+Output (exit code 4 — collection error):
+```
+ERROR: found no collectors for E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_allowed_action_types_has_exactly_11
+ERROR: found no collectors for E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_unknown_action_type_recorded_as_forbidden
+ERROR: found no collectors for E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py::test_search_text_dispatched
+...
+ImportError while importing test module 'E:\agent\Qwen\qwen3-code-lab\tests\test_agent_evaluator.py'.
+...
+tests\test_agent_evaluator.py:379: in <module>
+    from src.agent_evaluator import _ALLOWED_ACTION_TYPES  # noqa: E402
+E   ImportError: cannot import name '_ALLOWED_ACTION_TYPES' from 'src.agent_evaluator'
+============================== 1 error in 1.95s ===============================
+```
 
-## Constraint Compliance Checklist
-- [x] `verified=false` default — importer no longer claims verification
-- [x] Per-split manifest (`manifest.{split}.json`) — never overwritten by other splits
-- [x] Shared `manifest.index.json` — merged on each import via `update_manifest_index()`
-- [x] HF source revision pin (`revision="main"`)
-- [x] `benchmark_contaminated` flag — test split only, train/validation clean
-- [x] `source_split` field populated on every Sample
-- [x] NO pytest / NO `verify_sample()` in importer
-- [x] New `scripts/verify_imported_mbpp.py` calls real `src.validators.verify_sample()`
-- [x] Hard checks: public>=2 asserts, hidden>=3 asserts, `verify_broken_is_broken` for repair, execution_feedback failure marker for exec_repair
-- [x] Verifier writes `verified/{split}.jsonl` + `rejected/{split}.jsonl` (with `rejection_reason`)
-- [x] Verifier updates manifest with `verified_sha256` / `verified_count` / `rejected_count` / `rejected_sha256` / `verified_at`
-- [x] `src/validators.py`, `src/schemas.py`, `src/sandbox.py` UNMODIFIED
-- [x] 11 P3 tests (5 importer + 6 verifier) — all pass
-- [x] Surgical changes only — no refactor of adjacent code
-- [x] Existing code style matched (4-space indent, `# ---` separators, descriptive docstrings, no emojis)
-- [x] No emojis in code or commit message
-- [x] Single commit
-- [x] Only the 4 specified files staged
+This matches the brief's expected RED state: "`_ALLOWED_ACTION_TYPES` doesn't exist; search_text not dispatched; unknown action silently no-ops."
 
-## Key Findings
-- **Fingerprint extraction is best-effort**: `extract_dataset_fingerprint()` checks `_fingerprint`, `fingerprint`, and nested `info` attributes across `datasets` library versions. Returns `None` when unavailable rather than fabricating a value (P3 constraint). The importer prints a note when this happens.
-- **Per-split manifest non-overwrite**: achieved by writing to `manifest.{split}.json` (split-scoped filename) — only `manifest.index.json` is shared and merged via `update_manifest_index()`. This guarantees a `--split train` invocation cannot clobber `manifest.test.json`.
-- **Verifier hard-check ordering matters**: checks run cheapest-first (assert counting) and most expensive last (`verify_sample` actually executes pytest in a subprocess sandbox). A sample failing the assert-count check is rejected without ever invoking the sandbox.
-- **Failure marker heuristic is case-insensitive substring match**: `_FAILURE_MARKERS = ("error","assert","traceback","failed","exception","fail")`. This is intentionally conservative — a feedback string like `"all good -- no errors here"` is flagged as a failure marker (contains "error" in "errors"). Test #10 was adjusted to use `"all good -- program completed"` which contains no markers.
-- **Pre-existing env failures confirmed unrelated**: `git stash` on the clean parent commit `5b88a6e` reproduces all 45 failures in `test_mutate_code.py` / `test_p2_data_factory.py` / `test_validators.py::TestRuffCheck/TestMypyCheck`. These are environment issues (missing `ruff` binary, mypy, mutator library returning `None`), NOT caused by Task 3 changes.
+### GREEN (after implementation)
 
-## Concerns
-None.
+Command:
+```
+py -3.11 -m pytest tests/test_agent_evaluator.py -v -p no:warnings
+```
+
+Output (exit code 0):
+```
+collected 15 items
+tests\test_agent_evaluator.py ...............
+======================== 15 passed in 94.28s (0:01:34) ========================
+```
+
+All 15 tests in the file pass — the 12 pre-existing tests plus the 3 new ones. No regressions.
+
+### Broader regression check
+
+Command:
+```
+py -3.11 -m pytest tests/test_agent_evaluator.py tests/test_agent_actions.py tests/test_agent_tools.py tests/test_agent_trajectory.py -p no:warnings -q --timeout=60
+```
+
+Output (exit code 0):
+```
+....................................................................     [100%]
+```
+
+68 tests pass across the 4 agent test files. No regressions in the touched module surface.
+
+(Note: a separate `py -3.11 -m pytest tests/` run surfaced an unrelated Windows-specific `shutil.rmtree` file-in-use failure in `tests/test_build_frozen_v3_samples.py::test_qualified_family_passes_all_gates` — this is pre-existing and not caused by this task's changes.)
+
+---
+
+## Files changed (diffstat)
+
+```
+ src/agent_evaluator.py        | 28 +++++++++++++++
+ tests/test_agent_evaluator.py | 79 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 107 insertions(+)
+```
+
+Only the two files specified in the brief were modified. Unrelated sdd docs in the working tree (`progress.md`, `task-*-brief.md`, `task-*-report.md`) were intentionally left unstaged.
+
+---
+
+## Corrections applied (from task description)
+
+| # | Correction | How applied |
+|---|---|---|
+| 1 | `SearchTextArgs` uses `query`, not `pattern` | Test uses `SearchTextArgs(query="def")`; dispatch uses `action.arguments.query` (`src/agent_evaluator.py:346`) |
+| 2 | `test_unknown_action_type_raises` cannot reach `else` as written | Replaced with `test_unknown_action_type_recorded_as_forbidden` using `mock.patch.object(type(finish), 'model_validate', return_value=finish)` to bypass re-validation |
+| 3 | Remove dead `_UnknownAction` class | Not included |
+| 4 | Follow the PLAN, do NOT raise in `else` | `else` branch only does `forbidden_count += 1; errors.append(...)` — no raise (`src/agent_evaluator.py:374-383`) |
+
+---
+
+## 5th brief bug discovered (not in corrections list)
+
+**Bug:** The brief's `test_search_text_dispatched` asserts `result.metrics["total_tools"] >= 1`, but `total_tools` is an internal counter in `AgentEvaluator.run()` — it is NOT exposed in the `EvalResult.metrics` dict. The metrics dict only contains the 8 keys enumerated in `test_all_metrics_present` (`task_success_rate`, `action_validity_rate`, `tool_error_rate`, `patch_success_rate`, `tests_pass_rate`, `forbidden_action_count`, `max_step_exceeded_count`, `finish_without_tests_count`). Running the brief's test verbatim raises `KeyError: 'total_tools'`.
+
+**Two options considered:**
+1. Add `total_tools` to the metrics dict — rejected: would break `test_all_metrics_present` which asserts the metrics dict has exactly the 8 expected keys.
+2. Replace the assertion with a spy on `tool_search_text` — chosen: directly verifies the dispatch actually calls the tool, which is the brief's intent ("search_text action must produce a real tool call").
+
+**Fix applied:** `test_search_text_dispatched` now uses `monkeypatch.setattr(evaluator_mod, "tool_search_text", spy)` where `spy` increments a call counter and delegates to the original. Assertion is `call_count["n"] >= 1`. This is a stronger test than the brief's: it directly verifies dispatch rather than inferring it from a counter.
+
+---
+
+## Self-review findings
+
+### Correctness
+
+- ✅ `_ALLOWED_ACTION_TYPES` is a `frozenset` with exactly 11 members, matching `ActionType` enum at `src/agent_actions.py:16-28`.
+- ✅ `search_text` branch reads `action.arguments.query` — matches `SearchTextArgs.query` at `src/agent_actions.py:145` and `tool_search_text(workspace, query, ...)` signature at `src/agent_tools.py:106`.
+- ✅ `rollback_patch` branch reads `action.arguments.action_id` — matches `RollbackPatchArgs.action_id` at `src/agent_actions.py:181` and `tool_rollback_patch(workspace, action_id)` signature at `src/agent_tools.py:385`.
+- ✅ `else` branch is a defensive guard — unreachable with valid Pydantic actions because every `Action` subclass has a `Literal[ActionType.xxx]` `action_type` field matching one of the 11 types.
+- ✅ `else` branch does NOT raise (per Correction 4) — it only increments `forbidden_count` and appends to `errors`. The surrounding `try/except Exception` would otherwise catch a raise and mis-record it as `tool_error`.
+- ✅ Both new branches are placed before `finish` (which returns early); `else` is placed after `finish`. The control flow is: dispatch → if finish, return; if unknown, record forbidden and continue to next step.
+
+### Style
+
+- ✅ Imports added in alphabetical order within the existing `from src.agent_tools import (...)` block.
+- ✅ Branch style matches existing branches (e.g., `elif at == "list_files":` etc.): `total_tools += 1` first, then the tool call.
+- ✅ No emojis, no docstring additions to existing code, no incidental refactors.
+
+### Surgical changes
+
+- ✅ Every changed line traces directly to the brief's Step 3 (allowlist constant, two dispatch branches, else guard) or to the test additions in Step 1.
+- ✅ No changes to `_make_result`, no changes to the metrics dict, no changes to other dispatch branches, no changes to `EvalResult` schema.
+
+---
+
+## Issues or concerns
+
+1. **`test_unknown_action_type_recorded_as_forbidden` uses `unittest.mock.patch`** to bypass the evaluator's re-validation (`action.__class__.model_validate(action.model_dump())` at line 273). This is necessary because Pydantic's `Literal["finish"]` field on `FinishAction` would otherwise reject the overridden `"shell_exec"` value before reaching dispatch. The mock approach is slightly fragile (it patches `FinishAction.model_validate` for the duration of the `evaluator.run()` call), but it's the cleanest way to exercise the defensive `else` guard. The brief's Correction 2 explicitly suggests this approach and offers a fallback ("simplify to just test the allowlist constant"); I chose the mock approach because it actually exercises the `else` branch's behavior.
+
+2. **`rollback_patch` dispatch is not directly tested.** The brief only asked for 3 tests (`test_allowed_action_types_has_exactly_11`, `test_unknown_action_type_recorded_as_forbidden`, `test_search_text_dispatched`), and a `rollback_patch` dispatch test was not among them. The `rollback_patch` branch is verified indirectly via `test_allowed_action_types_has_exactly_11` (which confirms "rollback_patch" is in the allowlist) and via the fact that the import and branch were added with the correct signature. If direct coverage is desired, a follow-up test could spy on `tool_rollback_patch` similarly to `test_search_text_dispatched`.
+
+3. **5th brief bug** (described above): the brief's `test_search_text_dispatched` assertion `result.metrics["total_tools"]` is incorrect. I replaced it with a spy-based assertion. This is a deviation from the brief's literal test text, made necessary by the metrics dict not exposing `total_tools`.
+
+4. **Pre-existing unrelated test failure** in `tests/test_build_frozen_v3_samples.py::test_qualified_family_passes_all_gates` — a Windows `shutil.rmtree` file-in-use issue, not caused by this task's changes.
+
+---
+
+## One-line test summary
+
+15/15 tests in `tests/test_agent_evaluator.py` pass (3 new + 12 pre-existing); 68/68 across the 4 agent test files; commit `41a0d05`.

@@ -1,127 +1,84 @@
-# Task 4 Brief: Run Import + Verify + Source Audit
+## Task 4: Phase C — inspect_error returns stdout+stderr capped 8KB
 
-## Context
-- Project: e:\agent\Qwen\qwen3-code-lab
-- Branch: feat/p3-capability-expansion-v2 (Tasks 1-3 complete)
-- Importer: scripts/import_mbpp.py (fixed in Task 3, writes verified=false)
-- Verifier: scripts/verify_imported_mbpp.py (new in Task 3, runs real validation)
-- Plan file: .superpowers/sdd/p3-plan.md
+**Files:**
+- Modify: `src/agent_tools.py` (`tool_inspect_error` last_test branch)
+- Modify: `tests/test_agent_tools.py` (+2 tests)
 
-## Goal
-1. Run import_mbpp.py for all 3 splits (test, validation, train-reimport)
-2. Run verify_imported_mbpp.py for all 3 splits (real pytest validation)
-3. Write scripts/generate_source_audit.py to produce reports/p3/mbpp-source-audit.json
-4. Generate the audit report
+**Interfaces:**
+- Consumes: `TestObservation.stdout`, `TestObservation.stderr`
+- Produces: `ErrorObservation.content` = stdout+stderr[:8192] for `last_test` source
 
-## Execution Steps
+- [ ] **Step 1: Write the failing tests**
 
-### Step 1: Import all 3 splits
-Run from `e:\agent\Qwen\qwen3-code-lab`:
-```
-python scripts/import_mbpp.py --split test --output-dir data/external/mbpp
-python scripts/import_mbpp.py --split validation --output-dir data/external/mbpp
-python scripts/import_mbpp.py --split train --output-dir data/external/mbpp
-```
+Append to `tests/test_agent_tools.py`:
 
-Expected outputs per split:
-- `data/external/mbpp/normalized/{split}.jsonl`
-- `data/external/mbpp/manifest.{split}.json`
-- `data/external/mbpp/manifest.index.json` (merged)
+```python
+# --- Task 4: inspect_error returns stdout+stderr capped 8KB ---
 
-**Network note**: If HuggingFace download fails (proxy/network issue), check if `HF_ENDPOINT` or `HTTP_PROXY`/`HTTPS_PROXY` env vars need setting. The user's proxy is at 127.0.0.1:7897. If import still fails after trying proxy, record as BLOCKED with the error message — do NOT fabricate data.
+def test_inspect_error_returns_stdout_on_test_failure():
+    """Failed run_tests writes traceback to stdout; inspect_error must
+    surface it, not return empty content."""
+    test_obs = TestObservation(
+        passed=False, returncode=1,
+        stdout="AssertionError: expected 5 but got 4",
+        stderr="",
+        summary="1 failed",
+    )
+    result = tool_inspect_error(
+        error_source="last_test",
+        last_test_observation=test_obs,
+        last_patch_observation=None,
+    )
+    assert result.content != "", "inspect_error returned empty content for stdout-only failure"
+    assert "AssertionError" in result.content
 
-### Step 2: Verify all 3 splits
-```
-python scripts/verify_imported_mbpp.py --split test --output-dir data/external/mbpp
-python scripts/verify_imported_mbpp.py --split validation --output-dir data/external/mbpp
-python scripts/verify_imported_mbpp.py --split train --output-dir data/external/mbpp
-```
 
-Expected outputs per split:
-- `data/external/mbpp/verified/{split}.jsonl`
-- `data/external/mbpp/rejected/{split}.jsonl`
-- Updated `manifest.{split}.json` (verified_sha256, verified_count, rejected_count, etc.)
-
-**Performance note**: This runs real pytest on ~964 samples total (374 train + ~500 test + ~90 validation). Each sample runs compile + public pytest + hidden pytest + ruff. This may take 15-45 minutes. Use non-blocking execution if available. If a sample times out, it goes to rejected/ with timeout reason — that's expected behavior.
-
-### Step 3: Write scripts/generate_source_audit.py
-A script that reads all manifest files and generates `reports/p3/mbpp-source-audit.json`:
-
-```json
-{
-  "generated_at": "<iso8601>",
-  "source": "google-research-datasets/mbpp",
-  "source_revision": "<from manifests>",
-  "splits": {
-    "train": {
-      "sample_count": <int>,
-      "task_id_range": {"min": <int>, "max": <int>},
-      "missing_task_ids": [<int>, ...],
-      "duplicate_task_ids": [<int>, ...],
-      "normalized_sha256": "<hex>",
-      "verified_sha256": "<hex>",
-      "verified_count": <int>,
-      "rejected_count": <int>,
-      "benchmark_contaminated": false,
-      "dataset_fingerprint": "<str_or_null>"
-    },
-    "test": { ... same structure ... },
-    "validation": { ... same structure ... }
-  },
-  "cross_split_task_id_overlap": {
-    "train_test": [<int>, ...],
-    "train_validation": [<int>, ...],
-    "test_validation": [<int>, ...]
-  },
-  "total_samples": <int>,
-  "total_verified": <int>,
-  "total_rejected": <int>,
-  "new_families_available": <int>,
-  "conclusion": "LIKELY_FEASIBLE" | "INFEASIBLE",
-  "feasibility_notes": "<str>"
-}
+def test_inspect_error_caps_at_8kb():
+    """stdout+stderr > 8KB → content truncated to exactly 8192 chars."""
+    big_stdout = "x" * 10000
+    test_obs = TestObservation(
+        passed=False, returncode=1,
+        stdout=big_stdout, stderr="",
+        summary="1 failed",
+    )
+    result = tool_inspect_error(
+        error_source="last_test",
+        last_test_observation=test_obs,
+        last_patch_observation=None,
+    )
+    assert len(result.content) == 8192, \
+        f"expected 8192 chars (8KB cap), got {len(result.content)}"
 ```
 
-**Conclusion logic**:
-- `LIKELY_FEASIBLE` if: test_split verified_count >= 240 (180 train + 60 val minimum) AND validation_split verified_count >= 0
-- `INFEASIBLE` if: test_split verified_count < 240
-- `new_families_available` = test verified_count + validation verified_count (these are the new families not used in P2)
+- [ ] **Step 2: Run tests to verify they fail**
 
-**Task ID extraction**: parse from sample_id field (format: `mbpp_{task_id}`). Collect all task_ids per split, compute min/max/range, find missing (gaps in range) and duplicate (same task_id appearing twice).
+Run: `py -3.11 -m pytest tests/test_agent_tools.py::test_inspect_error_returns_stdout_on_test_failure tests/test_agent_tools.py::test_inspect_error_caps_at_8kb -v -p no:warnings`
+Expected: FAIL — first test fails because `content=stderr` (empty); second fails because no cap applied.
 
-**Cross-split overlap**: compute set intersections of task_ids across all 3 splits. Should be empty (MBPP splits are disjoint by construction), but verify and report any overlaps.
+- [ ] **Step 3: Implement the fix**
 
-### Step 4: Generate audit report
+In `src/agent_tools.py`, in `tool_inspect_error`, replace the `last_test` branch:
+
+```python
+if error_source == "last_test":
+    if last_test_observation is None:
+        raise ValueError("no prior run_tests observation")
+    raw = last_test_observation.stdout + "\n" + last_test_observation.stderr
+    capped = raw[:8192]
+    return ErrorObservation(source="last_test", content=capped)
 ```
-python scripts/generate_source_audit.py --output-dir data/external/mbpp --report-dir reports/p3
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `py -3.11 -m pytest tests/test_agent_tools.py -v -p no:warnings`
+Expected: All tests PASS. No regressions.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/agent_tools.py tests/test_agent_tools.py
+git commit -m "feat(p4-1): Phase C — inspect_error returns stdout+stderr capped 8KB"
 ```
 
-## Tests (tests/test_generate_source_audit.py)
-- Test with synthetic manifest files (create temp dir with mock manifest.{split}.json files)
-- Test: correct extraction of sample_count, task_id_range, missing/duplicate IDs
-- Test: cross_split_task_id_overlap computation (empty for disjoint, non-empty for overlapping)
-- Test: conclusion logic (LIKELY_FEASIBLE when test>=240, INFEASIBLE when test<240)
-- Test: new_families_available computation
-- Do NOT hit network or run real import/verify in tests
+---
 
-## Constraints
-- Do NOT modify scripts/import_mbpp.py or scripts/verify_imported_mbpp.py (Task 3 complete)
-- Do NOT modify src/ files
-- If import fails due to network: record error, still write the audit script and tests, return BLOCKED
-- If verify is extremely slow (>60 min): you may verify just test + validation splits first, defer train re-verify (train was already imported in P2, though with old manifest format)
-- The audit report must reflect ACTUAL data, not estimates
-
-## Report File
-Write to: `.superpowers/sdd/task-4-report.md`
-Include: actual split counts, task_id ranges, verified/rejected counts per split, conclusion, any network/timeout issues.
-
-Return: status, commit hash, one-line test summary, concerns.
-
-## Commit
-- Stage: `scripts/generate_source_audit.py`, `tests/test_generate_source_audit.py`, `reports/p3/mbpp-source-audit.json`, `data/external/mbpp/normalized/*.jsonl`, `data/external/mbpp/manifest.*.json`, `data/external/mbpp/verified/*.jsonl`, `data/external/mbpp/rejected/*.jsonl`
-- Commit message: `feat(p3): import + verify MBPP splits, generate source audit report`
-- Single commit.
-- Note: data/external/mbpp/ files may be large — check .gitignore. If normalized/verified JSONL files are git-ignored, only commit scripts + tests + report + manifests.
-
-## Working Directory
-e:\agent\Qwen\qwen3-code-lab

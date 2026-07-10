@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "total_trajectories": 1350,
+  "train_count": 920,
+  "validation_count": 130,
+  "heldout_count": 220,
+  "failure_count": 80,
+  "replay_failures": 0,
+  "splits": {
+    "train": {
+      "task_types": [
+        "add_boundary_check",
+        "finish_after_tests_pass",
+        "locate_failing_function",
+        "one_line_fix",
+        "repair_after_pytest",
+        "update_helper"
+      ],
+      "sha256": "086ee3fb14254a8ba62ad9dc2b0ce60e740df3c987c3764094f5ee9a73159eec",
+      "file": "train.jsonl"
+    },
+    "validation": {
+      "task_types": [
+        "recover_from_failed_patch"
+      ],
+      "sha256": "a7105b4055771d3cc5e1e19f3080c922853d69d86fb06a09f2c0c16ac392ecdd",
+      "file": "validation.jsonl"
+    },
+    "heldout-agent-eval": {
+      "task_types": [
+        "avoid_editing_tests"
+      ],
+      "sha256": "0262ada7f6a880e9bceb2450bdab2aa399c8d73446038ccac58f1124464fa842",
+      "file": "heldout-agent-eval.jsonl"
+    },
+    "failure-diagnostics": {
+      "sha256": "77f7d3f48790a5975458533b379c314aae3aec6f014472a6fad6f8d7d711f538",
+      "file": "failure-diagnostics.jsonl"
+    }
+  },
+  "sources": [
+    "corrupted_recovered",
+    "failed_patch_recovery",
+    "model_self_run_failure",
+    "model_self_run_success",
+    "scripted_variant",
+    "teacher_model"
+  ]
+}

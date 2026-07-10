@@ -1,0 +1,22 @@
+[
+  {
+    "config": "base",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "adapter_load_ok": false,
+    "generation_ok": true,
+    "crashes": 0,
+    "limited_smoke": false
+  },
+  {
+    "config": "repair-lora",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "adapter_load_ok": true,
+    "generation_ok": true,
+    "crashes": 0,
+    "limited_smoke": false
+  }
+]
