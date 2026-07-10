@@ -25,4 +25,4 @@ jobs:
           pip install -r requirements-ci.txt
 
       - name: Run all tests (Issue #12: full P3 coverage)
-        run: python -m pytest tests/ -v --tb=short --timeout=120 -p no:warnings
+        run: python -m pytest tests/ -m "not gpu" -v --tb=short --timeout=120 -p no:warnings

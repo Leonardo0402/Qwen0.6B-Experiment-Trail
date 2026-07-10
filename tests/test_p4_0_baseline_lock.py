@@ -27,7 +27,9 @@ def test_baseline_lock_shas_match_files():
     data = json.loads(lock_path.read_text(encoding="utf-8"))
 
     def sha256(path):
-        return hashlib.sha256(path.read_bytes()).hexdigest()
+        # CRLF→LF normalization for cross-platform consistency
+        content = path.read_bytes().replace(b"\r\n", b"\n")
+        return hashlib.sha256(content).hexdigest()
 
     assert data["micro_tasks_manifest_sha256"] == sha256(
         _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"

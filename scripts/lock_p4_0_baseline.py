@@ -17,7 +17,9 @@ _P4_0_TEST_COUNT = 81
 
 
 def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """SHA256 with CRLF→LF normalization for cross-platform consistency."""
+    content = path.read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(content).hexdigest()
 
 
 def main() -> None:
