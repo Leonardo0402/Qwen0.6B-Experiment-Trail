@@ -1,74 +1,148 @@
-# Task 1 Brief: Lock Historical Baseline
+## Task 1: Phase A — P4.0 Baseline Lock
 
-## Context
-- Project: e:\agent\Qwen\qwen3-code-lab (Qwen3-0.6B code training lab)
-- Branch: feat/p3-capability-expansion-v2 (just created from main @ 42a489c)
-- This is the FIRST task of P3 Capability Expansion v2 (Issue #9)
-- Per user directive: baseline lock must be created BEFORE any data build or training config change
-- Plan file: .superpowers/sdd/p3-plan.md (Global Constraints apply)
+**Files:**
+- Create: `scripts/lock_p4_0_baseline.py`
+- Create: `tests/test_p4_0_baseline_lock.py`
+- Generated: `reports/p4/p4-0-baseline-lock.json`
 
-## Goal
-Create `reports/p3/p3-baseline-lock.json` recording immutable historical baselines for 3 models:
-1. Base Qwen3-0.6B (the foundation model, no adapter)
-2. Stage3-Independent (P2 repair baseline)
-3. Stage3-v3-Antiforget (P2 balanced candidate)
+**Interfaces:**
+- Consumes: `data/p4-agent/micro-tasks-v0/manifest.json`, `data/p4-agent/trajectories-v0/scripted.jsonl`, `src/agent_evaluator.py`, `reports/p4/p4-agent-foundation-readiness.md`
+- Produces: `reports/p4/p4-0-baseline-lock.json` with fields: `p4_0_merge_commit`, `micro_tasks_manifest_sha256`, `scripted_trajectories_sha256`, `agent_evaluator_sha256`, `readiness_report_sha256`, `p4_0_verdict`, `p4_0_test_count`
 
-## Required Fields (per model)
-- `model_name`: human-readable name (e.g. "Base Qwen3-0.6B", "Stage3-Independent", "Stage3-v3-Antiforget")
-- `adapter_path`: relative path from repo root (e.g. "models/Qwen3-0.6B" for Base, "adapters/code-lora-v3-stage3-independent" for adapter)
-- `weight_sha256`: SHA256 of adapter weights file (adapter_model.safetensors or similar). For Base model, use the config SHA256 or a sentinel like "BASE_MODEL_NO_ADAPTER" if no adapter weights exist locally (DO NOT compute SHA of the full base model — it's too large; record the model dir path and note "base model, no adapter weights")
-- `config_sha256`: SHA256 of adapter_config.json (for adapters) or model config.json (for Base)
-- `training_config_sha256`: SHA256 of the training config YAML used to produce this adapter (look in configs/ directory). For Base, use "BASE_MODEL_NO_TRAINING_CONFIG"
-- `historical_eval_set_sha256`: SHA256 of frozen-eval-v2 test_raw.jsonl (from data/p2-curriculum/frozen-eval-v2/manifest.json field `test_sha256`)
-- `historical_held_out_metrics`: dict of metrics from reports/p2/ for this model on frozen-eval-v2 (e.g. overall_pass, codegen_pass1, static_repair, execution_repair). Look in reports/p2/*.json for per-model eval results. If exact metrics not found, record what's available and note the source file.
-- `created_at`: ISO 8601 timestamp
+- [ ] **Step 1: Write the failing test**
 
-## Top-level fields
-- `issue`: 9
-- `branch`: "feat/p3-capability-expansion-v2"
-- `purpose`: "Lock P2 historical baselines for P3 same-config comparison. Must not be modified after P3 training starts."
-- `frozen_eval_v2_manifest`: path to the v2 manifest
-- `frozen_eval_v2_sha256`: from v2 manifest
-- `created_at`: ISO 8601 timestamp
-- `models`: list of 3 model records above
+```python
+# tests/test_p4_0_baseline_lock.py
+import hashlib
+import json
+from pathlib import Path
 
-## Discovery Steps (implementer should do)
-1. Find adapter directories: `adapters/` likely has code-lora-v3-* subdirs. Use Glob to find.
-2. For Base model: path is likely `models/Qwen3-0.6B` (check if exists; if not, note path from configs).
-3. Find training configs: `configs/` directory, look for stage3-independent and stage3-v3-antiforget configs.
-4. Read data/p2-curriculum/frozen-eval-v2/manifest.json to get test_sha256.
-5. Find historical metrics: Glob reports/p2/*.json, read files to extract per-model metrics. Key files likely: full576-comparison.json, router-analysis.json, or per-model eval JSONs.
-6. Compute SHA256 of adapter_model.safetensors (or .bin) and adapter_config.json for each adapter.
-7. Compute SHA256 of training config YAMLs.
+_ROOT = Path(__file__).resolve().parent.parent
 
-## Tests (tests/test_p3_baseline_lock.py)
-- Test file loads reports/p3/p3-baseline-lock.json
-- Test: 3 models present with correct names
-- Test: each model has all required fields (non-empty)
-- Test: weight_sha256 is 64-char hex string OR "BASE_MODEL_NO_ADAPTER" sentinel
-- Test: config_sha256 is 64-char hex string
-- Test: historical_eval_set_sha256 matches data/p2-curriculum/frozen-eval-v2/manifest.json::test_sha256
-- Test: created_at is valid ISO 8601
 
-## Constraints
-- DO NOT modify any existing files outside reports/p3/ and tests/
-- DO NOT compute SHA of base model weights (too large, ~600MB-1GB). Use sentinel "BASE_MODEL_NO_ADAPTER" for weight_sha256 of Base, and use config.json SHA for config_sha256.
-- DO NOT run training or evaluation. This is a read-only lock task.
-- File must be valid JSON (pretty-printed, 2-space indent).
-- Use Python's hashlib for SHA256 computation.
-- For adapter weight files: compute SHA256 by reading in chunks (8192 bytes) to handle large files.
+def test_baseline_lock_exists():
+    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+    assert lock_path.exists(), "p4-0-baseline-lock.json not found"
 
-## Report File
-Write your full report to: .superpowers/sdd/task-1-report.md
-Return only: status (DONE/DONE_WITH_CONCERNS/BLOCKED/NEEDS_CONTEXT), commit hash, one-line test summary, concerns.
 
-## Commit
-- Stage: reports/p3/p3-baseline-lock.json, tests/test_p3_baseline_lock.py
-- Commit message: "feat(p3): lock historical baselines for P3 comparison"
-- Single commit.
+def test_baseline_lock_has_required_fields():
+    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+    data = json.loads(lock_path.read_text(encoding="utf-8"))
+    required = {
+        "p4_0_merge_commit", "micro_tasks_manifest_sha256",
+        "scripted_trajectories_sha256", "agent_evaluator_sha256",
+        "readiness_report_sha256", "p4_0_verdict", "p4_0_test_count",
+    }
+    assert required.issubset(data.keys()), f"missing: {required - data.keys()}"
 
-## Working Directory
-e:\agent\Qwen\qwen3-code-lab
 
-## Git Branch
-feat/p3-capability-expansion-v2 (already checked out)
+def test_baseline_lock_shas_match_files():
+    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+    data = json.loads(lock_path.read_text(encoding="utf-8"))
+
+    def sha256(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    assert data["micro_tasks_manifest_sha256"] == sha256(
+        _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
+    )
+    assert data["scripted_trajectories_sha256"] == sha256(
+        _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+    )
+    assert data["agent_evaluator_sha256"] == sha256(
+        _ROOT / "src" / "agent_evaluator.py"
+    )
+    assert data["readiness_report_sha256"] == sha256(
+        _ROOT / "reports" / "p4" / "p4-agent-foundation-readiness.md"
+    )
+
+
+def test_baseline_lock_p4_0_merge_commit_is_7ccd06c():
+    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+    data = json.loads(lock_path.read_text(encoding="utf-8"))
+    assert data["p4_0_merge_commit"].startswith("7ccd06c"), \
+        f"expected 7ccd06c..., got {data['p4_0_merge_commit']}"
+
+
+def test_baseline_lock_verdict_is_go():
+    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+    data = json.loads(lock_path.read_text(encoding="utf-8"))
+    assert data["p4_0_verdict"] == "GO_FOR_P4_AGENT_SFT_DATA"
+    assert data["p4_0_test_count"] == 81
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `py -3.11 -m pytest tests/test_p4_0_baseline_lock.py -v -p no:warnings`
+Expected: FAIL — `p4-0-baseline-lock.json not found`
+
+- [ ] **Step 3: Write the lock script**
+
+```python
+# scripts/lock_p4_0_baseline.py
+"""Phase A: lock P4.0 baseline SHAs into a JSON file.
+
+Idempotent: re-running produces the same JSON.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+_OUT = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+
+_P4_0_MERGE_COMMIT = "7ccd06c4d479b269f7708a6a430b9965af5f17e6"
+_P4_0_VERDICT = "GO_FOR_P4_AGENT_SFT_DATA"
+_P4_0_TEST_COUNT = 81
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main() -> None:
+    lock = {
+        "p4_0_merge_commit": _P4_0_MERGE_COMMIT,
+        "micro_tasks_manifest_sha256": _sha256(
+            _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
+        ),
+        "scripted_trajectories_sha256": _sha256(
+            _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+        ),
+        "agent_evaluator_sha256": _sha256(_ROOT / "src" / "agent_evaluator.py"),
+        "readiness_report_sha256": _sha256(
+            _ROOT / "reports" / "p4" / "p4-agent-foundation-readiness.md"
+        ),
+        "p4_0_verdict": _P4_0_VERDICT,
+        "p4_0_test_count": _P4_0_TEST_COUNT,
+    }
+    _OUT.parent.mkdir(parents=True, exist_ok=True)
+    _OUT.write_text(json.dumps(lock, indent=2), encoding="utf-8")
+    print(f"wrote {_OUT}")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+- [ ] **Step 4: Run the script to generate the lock file**
+
+Run: `py -3.11 scripts/lock_p4_0_baseline.py`
+Expected: `wrote reports/p4/p4-0-baseline-lock.json`
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `py -3.11 -m pytest tests/test_p4_0_baseline_lock.py -v -p no:warnings`
+Expected: 5 PASS
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/lock_p4_0_baseline.py tests/test_p4_0_baseline_lock.py reports/p4/p4-0-baseline-lock.json
+git commit -m "feat(p4-1): Phase A — P4.0 baseline lock"
+```
+
+---
+

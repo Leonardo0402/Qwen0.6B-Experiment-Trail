@@ -99,12 +99,33 @@ reports/p2/           Markdown reports + audit JSONs
 - All pytest tests must pass before requesting review.
 - Include before/after metrics tables when capability is affected.
 
+## Post-Task Review Gate
+
+**After completing any task, check the current project state against the key milestones in `../skills/qwen-experiment-trail-review-gate/关键节点.md`.**
+
+Procedure:
+1. Identify the current project phase (P4.1, P4.1b, P4.2, P4.3, etc.)
+2. Run through the relevant milestone checklist from `关键节点.md`
+3. If any checkbox is unchecked, determine whether it blocks the current phase
+4. If the current phase is complete, determine whether a PR should be opened
+5. Check the "任何阶段的阻断性审查" checklist regardless of phase
+
+**PR readiness check:**
+- [ ] All relevant milestone checkboxes are checked
+- [ ] `pytest tests/` is green
+- [ ] All modified files are explicitly staged (no `git add -A`)
+- [ ] Commit messages follow `type(scope): subject` convention
+- [ ] If the work closes an issue, `Closes #N` is in the PR body
+- [ ] `../skills/qwen-experiment-trail-review-gate/SKILL.md` review rules have been applied
+
 ## Reference Documents
 
 - Spec: `../docx/Qwen3-0.6B_Code_Training_Development_Spec.md`
 - Implementation plan: `../docx/Qwen3-0.6B_Implementation_Plan.md`
 - P2 readiness report: `reports/p2/p2-training-readiness-report.md`
 - P2 final comparison: `reports/p2/p2-final-comparison-report.md`
+- Review gate skill: `../skills/qwen-experiment-trail-review-gate/SKILL.md`
+- Key milestones: `../skills/qwen-experiment-trail-review-gate/关键节点.md`
 
 ## Verification Checklist (run before any merge)
 

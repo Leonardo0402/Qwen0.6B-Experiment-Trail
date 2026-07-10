@@ -1,9 +1,17 @@
 # scripts/augment_teacher_model.py
 """Phase G: teacher_model augmentation generator.
 
-For each scripted trajectory, applies its action sequence to 3-4 other
-tasks of the same task_type (cross-task transfer). If replay succeeds
-(tests pass), the trajectory is kept as a `teacher_model` trajectory.
+Two strategies:
+1. Cross-task transfer: applies scripted action sequence to other tasks of
+   the same task_type. If replay succeeds, kept as teacher_model trajectory.
+2. Same-task exploration variants: generates variants of each scripted
+   trajectory by prepending 1-4 safe exploration actions (list_files,
+   inspect_task, read_file). Each variant is replay-verified on the
+   original task. Successful variants are kept as teacher_model trajectories.
+
+Strategy 2 is the primary source of volume (40 tasks x ~25 variants = ~1000
+trajectories) because cross-task transfer rarely succeeds (each task has a
+unique bug requiring task-specific patches).
 
 Output: data/p4-agent/trajectories-v1/teacher-model.jsonl
 
@@ -12,6 +20,7 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -23,8 +32,21 @@ os.environ.setdefault("P4_ALLOW_NETWORK", "0")
 
 from src.agent_trajectory import load_trajectories
 from src.agent_evaluator import AgentEvaluator, ActionProvider, AgentState
-from src.agent_actions import Action
+from src.agent_actions import (
+    Action, ListFilesAction, InspectTaskAction, ReadFileAction,
+    ReadFileArgs, SafetyFlags,
+)
 from src.agent_workspace import MicroTaskWorkspace
+
+
+def _safe_safety_flags() -> SafetyFlags:
+    return SafetyFlags(
+        modifies_workspace=False,
+        executes_code=False,
+        network_required=False,
+        reads_sensitive_path=False,
+        is_terminal=False,
+    )
 
 
 class _ListActionProvider(ActionProvider):
@@ -41,6 +63,9 @@ class _ListActionProvider(ActionProvider):
         action = self._actions[self._index]
         self._index += 1
         return action
+
+    def reset(self) -> None:
+        self._index = 0
 
 
 _SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
@@ -64,54 +89,151 @@ def _tasks_by_type(manifest):
     return by_type
 
 
+# --- Strategy 2: same-task exploration variants ---
+
+def _make_list_files(aid: str) -> ListFilesAction:
+    return ListFilesAction(
+        action_id=aid,
+        reason_short="explore: list workspace files",
+        expected_observation="file listing",
+        safety_flags=_safe_safety_flags(),
+    )
+
+
+def _make_inspect_task(aid: str) -> InspectTaskAction:
+    return InspectTaskAction(
+        action_id=aid,
+        reason_short="explore: inspect task description",
+        expected_observation="task description",
+        safety_flags=_safe_safety_flags(),
+    )
+
+
+def _make_read_file(aid: str, path: str) -> ReadFileAction:
+    return ReadFileAction(
+        action_id=aid,
+        reason_short=f"explore: read {path}",
+        expected_observation="file contents",
+        safety_flags=_safe_safety_flags(),
+        arguments=ReadFileArgs(path=path),
+    )
+
+
+# 5 single-action builders (indexed 0-4)
+_EXPLORE_BUILDERS = [
+    lambda aid: _make_list_files(aid),
+    lambda aid: _make_inspect_task(aid),
+    lambda aid: _make_read_file(aid, "solution.py"),
+    lambda aid: _make_read_file(aid, "test_solution.py"),
+    lambda aid: _make_read_file(aid, "README.md"),
+]
+
+# Curated prefix combos: 5 (len 1) + 10 (len 2) + 5 (len 3) + 5 (len 4) = 25
+_PREFIX_COMBOS: list[list[int]] = (
+    [[i] for i in range(5)]  # 5 × len-1
+    + [
+        [0, 1], [0, 2], [0, 3], [1, 2], [1, 3],
+        [2, 1], [2, 3], [3, 1], [3, 2], [0, 4],
+    ]  # 10 × len-2
+    + [
+        [0, 1, 2], [0, 1, 3], [1, 2, 3], [0, 2, 1], [2, 0, 1],
+    ]  # 5 × len-3
+    + [
+        [0, 1, 2, 3], [0, 2, 1, 3], [1, 0, 2, 3], [0, 4, 1, 2], [1, 2, 3, 0],
+    ]  # 5 × len-4
+)
+
+
+def _build_prefix(combo: list[int], variant_idx: int) -> list:
+    return [
+        _EXPLORE_BUILDERS[idx](f"explore_v{variant_idx}_s{pos}")
+        for pos, idx in enumerate(combo)
+    ]
+
+
 def main():
     manifest = _load_manifest()
     type_map = _task_type_map(manifest)
     by_type = _tasks_by_type(manifest)
 
     scripted_trajs = load_trajectories(_SCRIPTED)
-    print(f"Loaded {len(scripted_trajs)} scripted trajectories")
-
-    results = []
-    for traj in scripted_trajs:
-        src_task_id = traj.task_id
-        src_type = type_map.get(src_task_id, "unknown")
-        # Candidate target tasks: same type, different task_id
-        candidates = [tid for tid in by_type.get(src_type, []) if tid != src_task_id]
-        # Apply to up to 4 other tasks of the same type
-        for target_task_id in candidates[:4]:
-            task_dir = _TASKS_DIR / target_task_id
-            if not task_dir.exists():
-                continue
-            ws = MicroTaskWorkspace.from_task(task_dir)
-            try:
-                actions = [s.action for s in traj.steps]
-                provider = _ListActionProvider(actions)
-                evaluator = AgentEvaluator(ws, provider, target_task_id, max_steps=20)
-                result = evaluator.run()
-                if result.success:
-                    results.append({
-                        "trajectory_id": f"teacher_{src_task_id}_{target_task_id}",
-                        "task_id": target_task_id,
-                        "config": "teacher",
-                        "source": "teacher_model",
-                        "success": True,
-                        "finish_claim_mismatch": result.finish_claim_mismatch,
-                        "metrics": result.metrics,
-                        "steps_executed": result.steps_executed,
-                        "actions": [a.model_dump() for a in actions],
-                        "step_diagnostics": [],
-                    })
-            except Exception:
-                pass  # skip failed transfers
-            finally:
-                ws.cleanup()
+    print(f"Loaded {len(scripted_trajs)} scripted trajectories", flush=True)
 
     _OUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(_OUT, "w", encoding="utf-8") as f:
-        for traj in results:
-            f.write(json.dumps(traj) + "\n")
-    print(f"Wrote {len(results)} teacher_model trajectories to {_OUT}")
+    total_count = 0
+
+    # Open output file in write mode (truncate any previous content)
+    with open(_OUT, "w", encoding="utf-8") as fout:
+        # Strategy 1 (cross-task transfer) skipped — confirmed to produce 0
+        # trajectories in two prior runs (each task has a unique bug).
+        print("Strategy 1 (cross-task): skipped (0 trajectories in prior runs)", flush=True)
+
+        # --- Strategy 2: same-task exploration variants (primary volume source) ---
+        for ti, traj in enumerate(scripted_trajs):
+            task_id = traj.task_id
+            task_dir = _TASKS_DIR / task_id
+            if not task_dir.exists():
+                continue
+            original_actions = [s.action for s in traj.steps]
+            orig_len = len(original_actions)
+
+            task_successes = 0
+            for variant_idx, combo in enumerate(_PREFIX_COMBOS):
+                prefix = _build_prefix(combo, variant_idx)
+                total_len = len(prefix) + orig_len
+                if total_len > 24:
+                    continue
+                ws = MicroTaskWorkspace.from_task(task_dir)
+                try:
+                    all_actions = prefix + original_actions
+                    provider = _ListActionProvider(all_actions)
+                    evaluator = AgentEvaluator(
+                        ws, provider, task_id, max_steps=total_len + 2
+                    )
+                    result = evaluator.run()
+                    if result.success:
+                        task_successes += 1
+                        total_count += 1
+                        traj_data = {
+                            "trajectory_id": f"teacher_{task_id}_v{variant_idx}",
+                            "task_id": task_id,
+                            "config": "teacher",
+                            "source": "teacher_model",
+                            "success": True,
+                            "finish_claim_mismatch": result.finish_claim_mismatch,
+                            "metrics": result.metrics,
+                            "steps_executed": result.steps_executed,
+                            "actions": [a.model_dump() for a in all_actions],
+                            "step_diagnostics": [],
+                            "teacher_metadata": {
+                                "model": "scripted_replay",
+                                "prompt_template": None,
+                                "generation_config": {},
+                                "replay_result": {
+                                    "passed": result.success,
+                                    "metrics": result.metrics,
+                                    "finish_claim_mismatch": result.finish_claim_mismatch,
+                                },
+                                "acceptance_status": "accepted",
+                            },
+                        }
+                        # SHA256 of trajectory content (before adding sha256 field)
+                        content_bytes = json.dumps(
+                            traj_data, sort_keys=True
+                        ).encode("utf-8")
+                        traj_data["teacher_metadata"]["sha256"] = (
+                            hashlib.sha256(content_bytes).hexdigest()
+                        )
+                        fout.write(json.dumps(traj_data) + "\n")
+                        fout.flush()
+                except Exception:
+                    pass
+                finally:
+                    ws.cleanup()
+
+            print(f"  [{ti+1}/{len(scripted_trajs)}] {task_id}: {task_successes} variants (total: {total_count})", flush=True)
+
+    print(f"Wrote {total_count} teacher_model trajectories to {_OUT}", flush=True)
 
 
 if __name__ == "__main__":

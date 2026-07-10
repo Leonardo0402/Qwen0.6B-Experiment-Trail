@@ -455,6 +455,43 @@ def test_search_text_dispatched(monkeypatch):
         ws.cleanup()
 
 
+def test_rollback_patch_dispatched(monkeypatch):
+    """rollback_patch action must produce a real tool call to tool_rollback_patch."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        from src.agent_actions import RollbackPatchAction, RollbackPatchArgs
+        import src.agent_evaluator as evaluator_mod
+
+        # Spy on tool_rollback_patch to verify it actually gets called.
+        # Pure spy (no original call) — the tool itself is tested in
+        # test_agent_tools.py; here we only verify evaluator dispatch.
+        call_count = {"n": 0}
+
+        def spy(workspace, action_id):
+            call_count["n"] += 1
+
+        monkeypatch.setattr(evaluator_mod, "tool_rollback_patch", spy)
+
+        rollback_action = RollbackPatchAction(
+            action_id="rollback_1",
+            reason_short="rollback test patch",
+            expected_observation="file restored",
+            safety_flags=_make_safe_safety_flags(is_terminal=False),
+            arguments=RollbackPatchArgs(action_id="patch_test"),
+        )
+        finish = _make_finish(tests_passed=True)
+        provider = _FixedProvider([rollback_action, finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        evaluator.run()
+        assert call_count["n"] >= 1, \
+            f"expected tool_rollback_patch to be called, got {call_count['n']}"
+    finally:
+        ws.cleanup()
+
+
 # --- Task 5: All 5 CorruptionType values tested ---
 
 

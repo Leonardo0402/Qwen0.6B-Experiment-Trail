@@ -151,7 +151,13 @@ def _run_config(config, task_ids):
 def main():
     _TRAJ_DIR.mkdir(parents=True, exist_ok=True)
     _REPORT.parent.mkdir(parents=True, exist_ok=True)
-    task_ids = _load_task_ids()
+    all_task_ids = _load_task_ids()
+    task_ids = list(all_task_ids)
+    limit = os.environ.get("P4_T9_TASK_LIMIT")
+    if limit:
+        task_ids = task_ids[:int(limit)]
+        print(f"P4_T9_TASK_LIMIT={limit}: running first {len(task_ids)} tasks")
+    limited_smoke = len(task_ids) < len(all_task_ids)
     reports = []
     for config in _CONFIGS:
         print(f"\n=== Config: {config['name']} ===")
@@ -163,6 +169,9 @@ def main():
                 f.write(json.dumps(traj) + "\n")
         # Strip trajectories from report (keep only summary)
         summary = {k: v for k, v in report.items() if k != "trajectories"}
+        summary["limited_smoke"] = limited_smoke
+        if limited_smoke:
+            summary["full_task_count"] = len(all_task_ids)
         reports.append(summary)
 
     _REPORT.write_text(json.dumps(reports, indent=2), encoding="utf-8")

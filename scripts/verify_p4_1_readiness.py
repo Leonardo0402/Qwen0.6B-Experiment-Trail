@@ -31,7 +31,6 @@ _P4_1_SCRIPTS = [
     "scripts/augment_corrupted_recovered.py",
     "scripts/augment_failed_patch_recovery.py",
     "scripts/build_agent_sft_dataset.py",
-    "scripts/verify_p4_1_readiness.py",
 ]
 _P4_1_SRC = ["src/agent_model_provider.py"]
 
@@ -86,6 +85,7 @@ def gate_03_unknown_action_hard_fails():
 def gate_04_all_11_actions_dispatched():
     code, stdout = _run_pytest([
         "tests/test_agent_evaluator.py::test_search_text_dispatched",
+        "tests/test_agent_evaluator.py::test_rollback_patch_dispatched",
     ])
     if code != 0:
         return (False, f"exit {code}\n{stdout[-300:]}")
@@ -127,7 +127,9 @@ def gate_07_model_smoke_base():
         return (False, "model_load_ok=False for base")
     if base.get("crashes", 0) > 0:
         return (False, f"crashes={base['crashes']}")
-    return (True, f"loaded, {base['trajectories_written']} trajectories")
+    smoke = base.get("limited_smoke", False)
+    label = "LIMITED_SMOKE" if smoke else "full"
+    return (True, f"loaded ({label}), {base['trajectories_written']} trajectories")
 
 
 def gate_08_model_smoke_repair_lora():
@@ -141,7 +143,9 @@ def gate_08_model_smoke_repair_lora():
         return (False, "model_load_ok=False for repair-lora")
     if not repair.get("adapter_load_ok"):
         return (False, "adapter_load_ok=False for repair-lora")
-    return (True, f"loaded, {repair['trajectories_written']} trajectories")
+    smoke = repair.get("limited_smoke", False)
+    label = "LIMITED_SMOKE" if smoke else "full"
+    return (True, f"loaded ({label}), {repair['trajectories_written']} trajectories")
 
 
 def gate_09_sft_dataset():
@@ -157,6 +161,11 @@ def gate_09_sft_dataset():
         return (False, "train split empty")
     if data.get("heldout_count", 0) == 0:
         return (False, "heldout split empty")
+    splits = data.get("splits", {})
+    for split_name in ("train", "validation", "heldout-agent-eval"):
+        split_info = splits.get(split_name, {})
+        if not split_info.get("sha256"):
+            return (False, f"split '{split_name}' missing sha256")
     return (True, f"{total} trajectories, train={data['train_count']} "
             f"val={data['validation_count']} heldout={data['heldout_count']}")
 

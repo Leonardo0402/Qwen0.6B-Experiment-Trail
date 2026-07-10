@@ -1,239 +1,393 @@
-# Task 6 Brief: Build Family Registry
+## Task 6: Phase E — ModelActionProvider prompt builder + JSON extraction + diagnostics (non-GPU, mocked)
 
-## Context
-- Project: e:\agent\Qwen\qwen3-code-lab
-- Branch: feat/p3-capability-expansion-v2 (Tasks 1-5 complete)
-- Plan file: .superpowers/sdd/p3-plan.md (Global Constraints #8, #9, #15 bind this task)
-- Task 5 produced `reports/p3/cross-split-dedup-quarantine.json` listing 58 quarantined family_ids that must NEVER enter Train/Val/Frozen partition.
-- Task 6 sits between dedup audit and Frozen v3 candidate reservation. Task 7 will call `registry.claim(family_id, "frozen_v3_candidate")` for the 120 reserved families; Task 8 will upgrade those to `"frozen_v3"`; Task 9 will claim `"p3_train"` / `"p3_validation"` and assert pairwise disjoint.
+**Files:**
+- Create: `src/agent_model_provider.py`
+- Create: `tests/test_agent_model_provider.py`
+- Modify: `src/agent_evaluator.py` (SentinelAction dispatch: `invalid_action_count` counter)
+- Modify: `tests/test_agent_evaluator.py` (+1 SentinelAction invalid-vs-forbidden test)
 
-## Goal
-Build three new files:
-1. `src/family_registry.py` — pure-Python API (dataclass + functions, no I/O side-effects in the API itself)
-2. `scripts/build_family_registry.py` — CLI builder that reads P2 partition + MBPP verified JSONL + Task 5 quarantine list, produces `data/family-registry.json`
-3. `tests/test_family_registry.py` — test suite
+**Interfaces:**
+- Consumes: `AgentState`, `AgentMemory`, `Action` union, `SafetyFlags` from P4.0 modules; `MicroTaskWorkspace` for task context
+- Produces: `ModelActionProvider` class, `ModelStepDiagnostics` model, `build_prompt()` function, `extract_json()` function, `repair_json()` function, `SentinelAction` (invalid action marker); evaluator `invalid_action_count` metric
 
-And one new data file produced by running the builder:
-4. `data/family-registry.json` — the canonical registry (committed)
-
-## family-registry.json Schema (top-level)
-```json
-{
-  "generated_at": "<iso8601 utc>",
-  "generator": "build_family_registry.py",
-  "schema_version": 1,
-  "total_families": <int>,
-  "total_p2_used": <int>,
-  "total_quarantined": <int>,
-  "total_new_available": <int>,
-  "families": {
-    "<family_id>": {
-      "source_task_id": "mbpp_<task_id>",
-      "source_split": "train" | "test" | "validation",
-      "usage": [<string>, ...],
-      "first_commit": "<git sha short or 'unknown'>",
-      "dataset_version": "mbpp-v1",
-      "sample_ids": ["mbpp_<task_id>"]
-    },
-    ...
-  }
-}
-```
-
-### Family `usage` tag vocabulary (binding — use these exact strings)
-- P2 backfill tags (from `data/p2-curriculum/family-partition.json`):
-  - `"p2_train"` — 224 families in `train_families`
-  - `"p2_validation"` — 75 families in `validation_families`
-  - `"p2_frozen_v2"` — 75 families in `frozen_families`
-- P3 quarantine tag (from `reports/p3/cross-split-dedup-quarantine.json`):
-  - `"quarantine"` — 58 families in `quarantined_families`
-- P3 future tags (NOT applied in this task; the API supports them but the builder does not invoke `claim()` with these — Tasks 7/8/9 will):
-  - `"frozen_v3_candidate"` (Task 7)
-  - `"frozen_v3"` (Task 8)
-  - `"p3_train"` (Task 9)
-  - `"p3_validation"` (Task 9)
-  - `"p3_train_replay"` (Task 9, P2-replay subset)
-
-### Backfill rules (binding)
-1. **P2 backfill**: For each family_id in `train_families`, set `usage=["p2_train"]`. Same for `validation_families` → `["p2_validation"]`, `frozen_families` → `["p2_frozen_v2"]`. All 374 P2 families come from MBPP `train` source_split. Their `first_commit` is the git short SHA of the P2 partition file's introduction; for simplicity, use `"515c955"` (the merge commit that introduced P2 — see `git log --oneline -- data/p2-curriculum/family-partition.json`).
-2. **MBPP verified families backfill**: Read `data/external/mbpp/verified/{train,test,validation}.jsonl` to discover NEW families not already in the registry. For each unique `family_id` encountered, IF the family does not exist in the registry yet (i.e. it is from the `test` or `validation` source_split, not from the 374 P2 train families), create an entry with `source_split` from the sample's `source_split` field (or derive from the filename if missing), `dataset_version="mbpp-v1"`, `first_commit="3dce2ce"` (the import commit). For families that ALREADY exist (P2 backfill), DO NOT create a duplicate — just verify the `source_split` matches (sanity check; if mismatch, abort with a clear error). `sample_ids` are derived from `family_id` per rule 4, not from the JSONL pass.
-3. **Quarantine backfill**: For each family_id in `reports/p3/cross-split-dedup-quarantine.json::quarantined_families`, ADD `"quarantine"` to the `usage` list (append, do not replace existing P2 tags if any). These families are excluded from P3 partition but their P2 history is preserved.
-4. **Sample IDs**: For MBPP families, `sample_ids = ["mbpp_<task_id>"]` where `task_id` is parsed from `family_id` via the bijective mapping `mbpp_fam_<n>` → `mbpp_<n>` (every MBPP family has exactly one source sample). This derivation works for ALL MBPP families — including the 3 train families whose samples were rejected at verify time (they still exist in the partition file with a P2 tag). Do NOT enumerate variant sample_ids (those live in stage manifests, not the registry). Do NOT read verified/rejected JSONL just to populate sample_ids — derive them from family_id instead.
-
-### Builder invariants (asserted at end of builder)
-After backfill, the builder MUST assert:
-- `total_p2_used == 374` (224+75+75)
-- `total_quarantined == 58` (matches Task 5 output)
-- `total_new_available == (families with usage == [])` — families with no P2 tag, no quarantine, no P3 tag
-- `total_families == 374 + (955 verified families' unique family_ids) - overlap_with_p2` (count distinct family_ids across all sources)
-- No family has both `"quarantine"` AND a P3 future tag (`"frozen_v3"`, `"p3_train"`, `"p3_validation"`) — at this stage of the build, no P3 tags exist yet, so this is trivially true; assert anyway as a guard for future Tasks 7-9.
-
-## src/family_registry.py API
+- [ ] **Step 1: Write the failing tests**
 
 ```python
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Optional
+# tests/test_agent_model_provider.py
+import pytest
+from src.agent_model_provider import (
+    build_prompt, extract_json, repair_json, ModelStepDiagnostics,
+    SentinelAction,
+)
+from src.agent_evaluator import AgentState
+from src.agent_state import AgentMemory
+
+
+def test_build_prompt_produces_nonempty_string():
+    state = AgentState(
+        memory=AgentMemory(),
+        step_count=0,
+        task_id="task_001",
+        workspace_id="test_ws",
+    )
+    prompt = build_prompt(state, task_description="Fix the bug", last_observation=None)
+    assert isinstance(prompt, str)
+    assert len(prompt) > 0
+    assert "task_001" in prompt or "Fix the bug" in prompt
+
+
+def test_extract_json_finds_first_json_block():
+    raw = 'Here is the action:\n```json\n{"action_type": "list_files"}\n```\nDone.'
+    result = extract_json(raw)
+    assert result == '{"action_type": "list_files"}'
+
+
+def test_extract_json_returns_none_on_no_json():
+    raw = "I cannot produce an action."
+    assert extract_json(raw) is None
+
+
+def test_repair_json_strips_markdown_fences():
+    raw = '```json\n{"action_type": "read_file"}\n```'
+    repaired = repair_json(raw)
+    assert "```" not in repaired
+    assert '"action_type"' in repaired
+
+
+def test_repair_json_removes_trailing_commas():
+    raw = '{"action_type": "read_file", "arguments": {"path": "x.py",},}'
+    repaired = repair_json(raw)
+    assert ",}" not in repaired
+    assert ",," not in repaired
+
+
+def test_repair_json_does_not_choose_action_type():
+    """Repair must NOT substitute a valid action_type for an invalid one."""
+    raw = '{"action_type": "???"}'
+    repaired = repair_json(raw)
+    assert '"???"' in repaired, "repair must not alter action_type value"
+
+
+def test_sentinel_action_marks_invalid():
+    sa = SentinelAction(reason="json parse failed")
+    assert sa.is_invalid
+    assert sa.reason == "json parse failed"
+```
+
+Also append to `tests/test_agent_evaluator.py`:
+
+```python
+# --- Task 6: SentinelAction counted as invalid, not forbidden ---
+
+def test_sentinel_action_counted_as_invalid_not_forbidden(monkeypatch):
+    """SentinelAction must increment invalid_action_count, not forbidden_action_count."""
+    monkeypatch.setenv("P4_ALLOW_NETWORK", "0")
+    traj = _load_first_success_trajectory()
+    task_dir = TASKS_DIR / traj.task_id
+    ws = MicroTaskWorkspace.from_task(task_dir)
+    try:
+        from src.agent_model_provider import SentinelAction
+        # Build a provider that returns SentinelAction then finish
+        sentinel = SentinelAction(reason="test invalid")
+        finish = _make_finish(tests_passed=True)
+        provider = _FixedProvider([sentinel, finish])
+        evaluator = AgentEvaluator(ws, provider, traj.task_id, max_steps=20)
+        result = evaluator.run()
+        assert result.metrics.get("invalid_action_count", 0) >= 1, \
+            "SentinelAction must increment invalid_action_count"
+        assert result.metrics.get("forbidden_action_count", 0) == 0, \
+            "SentinelAction must NOT increment forbidden_action_count"
+    finally:
+        ws.cleanup()
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `py -3.11 -m pytest tests/test_agent_model_provider.py tests/test_agent_evaluator.py::test_sentinel_action_counted_as_invalid_not_forbidden -v -p no:warnings`
+Expected: FAIL — module doesn't exist (`ModuleNotFoundError`); `invalid_action_count` metric doesn't exist.
+
+- [ ] **Step 3: Implement the module**
+
+```python
+# src/agent_model_provider.py
+"""P4.1 Phase E — ModelActionProvider: prompt builder, JSON extraction,
+format-only repair, and structured diagnostics.
+
+This module does NOT load the model (that's in the GPU tests / collection
+script). It provides the building blocks that the ModelActionProvider class
+composes.
+"""
+from __future__ import annotations
+
 import json
+import re
+import time
+from typing import Any
 
-@dataclass
-class FamilyEntry:
-    family_id: str
-    source_task_id: str
-    source_split: str
-    usage: list[str] = field(default_factory=list)
-    first_commit: str = "unknown"
-    dataset_version: str = "mbpp-v1"
-    sample_ids: list[str] = field(default_factory=list)
+from pydantic import BaseModel, Field
 
-    def is_used(self) -> bool:
-        """True iff usage list is non-empty."""
-        return len(self.usage) > 0
-
-    def has_usage(self, tag: str) -> bool:
-        """True iff the family's usage list contains *tag*."""
-        return tag in self.usage
-
-    def claim(self, tag: str) -> None:
-        """Add *tag* to usage list. Idempotent: claiming an existing tag again is a no-op."""
-        if tag not in self.usage:
-            self.usage.append(tag)
+from src.agent_actions import Action, SafetyFlags
+from src.agent_evaluator import AgentState, ActionProvider
 
 
-@dataclass
-class FamilyRegistry:
-    families: dict[str, FamilyEntry] = field(default_factory=dict)
+class ModelStepDiagnostics(BaseModel):
+    """Diagnostics recorded for each model.generate() call."""
+    raw_output: str
+    json_parse_ok: bool
+    schema_valid: bool
+    safety_valid: bool
+    action_type_valid: bool
+    arguments_valid: bool
+    repair_attempted: bool
+    repair_success: bool
+    latency_ms: int
 
-    @classmethod
-    def from_path(cls, path: Path | str) -> "FamilyRegistry":
-        """Load registry from data/family-registry.json."""
 
-    def to_path(self, path: Path | str) -> None:
-        """Write registry to data/family-registry.json (pretty-printed, sorted keys)."""
+class SentinelAction(BaseModel):
+    """Marker returned when the model output cannot be parsed into a valid
+    Action. Not a real Action — the evaluator records it as action_invalid."""
+    is_invalid: bool = True
+    reason: str = ""
 
-    def get(self, family_id: str) -> Optional[FamilyEntry]:
-        ...
+    @property
+    def action_type(self) -> str:
+        return "invalid"
 
-    def claim(self, family_id: str, tag: str) -> None:
-        """Claim a tag for a family. Raises KeyError if family_id not in registry."""
+    @property
+    def safety_flags(self) -> SafetyFlags:
+        return SafetyFlags(
+            modifies_workspace=False,
+            executes_code=False,
+            network_required=False,
+            reads_sensitive_path=False,
+            is_terminal=False,
+        )
 
-    def is_used(self, family_id: str) -> bool:
-        ...
 
-    def families_with_usage(self, tag: str) -> list[str]:
-        """Return sorted list of family_ids whose usage contains *tag*."""
+def build_prompt(
+    state: AgentState,
+    task_description: str,
+    last_observation: dict | None,
+) -> str:
+    """Build the prompt for model.generate()."""
+    lines = [
+        f"Task ID: {state.task_id}",
+        f"Step: {state.step_count}",
+        f"Task: {task_description}",
+    ]
+    if state.memory.notes:
+        lines.append(f"Notes: {state.memory.notes}")
+    if state.memory.hypothesis:
+        lines.append(f"Hypothesis: {state.memory.hypothesis}")
+    if last_observation:
+        lines.append(f"Last observation: {last_observation}")
+    lines.append(
+        "Choose ONE action from: list_files, read_file, search_text, "
+        "inspect_task, propose_patch, apply_patch, rollback_patch, run_tests, "
+        "inspect_error, write_memory, finish."
+    )
+    lines.append("Respond with a single JSON object.")
+    return "\n".join(lines)
 
-    def assert_pairwise_disjoint(
+
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+_BARE_JSON_RE = re.compile(r"(\{.*\})", re.DOTALL)
+
+
+def extract_json(raw: str) -> str | None:
+    """Extract the first JSON object from raw model output. Returns the
+    JSON string or None if no JSON found."""
+    m = _JSON_FENCE_RE.search(raw)
+    if m:
+        return m.group(1)
+    m = _BARE_JSON_RE.search(raw)
+    if m:
+        return m.group(1)
+    return None
+
+
+def repair_json(raw: str) -> str:
+    """Format-only repair. NEVER alters action semantics (action_type,
+    arguments values). Only fixes: markdown fences, trailing commas,
+    unbalanced braces (best-effort)."""
+    result = raw
+    # Strip markdown fences
+    result = re.sub(r"```(?:json)?\s*", "", result)
+    result = result.replace("```", "")
+    # Remove trailing commas before } or ]
+    result = re.sub(r",\s*([}\]])", r"\1", result)
+    # Best-effort brace balancing (append missing closing braces)
+    opens = result.count("{")
+    closes = result.count("}")
+    if opens > closes:
+        result = result + ("}" * (opens - closes))
+    return result.strip()
+
+
+class ModelActionProvider(ActionProvider):
+    """Loads Qwen3-0.6B and generates actions. GPU required.
+
+    The actual model loading happens in __init__ (lazy torch import).
+    Non-GPU tests mock the _generate method.
+    """
+
+    def __init__(
         self,
-        usages: list[str],
-        whitelist: list[tuple[str, str]] | None = None,
-    ) -> None:
-        """Assert that the family sets for each pair of usage tags in *usages*
-        are pairwise disjoint, EXCEPT for pairs listed in *whitelist*.
+        model_path: str = "models/Qwen3-0.6B",
+        adapter_path: str | None = None,
+        max_new_tokens: int = 512,
+    ):
+        self._model_path = model_path
+        self._adapter_path = adapter_path
+        self._max_new_tokens = max_new_tokens
+        self._model = None
+        self._tokenizer = None
+        self._diagnostics: list[ModelStepDiagnostics] = []
 
-        Example:
-            registry.assert_pairwise_disjoint(
-                usages=["p3_train", "p3_validation", "frozen_v3"],
-                whitelist=[("p2_train", "p3_train_replay")],
+    def _load_model(self):
+        """Lazy-load the model. Called on first next_action."""
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self._model_path, trust_remote_code=True
+        )
+        if self._tokenizer.pad_token is None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+
+        self._model = AutoModelForCausalLM.from_pretrained(
+            self._model_path,
+            dtype=torch.float16,
+            device_map={"": "cuda:0"},
+            trust_remote_code=True,
+        )
+        if self._adapter_path:
+            from peft import PeftModel
+            self._model = PeftModel.from_pretrained(self._model, self._adapter_path)
+            self._model = self._model.merge_and_unload()
+        self._model.config.use_cache = True
+        self._model.eval()
+
+    def _generate(self, prompt: str) -> str:
+        """Generate raw text from the model. Override in tests."""
+        import torch
+        inputs = self._tokenizer(prompt, return_tensors="pt").to("cuda:0")
+        with torch.no_grad():
+            outputs = self._model.generate(
+                **inputs,
+                max_new_tokens=self._max_new_tokens,
+                temperature=0.0,
+                do_sample=False,
+                pad_token_id=self._tokenizer.eos_token_id,
             )
+        return self._tokenizer.decode(
+            outputs[0][inputs["input_ids"].shape[1]:],
+            skip_special_tokens=True,
+        )
 
-        Raises AssertionError with a message listing the violating family_ids
-        and the offending pair.
-        """
+    def next_action(self, state: AgentState) -> Action | SentinelAction:
+        if self._model is None:
+            self._load_model()
+        prompt = build_prompt(state, task_description="", last_observation=None)
+        t0 = time.monotonic()
+        raw_output = self._generate(prompt)
+        latency_ms = int((time.monotonic() - t0) * 1000)
+
+        json_str = extract_json(raw_output)
+        diag = ModelStepDiagnostics(
+            raw_output=raw_output,
+            json_parse_ok=json_str is not None,
+            schema_valid=False,
+            safety_valid=False,
+            action_type_valid=False,
+            arguments_valid=False,
+            repair_attempted=False,
+            repair_success=False,
+            latency_ms=latency_ms,
+        )
+
+        if json_str is None:
+            self._diagnostics.append(diag)
+            return SentinelAction(reason="json parse failed")
+
+        # Try direct validation
+        try:
+            data = json.loads(json_str)
+            action = _validate_action(data)
+            if action is not None:
+                diag.schema_valid = True
+                diag.safety_valid = True
+                diag.action_type_valid = True
+                diag.arguments_valid = True
+                self._diagnostics.append(diag)
+                return action
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Attempt repair
+        diag.repair_attempted = True
+        repaired = repair_json(json_str)
+        try:
+            data = json.loads(repaired)
+            action = _validate_action(data)
+            if action is not None:
+                diag.repair_success = True
+                diag.schema_valid = True
+                diag.safety_valid = True
+                diag.action_type_valid = True
+                diag.arguments_valid = True
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        self._diagnostics.append(diag)
+        return SentinelAction(reason="schema validation failed after repair")
+
+    def reset(self) -> None:
+        self._diagnostics.clear()
+
+    @property
+    def diagnostics(self) -> list[ModelStepDiagnostics]:
+        return list(self._diagnostics)
+
+
+def _validate_action(data: dict) -> Action | None:
+    """Validate a dict against the Action union. Returns the Action or None."""
+    from src.agent_actions import Action
+    try:
+        return Action.model_validate(data)
+    except Exception:
+        return None
 ```
 
-### Important API contract notes
-- `claim()` is idempotent — claiming the same tag twice does NOT duplicate the entry. This is verified in the test suite.
-- `assert_pairwise_disjoint` checks EACH PAIR (not just 3-way intersection). With `usages=["A","B","C"]`, it asserts `A∩B=∅`, `A∩C=∅`, `B∩C=∅` — three checks, not one.
-- The whitelist is a list of `(tag_a, tag_b)` tuples. When checking the pair `(A, B)`, if `(A, B)` or `(B, A)` is in the whitelist, the check is skipped for that pair.
-- The registry does NOT enforce immutability of P2 tags — but the builder only ever ADDS tags. Future Tasks (7-9) must follow the same convention.
+- [ ] **Step 4: Modify the evaluator dispatch loop for SentinelAction**
 
-## scripts/build_family_registry.py CLI
+In `src/agent_evaluator.py`'s `AgentEvaluator.run()`:
 
-```
-python scripts/build_family_registry.py \
-    --p2-partition data/p2-curriculum/family-partition.json \
-    --mbpp-verified-dir data/external/mbpp/verified \
-    --quarantine reports/p3/cross-split-dedup-quarantine.json \
-    --output data/family-registry.json
-```
+1. Add `invalid_action_count = 0` to the metric counters at the top of `run()` (alongside `forbidden_count`, `total_tools`, etc.).
 
-Exit codes: 0 = success, 1 = invariant violation or I/O error.
+2. BEFORE the `action.__class__.model_validate(action.model_dump())` call in the dispatch loop, add the SentinelAction check:
 
-The builder must:
-1. Load P2 partition → backfill 374 families with appropriate P2 tags.
-2. Load all 3 verified JSONL files → add new families (or merge sample_ids for existing P2 families).
-3. Load quarantine JSON → append `"quarantine"` tag to quarantined families.
-4. Run all builder invariants above. Abort with exit 1 if any fails.
-5. Write `data/family-registry.json` (pretty-printed, sorted keys, ends with newline).
-6. Print a summary to stdout: total families, P2 used, quarantined, new available.
-
-## tests/test_family_registry.py
-
-Use synthetic registries built in-memory (no file I/O on real data). The builder test (test_builder_correctness) may use small synthetic input files in `tmp_path`.
-
-Required tests (10):
-
-1. `test_family_entry_is_used_empty_returns_false`: FamilyEntry with empty usage → `is_used()` returns False.
-2. `test_family_entry_is_used_nonempty_returns_true`: FamilyEntry with `usage=["p2_train"]` → `is_used()` returns True.
-3. `test_claim_idempotent`: calling `entry.claim("p3_train")` twice → usage has exactly one `"p3_train"`.
-4. `test_registry_claim_adds_tag`: `registry.claim("mbpp_fam_42", "frozen_v3_candidate")` adds the tag to that family.
-5. `test_registry_claim_unknown_family_raises`: `registry.claim("nonexistent", "x")` raises KeyError.
-6. `test_families_with_usage_filters_correctly`: registry with 3 families (one p2_train, one quarantine, one empty) → `families_with_usage("quarantine")` returns only the quarantine family.
-7. `test_assert_pairwise_disjoint_passes`: registry where the three usage sets are disjoint → no exception.
-8. `test_assert_pairwise_disjoint_fails_on_overlap`: registry where one family has both `"p3_train"` and `"p3_validation"` → raises AssertionError with the family_id in the message.
-9. `test_assert_pairwise_disjoint_whitelist_allows_overlap`: registry where one family has both `"p2_train"` and `"p3_train_replay"` → `assert_pairwise_disjoint(["p2_train","p3_train_replay"], whitelist=[("p2_train","p3_train_replay")])` does NOT raise.
-10. `test_builder_correctness`: build a registry from synthetic P2 partition + synthetic verified JSONL + synthetic quarantine list (use `tmp_path`), assert: total_families matches expected count, P2 tags applied correctly, quarantine tag applied, new families have empty usage.
-
-## Constraints
-- Do NOT modify any existing files under `src/` other than creating the new `src/family_registry.py`.
-- Do NOT modify any existing files under `tests/`, `scripts/`, `reports/`, or `data/`.
-- New file only: `src/family_registry.py`, `scripts/build_family_registry.py`, `tests/test_family_registry.py`, and the generated `data/family-registry.json`.
-- Use only stdlib + project-local imports (`from src.schemas import Sample` is OK if needed; do NOT import `src.validators`).
-- Single git commit at the end.
-
-## Test Verification
-`cd e:\agent\Qwen\qwen3-code-lab ; python -m pytest tests/test_family_registry.py -v`
-
-All 10 tests must pass.
-
-## Run the Builder for Real
-After tests pass, run the builder for real on the actual data:
-```
-python scripts/build_family_registry.py \
-    --p2-partition data/p2-curriculum/family-partition.json \
-    --mbpp-verified-dir data/external/mbpp/verified \
-    --quarantine reports/p3/cross-split-dedup-quarantine.json \
-    --output data/family-registry.json
+```python
+# Handle SentinelAction (from ModelActionProvider) — invalid, not forbidden
+if hasattr(action, 'is_invalid') and getattr(action, 'is_invalid', False):
+    invalid_action_count += 1
+    errors.append(f"step {step}: invalid action (sentinel: {getattr(action, 'reason', 'unknown')})")
+    continue
 ```
 
-The builder must succeed (exit 0) and produce the registry file with these expected counts:
-- 955 verified samples = 371 train + 494 test + 90 validation (post-Task 4 verification; 9 rejected samples are NOT in verified JSONL)
-- 374 P2 families come from the partition file (all from MBPP train source_split, task_ids 601-974); the 3 train families whose samples were rejected at verify time STILL get their P2 tag because the partition file lists them — P2 history predates the P3 rejection.
-- The 371 train-verified families are a subset of the 374 P2 train families (3 families have verified JSONL but their original P2 samples were generated from the pre-verify import).
-- Therefore:
-  - `total_families` == 374 (P2 train) + 494 (test) + 90 (validation) = **958**
-  - `total_p2_used` == **374** (224 p2_train + 75 p2_validation + 75 p2_frozen_v2)
-  - `total_quarantined` == **58** (matches Task 5 output)
-  - `total_new_available` == 958 - 374 - 58 = **526** (families with empty usage that Task 7 can claim as frozen_v3_candidate)
+3. Add `"invalid_action_count": invalid_action_count` to the metrics dict in `_make_result` / the EvalResult metrics.
 
-If the builder's invariants fail, abort and report. Do NOT silently write a broken registry.
+- [ ] **Step 5: Run tests to verify they pass**
 
-## Report File
-Write to: `.superpowers/sdd/task-6-report.md`
-Include:
-- Files created (4 paths)
-- total_families / total_p2_used / total_quarantined / total_new_available
-- Confirmation that all 4 builder invariants pass
-- Confirmation that pairwise disjoint assertion passes for P2 tags (p2_train ∩ p2_validation = ∅, p2_train ∩ p2_frozen_v2 = ∅, p2_validation ∩ p2_frozen_v2 = ∅)
-- The commit hash
-- Test summary
-- Any concerns
+Run: `py -3.11 -m pytest tests/test_agent_model_provider.py tests/test_agent_evaluator.py -v -p no:warnings`
+Expected: All tests PASS (7 model_provider + existing evaluator + new SentinelAction test). No regressions.
 
-## Commit
-- Stage: `src/family_registry.py`, `scripts/build_family_registry.py`, `tests/test_family_registry.py`, `data/family-registry.json`
-- Commit message: `feat(p3): family registry with P2 backfill + quarantine`
-- Single commit.
+- [ ] **Step 6: Commit**
 
-## Working Directory
-e:\agent\Qwen\qwen3-code-lab
+```bash
+git add src/agent_model_provider.py tests/test_agent_model_provider.py src/agent_evaluator.py tests/test_agent_evaluator.py
+git commit -m "feat(p4-1): Phase E — ModelActionProvider prompt builder + JSON extraction + repair + diagnostics + SentinelAction dispatch"
+```
+
+---
+

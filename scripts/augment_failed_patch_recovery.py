@@ -42,6 +42,9 @@ class _ListActionProvider(ActionProvider):
         self._index += 1
         return action
 
+    def reset(self) -> None:
+        self._index = 0
+
 
 _SCRIPTED = _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
 _TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"

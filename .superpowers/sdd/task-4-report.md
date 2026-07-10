@@ -1,150 +1,151 @@
-# Task 4 Report: Run Import + Verify + Source Audit
+# Task 4 Report — Phase C: inspect_error returns stdout+stderr capped 8KB
 
-## Status: DONE_WITH_CONCERNS
+## 1. Status
 
-The audit script + tests + report are complete and committed, but the
-verifier's `hidden >= 3` hard gate rejected 100% of standard MBPP samples.
-This makes the current P3 plan INFEASIBLE until the hidden-tests shortage is
-addressed (likely via the Frozen v3 hidden-test augmentation step already
-specified in Task 8 of the P3 plan).
+DONE
 
-## Work Completed
+## 2. Commit SHA
 
-1. Wrote `scripts/generate_source_audit.py` -- reads per-split manifests +
-   normalised JSONL, produces `reports/p3/mbpp-source-audit.json`.
-2. Wrote `tests/test_generate_source_audit.py` -- 31 tests with synthetic
-   manifests (no network).  All 31 pass on Python 3.10.
-3. Imported all 3 MBPP splits from HuggingFace (`google-research-datasets/mbpp`,
-   revision=`main`) via `scripts/import_mbpp.py`.  Network access required the
-   user's proxy at `127.0.0.1:7897` (HTTP_PROXY / HTTPS_PROXY env vars).
-4. Verified all 3 splits via `scripts/verify_imported_mbpp.py` (real
-   `src.validators.verify_sample`).  All 964 samples were rejected by the
-   `hidden_tests >= 3` hard gate (see Finding F-1 below).
-5. Generated the audit report with the real (non-synthetic) manifests.
+`50ec3af` — `feat(p4-1): Phase C — inspect_error returns stdout+stderr capped 8KB`
 
-## Actual Split Counts (from real manifests)
+- Branch: `feat/p4-1-model-action-provider`
+- BASE (T3 HEAD before this task): `41a0d05`
+- Files staged: ONLY `src/agent_tools.py` and `tests/test_agent_tools.py`
 
-| Split      | Imported | Verified | Rejected | task_id range | Fingerprint        |
-|------------|----------|----------|----------|---------------|--------------------|
-| train      | 374      | 0        | 374      | 601 -- 974    | 5cdc16311fd8e220   |
-| test       | 500      | 0        | 500      | 11 -- 510     | 44206dd27b0bf01d   |
-| validation | 90       | 0        | 90       | 511 -- 600    | 8f9deacfc72ae133   |
-| **Total**  | **964**  | **0**    | **964**  | --            | --                 |
+## 3. What was implemented
 
-Cross-split task_id overlap: **empty for all three pairs** (train_test,
-train_validation, test_validation).  MBPP splits are disjoint by
-construction; the audit confirms this empirically.
+**`src/agent_tools.py`** — `tool_inspect_error`, `last_test` branch (lines 608-613):
+- Replaced `content=last_test_observation.stderr` (which was empty for pytest failures since tracebacks go to stdout) with `content = (stdout + "\n" + stderr)[:8192]`.
+- The `last_patch` branch and the `else` (invalid source) branch were NOT touched.
+- No docstring changes, no refactors.
 
-Missing / duplicate task_ids: **none** in any split.
+**`tests/test_agent_tools.py`** — appended 2 new tests after `test_finish`:
+- `test_inspect_error_returns_stdout_on_test_failure` — verifies a stdout-only failure (empty stderr) now surfaces content containing `AssertionError`.
+- `test_inspect_error_caps_at_8kb` — verifies a 10000-char stdout is truncated to exactly 8192 chars.
+- The existing `test_inspect_error_last_test` (line 480) was left unmodified per surgical-changes constraint. Its docstring ("returns the test stderr") is now slightly inaccurate (content is stdout+stderr), but its assertion still holds because it places `AssertionError` in `stderr` with `stdout=""`, and the new code concatenates both. Left alone as instructed.
 
-## Conclusion
+## 4. TDD evidence
 
-**INFEASIBLE** (test verified_count=0 < 240 threshold).
+### RED — tests fail for the right reason (before implementation)
 
-`new_families_available = test_verified + validation_verified = 0 + 0 = 0`.
-
-Per the P3 plan, this result means: **stop and escalate** before proceeding
-to Tasks 5-14.
-
-## Findings
-
-### F-1 (CRITICAL): MBPP standard tests fail the `hidden >= 3` hard gate
-
-The verifier (`scripts/verify_imported_mbpp.py`) enforces these per-sample
-hard checks (defined in Task 3, mirror of P3 plan constraint #12):
-
-- `public_tests.count("assert ") >= 2`
-- `hidden_tests.count("assert ") >= 3`
-
-MBPP ships ~3 test cases per task in `test_list`.  The importer
-(`scripts/import_mbpp.py:split_mbpp_tests`) splits them as `min(2, n)` public
-+ remainder hidden, so the standard case yields 2 public + 1 hidden.  The
-`hidden >= 3` check then rejects every sample.
-
-**Rejection reason histogram** (from the verifier stdout):
-
-| Split      | Reason                              | Count |
-|------------|-------------------------------------|-------|
-| train      | `hidden assertions 1 < 3`          | 374   |
-| test       | `hidden assertions 1 < 3`          | 499   |
-| test       | `hidden assertions 2 < 3`          | 1     |
-| validation | `hidden assertions 1 < 3`          | 90    |
-
-No sample reached the real `verify_sample` call (compile + pytest + ruff)
-because the assertion-count hard check runs first.
-
-### F-2 (Expected): Cross-split task_id overlap is empty
-
-Confirms MBPP's documented disjoint splits: train [601-974], validation
-[511-600], test [11-510].  No remediation needed for the dedup audit
-(Task 5).
-
-### F-3 (Process): Python 3.8 is incompatible with `datasets>=3.x`
-
-`scripts/import_mbpp.py` requires `datasets` which raised
-`TypeError: must be called with a dataclass type or instance` on Python 3.8
-(the system's default `python`).  Switched to the project's pinned
-`Python 3.10.9` (`pyproject.toml:requires-python = ">=3.10,<3.11"`).
-The script + tests were validated against this interpreter.  All 143
-schema / import / audit tests pass.
-
-## Network / Timeout Issues
-
-- **Network**: HuggingFace download succeeded on the first try once the
-  user's proxy was set via `$env:HTTP_PROXY` / `$env:HTTPS_PROXY`.
-  No retries needed.
-- **Timeouts**: zero.  Verification of all 964 samples completed in
-  under 90 seconds because the assertion-count hard check short-circuits
-  before the real `pytest` call -- so the slow path (compile + pytest +
-  ruff per sample) was never reached.  If the hidden-test shortage is
-  fixed (e.g. by augmenting tests), verification is expected to take
-  15-45 minutes per the original brief.
-
-## Files Touched
-
-- New: `scripts/generate_source_audit.py`
-- New: `tests/test_generate_source_audit.py`
-- New: `reports/p3/mbpp-source-audit.json`
-- New: `data/external/mbpp/manifest.train.json`
-- New: `data/external/mbpp/manifest.test.json`
-- New: `data/external/mbpp/manifest.validation.json`
-- New: `data/external/mbpp/manifest.index.json`
-- New: `data/external/mbpp/normalized/test.jsonl`
-- New: `data/external/mbpp/normalized/validation.jsonl`
-- Modified: `data/external/mbpp/normalized/train.jsonl` (re-imported in P3
-  format: `verified=false`, all-false Verification, `source_split="train"`)
-- New: `data/external/mbpp/rejected/train.jsonl`
-- New: `data/external/mbpp/rejected/test.jsonl`
-- New: `data/external/mbpp/rejected/validation.jsonl`
-- Untouched: `scripts/import_mbpp.py`, `scripts/verify_imported_mbpp.py`,
-  `src/` files (per Task 3 constraints)
-- Untouched: old `data/external/mbpp/manifest.json` (P2 artifact, kept as-is)
-
-## Test Summary
-
+Command:
 ```
-$ python -m pytest tests/test_generate_source_audit.py tests/test_import_mbpp.py \
-                   tests/test_import_mbpp_p3.py tests/test_schemas.py -v
-============================= 143 passed in 7.81s ==============================
+py -3.11 -m pytest tests/test_agent_tools.py::test_inspect_error_returns_stdout_on_test_failure tests/test_agent_tools.py::test_inspect_error_caps_at_8kb -v -p no:warnings
 ```
 
-All 31 new audit-script tests pass; no regressions in importer / verifier /
-schema tests.
+Output (exit code 1):
+```
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\agent\Qwen\qwen3-code-lab
+configfile: pyproject.toml
+plugins: anyio-4.13.0, hypothesis-6.155.7, timeout-2.4.0, xdist-3.8.0
+collected 2 items
 
-## Recommendation for Next Step
+tests\test_agent_tools.py FF                                             [100%]
 
-Per the P3 plan, **stop and escalate** because the audit conclusion is
-INFEASIBLE.  Before Task 5 (cross-split dedup), one of these remediations
-is required:
+================================== FAILURES ===================================
+______________ test_inspect_error_returns_stdout_on_test_failure ______________
+...
+>       assert result.content != "", "inspect_error returned empty content for stdout-only failure"
+E       AssertionError: inspect_error returned empty content for stdout-only failure
+E       assert '' != ''
+E        +  where '' = ErrorObservation(source='last_test', content='').content
+_______________________ test_inspect_error_caps_at_8kb ________________________
+...
+>       assert len(result.content) == 8192, \
+            f"expected 8192 chars (8KB cap), got {len(result.content)}"
+E       AssertionError: expected 8192 chars (8KB cap), got 0
+E       assert 0 == 8192
+E        +  where 0 = len('')
+E        +    where '' = ErrorObservation(source='last_test', content='').content
+=========================== short test summary info ===========================
+FAILED tests/test_agent_tools.py::test_inspect_error_returns_stdout_on_test_failure
+FAILED tests/test_agent_tools.py::test_inspect_error_caps_at_8kb
+============================== 2 failed in 0.76s ==============================
+```
 
-1. **Augment hidden tests** (matches the P3 plan's Task 8 spec: "generate
-   boundary tests if insufficient, verify with Reference Code").  Generate
-   additional hidden tests from the reference code so each sample has
-   `public >= 2 AND hidden >= 3`, then re-run `verify_imported_mbpp.py`.
-2. **Loosen the hard gate** for the import-time verifier and defer the
-   `hidden >= 3` enforcement to the Frozen v3 build step (Task 8).  This
-   keeps the imported sample pool intact but moves the strict gate
-   downstream.
+Both failures are exactly the expected reason: current implementation returns `stderr` (empty) so `content=''`. The cap test fails because no cap is applied to an empty string.
 
-Either path is a Task 3 / P3-plan revision, NOT a Task 4 deliverable, so
-Task 4 itself is complete.
+### GREEN — all tests pass (after implementation)
+
+Command:
+```
+py -3.11 -m pytest tests/test_agent_tools.py -v -p no:warnings
+```
+
+Output (exit code 0):
+```
+collected 30 items
+
+tests\test_agent_tools.py ..............................                 [100%]
+
+============================= 30 passed in 6.11s ==============================
+```
+
+All 30 tests in `tests/test_agent_tools.py` pass (28 pre-existing + 2 new).
+
+## 5. Broader regression check
+
+Command:
+```
+py -3.11 -m pytest tests/test_agent_tools.py tests/test_agent_evaluator.py tests/test_agent_actions.py -p no:warnings -q --timeout=60
+```
+
+Output (exit code 0):
+```
+E:\agent\Qwen\qwen3-code-lab\src\agent_tools.py:495: PytestCollectionWarning: cannot collect test class 'TestObservation' because it has a __init__ constructor (from: tests/test_agent_tools.py)
+  class TestObservation(BaseModel):
+...............................................................          [100%]
+63 passed in 22.58s
+```
+
+63/63 tests pass across the three suites. No regressions. (The `PytestCollectionWarning` about `TestObservation` is pre-existing — pytest tries to collect the pydantic model class as a test because its name starts with `Test`; it is unrelated to this task and not introduced by these changes.)
+
+## 6. Diffstat
+
+```
+ src/agent_tools.py        |  7 +++----
+ tests/test_agent_tools.py | 39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+), 4 deletions(-)
+```
+
+## 7. Corrections applied
+
+Confirmed: the brief's literal `TestObservation(...)` construction (using non-existent fields `returncode` and `summary`, omitting `num_collected` / `num_passed` / `num_failed` / `timed_out` / `duration_s`) was NOT used. Both new tests use the corrected schema per the pre-flight correction:
+
+```python
+test_obs = TestObservation(
+    passed=False, num_collected=1, num_passed=0, num_failed=1,
+    timed_out=False,
+    stdout=...,  # per-test intent
+    stderr="",
+    duration_s=0.1,
+)
+```
+
+This matches the verified schema at `src/agent_tools.py:495-504` and the pattern used by the existing `test_inspect_error_last_test` at `tests/test_agent_tools.py:482-486`.
+
+## 8. Self-review findings
+
+**Correctness:**
+- The `last_test` branch now returns `stdout + "\n" + stderr` capped at 8192 chars. This matches the brief's implementation spec verbatim.
+- The `"\n"` separator preserves readability when both streams are non-empty; when `stderr=""` (the pytest-failure case this task targets), the result is `stdout + "\n"` truncated to 8192 — content is non-empty and contains the traceback. Verified by `test_inspect_error_returns_stdout_on_test_failure`.
+- The 8192 cap is `raw[:8192]` (Python slice) which yields exactly 8192 chars when `len(raw) >= 8192`. Verified by `test_inspect_error_caps_at_8kb` (10000-char stdout -> exactly 8192).
+- The `last_patch` branch is unchanged; the invalid-`error_source` `else` branch is unchanged.
+
+**Style:**
+- Implementation matches the surrounding 4-space indentation and the existing `ErrorObservation(source=..., content=...)` construction style used in the `last_patch` branch (line 619).
+- Tests match the existing test style in the file (docstring, `test_obs = TestObservation(...)` construction, `tool_inspect_error(...)` call with keyword args).
+- No emojis, no docstring additions to existing code, no incidental refactors.
+
+**Surgical-changes check:**
+- `src/agent_tools.py`: only the `last_test` branch body changed (3 lines replaced by 3 lines; net -1 line due to collapsing the multi-line `ErrorObservation(...)` into a single-line call). The function signature, docstring, `last_patch` branch, and `else` branch are byte-identical to before.
+- `tests/test_agent_tools.py`: only appended 2 tests + a section comment at the end. No existing test modified. The existing `test_inspect_error_last_test` was left untouched as instructed.
+- `src/agent_trajectory.py` (frozen P4.0 schema) was not touched.
+- Only the 2 intended files were staged; `.superpowers/sdd/` docs and untracked artifacts were excluded from the commit.
+- Temp files created during output capture (`_t4_out.txt`, `_t4_regress.txt`, `_t4_regress2.txt`) were deleted after the commit; they are not present in the working tree and were never staged.
+
+## 9. One-line test summary
+
+30/30 tests in tests/test_agent_tools.py pass (63/63 across the broader regression suite).
