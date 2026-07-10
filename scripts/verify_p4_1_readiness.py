@@ -39,10 +39,11 @@ def _run_pytest(test_args, timeout=600):
     env = os.environ.copy()
     env["P4_ALLOW_NETWORK"] = "0"
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest"] + test_args + ["-p", "no:warnings", "-q"],
+        [sys.executable, "-m", "pytest"] + test_args
+        + ["-p", "no:warnings", "--tb=no"],
         capture_output=True, text=True, timeout=timeout, env=env,
     )
-    return proc.returncode, proc.stdout
+    return proc.returncode, proc.stdout + proc.stderr
 
 
 def _extract_passed_line(stdout):
