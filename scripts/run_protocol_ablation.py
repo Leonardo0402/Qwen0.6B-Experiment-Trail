@@ -365,18 +365,18 @@ _ALLOWED_VERDICTS = {
 def compute_verdict(results: list[dict]) -> str:
     """Apply T8 verdict decision rules.
 
-    Rules (from spec §7.2):
-    1. Any alternative protocol's schema_valid_rate >30% better than JSON
-       AND safety_valid_rate not degraded → TRY_TAG/TRY_DSL
-    2. All protocols schema_valid_rate < 30% → FIX_PROMPT_FIRST
-    3. JSON baseline has highest schema_valid_rate → KEEP_ACTION_JSON
-    4. Evaluator issues (model load failed or >50% trajectories crashed)
+    Rules (from spec §7.2), applied in this order:
+    1. Evaluator issues (model load failed or >50% trajectories crashed)
        → FIX_EVALUATOR_FIRST
+    2. All protocols schema_valid_rate < 30% → FIX_PROMPT_FIRST
+    3. Any alternative protocol's schema_valid_rate >30% better than JSON
+       AND safety_valid_rate not degraded → TRY_TAG/TRY_DSL
+    4. JSON baseline has highest schema_valid_rate → KEEP_ACTION_JSON
     5. Fallback → STOP_PROTOCOL_CHANGE
     """
     # Average schema_valid_rate per protocol (across configs)
-    proto_rates: dict[str, float] = {}
-    proto_safety: dict[str, float] = {}
+    proto_rates: dict[str, list[float]] = {}
+    proto_safety: dict[str, list[float]] = {}
     for r in results:
         proto = r["protocol"]
         if proto not in proto_rates:
