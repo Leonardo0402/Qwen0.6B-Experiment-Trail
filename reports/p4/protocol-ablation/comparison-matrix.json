@@ -1,0 +1,134 @@
+[
+  {
+    "protocol": "json",
+    "config": "base",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.025,
+      "schema_valid_rate": 0.0,
+      "safety_valid_rate": 0.0,
+      "action_type_valid_rate": 0.025,
+      "arguments_valid_rate": 0.0,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 468,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  },
+  {
+    "protocol": "json",
+    "config": "repair-lora",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.9625,
+      "schema_valid_rate": 0.9625,
+      "safety_valid_rate": 0.9625,
+      "action_type_valid_rate": 0.9625,
+      "arguments_valid_rate": 0.9625,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 18,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  },
+  {
+    "protocol": "tag",
+    "config": "base",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.022916666666666665,
+      "schema_valid_rate": 0.022916666666666665,
+      "safety_valid_rate": 0.022916666666666665,
+      "action_type_valid_rate": 0.022916666666666665,
+      "arguments_valid_rate": 0.022916666666666665,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 469,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  },
+  {
+    "protocol": "tag",
+    "config": "repair-lora",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.0625,
+      "schema_valid_rate": 0.016666666666666666,
+      "safety_valid_rate": 0.016666666666666666,
+      "action_type_valid_rate": 0.0625,
+      "arguments_valid_rate": 0.016666666666666666,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 450,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  },
+  {
+    "protocol": "dsl",
+    "config": "base",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.0,
+      "schema_valid_rate": 0.0,
+      "safety_valid_rate": 0.0,
+      "action_type_valid_rate": 0.0,
+      "arguments_valid_rate": 0.0,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 480,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  },
+  {
+    "protocol": "dsl",
+    "config": "repair-lora",
+    "total_tasks": 40,
+    "trajectories_written": 40,
+    "model_load_ok": true,
+    "metrics": {
+      "format_parse_rate": 0.3229166666666667,
+      "schema_valid_rate": 0.08125,
+      "safety_valid_rate": 0.08125,
+      "action_type_valid_rate": 0.3229166666666667,
+      "arguments_valid_rate": 0.08125,
+      "forbidden_action_count": 0,
+      "unknown_action_count": 325,
+      "task_success_rate": 0.0,
+      "finish_without_tests_count": 0,
+      "finish_claim_mismatch_count": 0,
+      "max_steps_hit_rate": 1.0,
+      "runtime_crash_count": 0,
+      "model_load_ok": true
+    }
+  }
+]

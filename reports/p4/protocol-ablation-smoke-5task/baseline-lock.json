@@ -1,0 +1,26 @@
+{
+  "commit_sha": "b946969a77d09666d12292332f57f1e30f25a41f",
+  "micro_task_manifest_path": "data\\p4-agent\\micro-tasks-v0\\manifest.json",
+  "micro_task_manifest_sha256": "bdcc2eaa268b8965ff764ac6c710c97ba90298e11b7c05d0133cdb7103f692bc",
+  "model_path": "models/Qwen3-0.6B",
+  "adapter_path": "adapters/p3/repair-limited",
+  "generation_config": {
+    "temperature": 0.0,
+    "do_sample": false,
+    "max_new_tokens": 128,
+    "dtype": "float16"
+  },
+  "max_steps": 12,
+  "total_tasks": 40,
+  "protocols": [
+    "json",
+    "tag",
+    "dsl"
+  ],
+  "configs": [
+    "base",
+    "repair-lora"
+  ],
+  "total_combinations": 6,
+  "total_runs": 240
+}
