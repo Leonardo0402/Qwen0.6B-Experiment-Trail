@@ -67,6 +67,8 @@ def test_model_provider_extracts_valid_json_mocked():
     provider._tokenizer = MagicMock()
     provider._max_new_tokens = 512
     provider._diagnostics = []
+    provider._protocol = None
+    provider._protocol_diagnostics = []
     provider._model_path = "fake"
     provider._adapter_path = None
 
@@ -92,6 +94,8 @@ def test_model_provider_records_diagnostics_on_invalid_json():
     provider._tokenizer = MagicMock()
     provider._max_new_tokens = 512
     provider._diagnostics = []
+    provider._protocol = None
+    provider._protocol_diagnostics = []
     provider._model_path = "fake"
     provider._adapter_path = None
 
@@ -115,6 +119,8 @@ def test_model_provider_repair_strips_fences_then_validates():
     provider._tokenizer = MagicMock()
     provider._max_new_tokens = 512
     provider._diagnostics = []
+    provider._protocol = None
+    provider._protocol_diagnostics = []
     provider._model_path = "fake"
     provider._adapter_path = None
 
