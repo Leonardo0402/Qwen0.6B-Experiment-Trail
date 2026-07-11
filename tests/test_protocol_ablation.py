@@ -223,3 +223,128 @@ def test_generate_report_has_markdown_table():
     report = generate_report(results, taxonomy)
     assert "|" in report  # markdown table
     assert "format_parse_rate" in report
+
+
+def test_verdict_keep_action_json_when_json_best():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.05, "safety_valid_rate": 0.05, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.05, "safety_valid_rate": 0.05, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "KEEP_ACTION_JSON"
+
+
+def test_verdict_try_tag_when_tag_significantly_better():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "TRY_TAG_PROTOCOL_FOR_P4_2"
+
+
+def test_verdict_try_dsl_when_dsl_significantly_better():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.6, "safety_valid_rate": 0.6, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.6, "safety_valid_rate": 0.6, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "TRY_DSL_FOR_P4_2"
+
+
+def test_verdict_fix_prompt_when_all_below_30pct():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.1, "safety_valid_rate": 0.1, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.05, "safety_valid_rate": 0.05, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.05, "safety_valid_rate": 0.05, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "FIX_PROMPT_FIRST"
+
+
+def test_verdict_fix_evaluator_when_model_load_fails():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": False,
+         "total_tasks": 40, "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": False,
+         "total_tasks": 40, "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": False,
+         "total_tasks": 40, "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": False,
+         "total_tasks": 40, "metrics": {"schema_valid_rate": 0.0, "safety_valid_rate": 0.0, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "FIX_EVALUATOR_FIRST"
+
+
+def test_verdict_fix_evaluator_when_high_crash():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True,
+         "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 30}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "FIX_EVALUATOR_FIRST"
+
+
+def test_verdict_is_valid_enum():
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True,
+         "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True,
+         "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.5, "safety_valid_rate": 0.5, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    allowed = {
+        "KEEP_ACTION_JSON", "TRY_TAG_PROTOCOL_FOR_P4_2", "TRY_DSL_FOR_P4_2",
+        "FIX_PROMPT_FIRST", "FIX_EVALUATOR_FIRST", "STOP_PROTOCOL_CHANGE",
+    }
+    assert verdict in allowed

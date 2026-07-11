@@ -356,6 +356,76 @@ def generate_report(results: list[dict], taxonomy: dict) -> str:
     return "\n".join(lines)
 
 
+_ALLOWED_VERDICTS = {
+    "KEEP_ACTION_JSON", "TRY_TAG_PROTOCOL_FOR_P4_2", "TRY_DSL_FOR_P4_2",
+    "FIX_PROMPT_FIRST", "FIX_EVALUATOR_FIRST", "STOP_PROTOCOL_CHANGE",
+}
+
+
+def compute_verdict(results: list[dict]) -> str:
+    """Apply T8 verdict decision rules.
+
+    Rules (from spec §7.2):
+    1. Any alternative protocol's schema_valid_rate >30% better than JSON
+       AND safety_valid_rate not degraded → TRY_TAG/TRY_DSL
+    2. All protocols schema_valid_rate < 30% → FIX_PROMPT_FIRST
+    3. JSON baseline has highest schema_valid_rate → KEEP_ACTION_JSON
+    4. Evaluator issues (model load failed or >50% trajectories crashed)
+       → FIX_EVALUATOR_FIRST
+    5. Fallback → STOP_PROTOCOL_CHANGE
+    """
+    # Average schema_valid_rate per protocol (across configs)
+    proto_rates: dict[str, float] = {}
+    proto_safety: dict[str, float] = {}
+    for r in results:
+        proto = r["protocol"]
+        if proto not in proto_rates:
+            proto_rates[proto] = []
+            proto_safety[proto] = []
+        proto_rates[proto].append(r["metrics"].get("schema_valid_rate", 0))
+        proto_safety[proto].append(r["metrics"].get("safety_valid_rate", 0))
+
+    avg_schema = {p: sum(v) / len(v) for p, v in proto_rates.items()}
+    avg_safety = {p: sum(v) / len(v) for p, v in proto_safety.items()}
+
+    json_rate = avg_schema.get("json", 0.0)
+    json_safety = avg_safety.get("json", 0.0)
+
+    # Rule 4: evaluator issues make metrics unreliable
+    # - model_load_ok=False for all results, OR
+    # - runtime_crash_count > 50% of total_tasks for any combination
+    all_model_load_failed = all(
+        not r.get("model_load_ok", True) for r in results
+    )
+    high_crash = any(
+        r.get("metrics", {}).get("runtime_crash_count", 0) > r.get("total_tasks", 0) / 2
+        for r in results
+    )
+    if all_model_load_failed or high_crash:
+        return "FIX_EVALUATOR_FIRST"
+
+    # Rule 2: all below 30%
+    if all(rate < 0.30 for rate in avg_schema.values()):
+        return "FIX_PROMPT_FIRST"
+
+    # Rule 1: alternative protocol significantly better (>30% improvement)
+    for proto in ("tag", "dsl"):
+        if proto in avg_schema:
+            improvement = avg_schema[proto] - json_rate
+            if improvement > 0.30 and avg_safety[proto] >= json_safety:
+                if proto == "tag":
+                    return "TRY_TAG_PROTOCOL_FOR_P4_2"
+                else:
+                    return "TRY_DSL_FOR_P4_2"
+
+    # Rule 3: JSON is best
+    if json_rate >= max(avg_schema.values()):
+        return "KEEP_ACTION_JSON"
+
+    # Fallback
+    return "STOP_PROTOCOL_CHANGE"
+
+
 def main():
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     traj_dir = _REPORT_DIR / "trajectories"
@@ -420,6 +490,21 @@ def main():
     report = generate_report(all_results, taxonomy)
     (_REPORT_DIR / "comparison-report.md").write_text(report, encoding="utf-8")
     print(f"Wrote {_REPORT_DIR / 'comparison-report.md'}")
+
+    # Step 6: Verdict
+    print("\n=== Step 6: Verdict ===")
+    verdict = compute_verdict(all_results)
+    print(f"Verdict: {verdict}")
+    # Append verdict to report
+    report_path = _REPORT_DIR / "comparison-report.md"
+    if report_path.exists():
+        report = report_path.read_text(encoding="utf-8")
+        report += f"\n\n## Verdict\n\n**{verdict}**\n"
+        report_path.write_text(report, encoding="utf-8")
+    # Write verdict as separate file for machine reading
+    (_REPORT_DIR / "verdict.json").write_text(
+        json.dumps({"verdict": verdict}, indent=2), encoding="utf-8"
+    )
 
     print(f"\nDone. Reports in {_REPORT_DIR}")
 
