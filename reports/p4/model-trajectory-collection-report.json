@@ -6,8 +6,16 @@
     "model_load_ok": true,
     "adapter_load_ok": false,
     "generation_ok": true,
-    "crashes": 0,
-    "limited_smoke": false
+    "limited_smoke": false,
+    "json_parse_rate": 1.0,
+    "schema_valid_rate": 0.0,
+    "safety_valid_rate": 0.0,
+    "action_type_valid_rate": 0.0,
+    "arguments_valid_rate": 0.0,
+    "forbidden_action_count": 0,
+    "tool_dispatch_ok": 1.0,
+    "max_step_stop_ok": 40,
+    "runtime_crash_count": 0
   },
   {
     "config": "repair-lora",
@@ -16,7 +24,15 @@
     "model_load_ok": true,
     "adapter_load_ok": true,
     "generation_ok": true,
-    "crashes": 0,
-    "limited_smoke": false
+    "limited_smoke": false,
+    "json_parse_rate": 1.0,
+    "schema_valid_rate": 0.0,
+    "safety_valid_rate": 0.0,
+    "action_type_valid_rate": 0.0,
+    "arguments_valid_rate": 0.0,
+    "forbidden_action_count": 0,
+    "tool_dispatch_ok": 1.0,
+    "max_step_stop_ok": 40,
+    "runtime_crash_count": 0
   }
 ]
