@@ -348,3 +348,24 @@ def test_verdict_is_valid_enum():
         "FIX_PROMPT_FIRST", "FIX_EVALUATOR_FIRST", "STOP_PROTOCOL_CHANGE",
     }
     assert verdict in allowed
+
+
+def test_verdict_stop_protocol_change_on_fallback():
+    """Rule 5: fallback when no clear winner and JSON not best."""
+    from scripts.run_protocol_ablation import compute_verdict
+    results = [
+        {"protocol": "json", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.4, "safety_valid_rate": 0.4, "runtime_crash_count": 0}},
+        {"protocol": "json", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.4, "safety_valid_rate": 0.4, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.45, "safety_valid_rate": 0.45, "runtime_crash_count": 0}},
+        {"protocol": "tag", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.45, "safety_valid_rate": 0.45, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "base", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.3, "safety_valid_rate": 0.3, "runtime_crash_count": 0}},
+        {"protocol": "dsl", "config": "repair-lora", "model_load_ok": True, "total_tasks": 40,
+         "metrics": {"schema_valid_rate": 0.3, "safety_valid_rate": 0.3, "runtime_crash_count": 0}},
+    ]
+    verdict = compute_verdict(results)
+    assert verdict == "STOP_PROTOCOL_CHANGE"
