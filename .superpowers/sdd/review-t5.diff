@@ -1,0 +1,365 @@
+﻿d92787c feat(agent-model): add protocol adapter to ModelActionProvider (P4.1b T5)
+=== STAT ===
+ src/agent_model_provider.py                 |  51 +++++++++++--
+ tests/test_agent_model_provider.py          |   6 ++
+ tests/test_agent_model_provider_protocol.py | 108 ++++++++++++++++++++++++++++
+ 3 files changed, 161 insertions(+), 4 deletions(-)
+=== DIFF ===
+diff --git a/src/agent_model_provider.py b/src/agent_model_provider.py
+index 1c436c0..6f0ae9a 100644
+--- a/src/agent_model_provider.py
++++ b/src/agent_model_provider.py
+@@ -3,27 +3,30 @@ format-only repair, and structured diagnostics.
+ 
+ This module does NOT load the model (that's in the GPU tests / collection
+ script). It provides the building blocks that the ModelActionProvider class
+ composes.
+ """
+ from __future__ import annotations
+ 
+ import json
+ import re
+ import time
+-from typing import Any
++from typing import Any, TYPE_CHECKING
+ 
+ from pydantic import BaseModel, Field, TypeAdapter
+ 
+ from src.agent_actions import Action, SafetyFlags
+ from src.agent_evaluator import AgentState, ActionProvider
+ 
++if TYPE_CHECKING:
++    from src.protocols.base import ProtocolBase, ProtocolDiagnostics
++
+ _ACTION_ADAPTER = TypeAdapter(Action)
+ 
+ 
+ class ModelStepDiagnostics(BaseModel):
+     """Diagnostics recorded for each model.generate() call."""
+     raw_output: str
+     json_parse_ok: bool
+     schema_valid: bool
+     safety_valid: bool
+     action_type_valid: bool
+@@ -110,36 +113,40 @@ def repair_json(raw: str) -> str:
+     opens = result.count("{")
+     closes = result.count("}")
+     if opens > closes:
+         result = result + ("}" * (opens - closes))
+     return result.strip()
+ 
+ 
+ class ModelActionProvider(ActionProvider):
+     """Loads Qwen3-0.6B and generates actions. GPU required.
+ 
+-    The actual model loading happens in __init__ (lazy torch import).
+-    Non-GPU tests mock the _generate method.
++    When protocol is None: uses legacy JSON parsing (backward-compatible).
++    When protocol is set: delegates prompt building and output parsing
++    to the protocol object.
+     """
+ 
+     def __init__(
+         self,
+         model_path: str = "models/Qwen3-0.6B",
+         adapter_path: str | None = None,
+         max_new_tokens: int = 128,
++        protocol: "ProtocolBase | None" = None,
+     ):
+         self._model_path = model_path
+         self._adapter_path = adapter_path
+         self._max_new_tokens = max_new_tokens
+         self._model = None
+         self._tokenizer = None
++        self._protocol = protocol
+         self._diagnostics: list[ModelStepDiagnostics] = []
++        self._protocol_diagnostics: list["ProtocolDiagnostics"] = []
+ 
+     def _load_model(self):
+         """Lazy-load the model. Called on first next_action."""
+         import torch
+         from transformers import AutoModelForCausalLM, AutoTokenizer
+ 
+         self._tokenizer = AutoTokenizer.from_pretrained(
+             self._model_path, trust_remote_code=True
+         )
+         if self._tokenizer.pad_token is None:
+@@ -168,23 +175,53 @@ class ModelActionProvider(ActionProvider):
+                 max_new_tokens=self._max_new_tokens,
+                 temperature=0.0,
+                 do_sample=False,
+                 pad_token_id=self._tokenizer.eos_token_id,
+             )
+         return self._tokenizer.decode(
+             outputs[0][inputs["input_ids"].shape[1]:],
+             skip_special_tokens=True,
+         )
+ 
++    def _build_user_prompt(self, state: AgentState) -> str:
++        """Build user prompt for protocol path (state info only)."""
++        lines = [
++            f"Task ID: {state.task_id}",
++            f"Step: {state.step_count}",
++        ]
++        if state.memory.notes:
++            lines.append(f"Notes: {state.memory.notes}")
++        if state.memory.hypothesis:
++            lines.append(f"Hypothesis: {state.memory.hypothesis}")
++        lines.append("What is your next action?")
++        return "\n".join(lines)
++
+     def next_action(self, state: AgentState) -> Action | SentinelAction:
+         if self._model is None:
+             self._load_model()
++
++        if self._protocol is not None:
++            return self._next_action_protocol(state)
++        return self._next_action_legacy(state)
++
++    def _next_action_protocol(self, state: AgentState) -> Action | SentinelAction:
++        """Protocol path: delegate to protocol for prompt and parsing."""
++        system_prompt = self._protocol.build_system_prompt(state.task_id)
++        user_prompt = self._build_user_prompt(state)
++        prompt = system_prompt + "\n\n" + user_prompt
++        raw_output = self._generate(prompt)
++        action, diag = self._protocol.parse_output(raw_output)
++        self._protocol_diagnostics.append(diag)
++        return action
++
++    def _next_action_legacy(self, state: AgentState) -> Action | SentinelAction:
++        """Legacy path: existing JSON parsing (backward-compatible)."""
+         prompt = build_prompt(state, task_description="", last_observation=None)
+         t0 = time.monotonic()
+         raw_output = self._generate(prompt)
+         latency_ms = int((time.monotonic() - t0) * 1000)
+ 
+         json_str = extract_json(raw_output)
+         diag = ModelStepDiagnostics(
+             raw_output=raw_output,
+             json_parse_ok=json_str is not None,
+             schema_valid=False,
+@@ -219,30 +256,36 @@ class ModelActionProvider(ActionProvider):
+         repaired = repair_json(json_str)
+         try:
+             data = json.loads(repaired)
+             action = _validate_action(data)
+             if action is not None:
+                 diag.repair_success = True
+                 diag.schema_valid = True
+                 diag.safety_valid = True
+                 diag.action_type_valid = True
+                 diag.arguments_valid = True
++                self._diagnostics.append(diag)
++                return action  # FIX: was missing return (P4.1 bug)
+         except (json.JSONDecodeError, Exception):
+             pass
+ 
+         self._diagnostics.append(diag)
+         return SentinelAction(reason="schema validation failed after repair")
+ 
+     def reset(self) -> None:
+         self._diagnostics.clear()
++        self._protocol_diagnostics.clear()
+ 
+     @property
+-    def diagnostics(self) -> list[ModelStepDiagnostics]:
++    def diagnostics(self):
++        """Returns ProtocolDiagnostics if protocol set, else ModelStepDiagnostics."""
++        if self._protocol is not None:
++            return list(self._protocol_diagnostics)
+         return list(self._diagnostics)
+ 
+ 
+ def _validate_action(data: dict) -> Action | None:
+     """Validate a dict against the Action union. Returns the Action or None."""
+     try:
+         return _ACTION_ADAPTER.validate_python(data)
+     except Exception:
+         return None
+diff --git a/tests/test_agent_model_provider.py b/tests/test_agent_model_provider.py
+index 9c214dc..b39a2d9 100644
+--- a/tests/test_agent_model_provider.py
++++ b/tests/test_agent_model_provider.py
+@@ -60,20 +60,22 @@ def test_sentinel_action_marks_invalid():
+ 
+ 
+ def test_model_provider_extracts_valid_json_mocked():
+     """Mock _generate to return valid Action JSON → provider returns a
+     valid Action, diagnostics record schema_valid=True."""
+     provider = ModelActionProvider.__new__(ModelActionProvider)
+     provider._model = MagicMock()  # skip _load_model
+     provider._tokenizer = MagicMock()
+     provider._max_new_tokens = 512
+     provider._diagnostics = []
++    provider._protocol = None
++    provider._protocol_diagnostics = []
+     provider._model_path = "fake"
+     provider._adapter_path = None
+ 
+     valid_json = '{"action_type": "list_files", "action_id": "a1", "reason_short": "list", "expected_observation": "files", "safety_flags": {"modifies_workspace": false, "executes_code": false, "network_required": false, "reads_sensitive_path": false, "is_terminal": false}}'
+ 
+     with patch.object(provider, "_generate", return_value=valid_json):
+         state = AgentState(
+             memory=AgentMemory(), step_count=0,
+             task_id="t1", workspace_id="w1",
+         )
+@@ -85,20 +87,22 @@ def test_model_provider_extracts_valid_json_mocked():
+ 
+ 
+ def test_model_provider_records_diagnostics_on_invalid_json():
+     """Mock _generate to return garbage → provider returns SentinelAction,
+     diagnostics record json_parse_ok=False."""
+     provider = ModelActionProvider.__new__(ModelActionProvider)
+     provider._model = MagicMock()
+     provider._tokenizer = MagicMock()
+     provider._max_new_tokens = 512
+     provider._diagnostics = []
++    provider._protocol = None
++    provider._protocol_diagnostics = []
+     provider._model_path = "fake"
+     provider._adapter_path = None
+ 
+     with patch.object(provider, "_generate", return_value="I cannot do that."):
+         state = AgentState(
+             memory=AgentMemory(), step_count=0,
+             task_id="t1", workspace_id="w1",
+         )
+         action = provider.next_action(state)
+ 
+@@ -108,20 +112,22 @@ def test_model_provider_records_diagnostics_on_invalid_json():
+ 
+ 
+ def test_model_provider_repair_strips_fences_then_validates():
+     """Mock _generate to return fenced JSON → repair strips fences,
+     validation succeeds."""
+     provider = ModelActionProvider.__new__(ModelActionProvider)
+     provider._model = MagicMock()
+     provider._tokenizer = MagicMock()
+     provider._max_new_tokens = 512
+     provider._diagnostics = []
++    provider._protocol = None
++    provider._protocol_diagnostics = []
+     provider._model_path = "fake"
+     provider._adapter_path = None
+ 
+     fenced = '```json\n{"action_type": "list_files", "action_id": "a1", "reason_short": "list", "expected_observation": "files", "safety_flags": {"modifies_workspace": false, "executes_code": false, "network_required": false, "reads_sensitive_path": false, "is_terminal": false}}\n```'
+ 
+     with patch.object(provider, "_generate", return_value=fenced):
+         state = AgentState(
+             memory=AgentMemory(), step_count=0,
+             task_id="t1", workspace_id="w1",
+         )
+diff --git a/tests/test_agent_model_provider_protocol.py b/tests/test_agent_model_provider_protocol.py
+new file mode 100644
+index 0000000..1524aa9
+--- /dev/null
++++ b/tests/test_agent_model_provider_protocol.py
+@@ -0,0 +1,108 @@
++"""Tests for ModelActionProvider protocol adapter.
++
++Verifies that:
++1. protocol=None preserves existing behavior (backward compat)
++2. protocol set delegates to protocol.build_system_prompt and parse_output
++3. ProtocolDiagnostics are recorded when protocol is used
++4. Existing ModelStepDiagnostics are recorded when protocol=None
++"""
++import pytest
++from unittest.mock import patch, MagicMock
++from src.agent_model_provider import ModelActionProvider, SentinelAction
++from src.agent_evaluator import AgentState
++from src.agent_state import AgentMemory
++from src.protocols import JsonProtocol, TagProtocol
++from src.protocols.base import ProtocolDiagnostics
++
++
++def _make_state():
++    return AgentState(
++        memory=AgentMemory(),
++        step_count=0,
++        task_id="task_001",
++        workspace_id="test_ws",
++    )
++
++
++def test_protocol_none_uses_legacy_path():
++    """When protocol=None, existing code path is used (ModelStepDiagnostics)."""
++    provider = ModelActionProvider(model_path="fake", protocol=None)
++    # Mock _generate to return invalid JSON
++    with patch.object(provider, "_generate", return_value="not json at all"):
++        provider._model = MagicMock()  # skip model loading
++        action = provider.next_action(_make_state())
++        assert isinstance(action, SentinelAction)
++        # Legacy path stores ModelStepDiagnostics
++        assert len(provider.diagnostics) == 1
++        # ModelStepDiagnostics has json_parse_ok, not format_parse_ok
++        d = provider.diagnostics[0].model_dump()
++        assert "json_parse_ok" in d
++
++
++def test_protocol_set_uses_protocol_path():
++    """When protocol is set, protocol.parse_output is used."""
++    proto = JsonProtocol()
++    provider = ModelActionProvider(model_path="fake", protocol=proto)
++    # Mock _generate to return empty (will fail parse)
++    with patch.object(provider, "_generate", return_value=""):
++        provider._model = MagicMock()
++        action = provider.next_action(_make_state())
++        assert isinstance(action, SentinelAction)
++        # Protocol path stores ProtocolDiagnostics
++        assert len(provider.diagnostics) == 1
++        d = provider.diagnostics[0].model_dump()
++        assert "format_parse_ok" in d
++        assert "json_parse_ok" not in d
++
++
++def test_protocol_set_builds_system_prompt():
++    """When protocol is set, build_system_prompt is called with task context."""
++    proto = JsonProtocol()
++    provider = ModelActionProvider(model_path="fake", protocol=proto)
++    captured_prompt = []
++
++    def fake_generate(prompt):
++        captured_prompt.append(prompt)
++        return ""
++
++    with patch.object(provider, "_generate", side_effect=fake_generate):
++        provider._model = MagicMock()
++        provider.next_action(_make_state())
++        assert len(captured_prompt) == 1
++        # System prompt should contain format instructions from protocol
++        assert "JSON" in captured_prompt[0] or "action_type" in captured_prompt[0]
++        # Should contain task context
++        assert "task_001" in captured_prompt[0]
++
++
++def test_protocol_set_records_protocol_diagnostics():
++    """ProtocolDiagnostics are recorded with independent dimensions."""
++    proto = TagProtocol()
++    provider = ModelActionProvider(model_path="fake", protocol=proto)
++    with patch.object(provider, "_generate", return_value="<action>\ntool: read_file\npath: solution.py\n</action>"):
++        provider._model = MagicMock()
++        action = provider.next_action(_make_state())
++        assert not isinstance(action, SentinelAction)
++        assert len(provider.diagnostics) == 1
++        diag = provider.diagnostics[0]
++        assert isinstance(diag, ProtocolDiagnostics)
++        assert diag.format_parse_ok
++        assert diag.schema_valid
++        assert diag.action_type_valid
++
++
++def test_reset_clears_protocol_diagnostics():
++    proto = JsonProtocol()
++    provider = ModelActionProvider(model_path="fake", protocol=proto)
++    with patch.object(provider, "_generate", return_value=""):
++        provider._model = MagicMock()
++        provider.next_action(_make_state())
++        assert len(provider.diagnostics) == 1
++    provider.reset()
++    assert len(provider.diagnostics) == 0
++
++
++def test_existing_tests_still_pass_with_protocol_none():
++    """Smoke check: protocol=None doesn't break existing ModelActionProvider."""
++    provider = ModelActionProvider(model_path="fake")
++    assert provider._protocol is None

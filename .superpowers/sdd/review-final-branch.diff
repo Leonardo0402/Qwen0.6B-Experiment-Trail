@@ -1,0 +1,40 @@
+﻿7a3bd66 test(p4-1b): add STOP_PROTOCOL_CHANGE fallback verdict test (T8 review fix)
+095c822 feat(p4-1b): add verdict decision logic (P4.1b T8)
+111c266 feat(p4-1b): add comparison report generation (P4.1b T7)
+9ebfdd0 feat(p4-1b): add baseline lock and smoke run script (P4.1b T6)
+d92787c feat(agent-model): add protocol adapter to ModelActionProvider (P4.1b T5)
+53fae0d feat(protocols): add DslProtocol with heredoc support (P4.1b T4)
+a8a7b41 feat(protocols): add TagProtocol with content subtag support (P4.1b T3)
+6a2b995 feat(protocols): add JsonProtocol baseline with independent diagnostics (P4.1b T2)
+4a286ad feat(protocols): add ProtocolBase ABC and ProtocolDiagnostics (P4.1b T1)
+---STAT---
+ scripts/run_protocol_ablation.py            | 513 ++++++++++++++++++++++++++++
+ src/agent_model_provider.py                 |  51 ++-
+ src/protocols/__init__.py                   |  10 +
+ src/protocols/base.py                       |  82 +++++
+ src/protocols/dsl_protocol.py               | 210 ++++++++++++
+ src/protocols/json_protocol.py              | 127 +++++++
+ src/protocols/tag_protocol.py               | 251 ++++++++++++++
+ tests/test_agent_model_provider.py          |   6 +
+ tests/test_agent_model_provider_protocol.py | 108 ++++++
+ tests/test_protocol_ablation.py             | 371 ++++++++++++++++++++
+ tests/test_protocol_base.py                 |  72 ++++
+ tests/test_protocol_dsl.py                  | 103 ++++++
+ tests/test_protocol_json.py                 | 132 +++++++
+ tests/test_protocol_tag.py                  | 110 ++++++
+ 14 files changed, 2142 insertions(+), 4 deletions(-)
+---FILE LIST---
+A	scripts/run_protocol_ablation.py
+M	src/agent_model_provider.py
+A	src/protocols/__init__.py
+A	src/protocols/base.py
+A	src/protocols/dsl_protocol.py
+A	src/protocols/json_protocol.py
+A	src/protocols/tag_protocol.py
+M	tests/test_agent_model_provider.py
+A	tests/test_agent_model_provider_protocol.py
+A	tests/test_protocol_ablation.py
+A	tests/test_protocol_base.py
+A	tests/test_protocol_dsl.py
+A	tests/test_protocol_json.py
+A	tests/test_protocol_tag.py

@@ -1,85 +1,84 @@
-# Task 2 Report — Phase B: TEST_PASS replay-authoritative + finish_claim_mismatch
+# Task 2: JsonProtocol (Baseline) — Report
 
-**Branch:** `feat/p4-1-model-action-provider`
-**Base HEAD:** `824a5c2` (T1)
-**Commit:** `f3a9a7e` — `feat(p4-1): Phase B — TEST_PASS replay-authoritative + finish_claim_mismatch`
+**Status:** DONE
+**Commit SHA:** `6a2b99555d46f2f4d5d68ba7011dc59820cfecb1`
+**Branch:** `feat/p4-1b-protocol-ablation`
+**Base SHA:** `4a286ad`
 
-## What I Implemented
+## Summary
 
-Closes the TEST_PASS trust gap in `AgentEvaluator`. Previously, `EvalResult.success` for a TEST_PASS criterion used `finish.tests_passed` (the model's self-claim). It now uses `passed_tests > 0` (actual replay result). A new `finish_claim_mismatch: bool` field on `EvalResult` records when claim ≠ replay.
+Implemented the JSON baseline protocol (`JsonProtocol`) for the P4.1b Protocol Ablation project. This task supersedes a previously BLOCKED dispatch — the brief was updated to fix a plan bug in the `parse_output` implementation.
 
-### Changes to `src/agent_evaluator.py`
+## Files Committed
 
-1. **`EvalResult` model** — added field:
-   ```python
-   finish_claim_mismatch: bool = False
-   ```
+| File | Status | Lines Changed |
+|------|--------|---------------|
+| `src/protocols/json_protocol.py` | new file | +127 |
+| `src/protocols/__init__.py` | modified | +2 / -1 |
+| `tests/test_protocol_json.py` | new file | +132 |
 
-2. **`AgentEvaluator.run()`** — initialized `finish_claim_mismatch = False` at the top of the method, then changed the TEST_PASS branch in the `finish` dispatch from:
-   ```python
-   if fa.success_criterion == TaskSuccessCriterion.TEST_PASS:
-       success = fa.tests_passed
-   ```
-   to:
-   ```python
-   if fa.success_criterion == TaskSuccessCriterion.TEST_PASS:
-       replay_passed = passed_tests > 0
-       success = replay_passed
-       finish_claim_mismatch = (fa.tests_passed != replay_passed)
-   ```
-   Both `_make_result` call sites (finish path + max_steps path) now pass `finish_claim_mismatch=finish_claim_mismatch`.
+Total: 3 files changed, 261 insertions(+), 1 deletion(-)
 
-3. **`_make_result`** — added parameter `finish_claim_mismatch: bool = False` (default keeps the signature backward-compatible) and threaded it into the returned `EvalResult`.
+## Implementation Notes
 
-For non-TEST_PASS criteria (IDENTIFY_BUG, PATCH_APPLIED) and the max_steps-hit path, `finish_claim_mismatch` stays `False` (no claim to compare against in those branches — the brief only defines mismatch for TEST_PASS).
+### The Plan Bug (fixed in updated brief)
 
-### Changes to `tests/test_agent_evaluator.py`
+The previous brief's `parse_output` had a `try/except` block where the `except (json.JSONDecodeError, Exception)` clause set `diag.failure_class = "FORMAT_PARSE_FAIL"` and **returned early**, which meant the format-only repair path was unreachable for any input that failed `json.loads` outright. This caused `test_repair_fixes_trailing_comma` and `test_repair_path_returns_action` to fail (the JSON in those tests has a trailing comma that requires repair).
 
-Appended 3 new tests under a `# --- Task 2: ...` section, using the existing helpers `_load_first_success_trajectory`, `TASKS_DIR`, `MicroTaskWorkspace`, `_FixedProvider`. Verbatim from the brief.
+### The Fix (per updated brief)
 
-## TDD Evidence
+The `parse_output` now uses a `data = None` sentinel pattern:
 
-### RED — before implementation
-
-Command:
-```
-py -3.11 -m pytest tests/test_agent_evaluator.py::test_test_pass_success_uses_replay_not_claim tests/test_agent_evaluator.py::test_test_pass_mismatch_claimed_fail_actual_pass tests/test_agent_evaluator.py::test_test_pass_no_mismatch_when_claim_matches_replay -v -p no:warnings
+```python
+data = None
+try:
+    data = json.loads(json_str)
+    if isinstance(data, dict):
+        action_type = data.get("action_type", "")
+        diag.action_type_valid = self.is_valid_action_type(action_type)
+except (json.JSONDecodeError, Exception):
+    pass  # Fall through to repair path
 ```
 
-Result: **3 failed in 6.15s**. Relevant failures:
+- On `JSONDecodeError`, the code **does not return early** — it falls through to the repair path.
+- After try, direct validation only runs if `data is not None`.
+- Repair path then attempts `repair_json(json_str)` followed by `json.loads` + `validate_action`.
+- The P4.1 repair-path bug fix (`return action, diag` after successful repair) is preserved.
 
-- `test_test_pass_success_uses_replay_not_claim` — `AssertionError: expected success=False (replay has 0 passed, claim says True)`. `assert not True` where `EvalResult(... success=True ...).success`. **Expected:** success was still derived from `fa.tests_passed` (claim=True).
-- `test_test_pass_mismatch_claimed_fail_actual_pass` — `AssertionError: expected success=True (replay passed_tests>0 is authoritative)`. `assert False` where `EvalResult(... success=False ...).success`. **Expected:** claim=False was being used.
-- `test_test_pass_no_mismatch_when_claim_matches_replay` — `AttributeError: 'EvalResult' object has no attribute 'finish_claim_mismatch'`. **Expected:** field not yet added.
+### Failure Classification
 
-All three failures are the intended pre-implementation state.
+Three failure classes are emitted at the end:
+- `FORMAT_PARSE_FAIL` — when `data is None` (repair could not even parse)
+- `UNKNOWN_ACTION_TYPE` — when `data` parsed but `action_type` is invalid
+- `SCHEMA_VALIDATION_FAIL` — when `action_type` is valid but full schema validation fails
 
-### GREEN — after implementation
+## Test Command & Output
 
-Command (full file, including the 9 pre-existing tests):
 ```
-py -3.11 -m pytest tests/test_agent_evaluator.py -v -p no:warnings
+$ py -3.11 -m pytest tests/test_protocol_json.py -v
+============================= test session starts =============================
+platform win32 -- Python 3.11.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\agent\Qwen\qwen3-code-lab
+configfile: pyproject.toml
+plugins: anyio-4.13.0, hypothesis-6.155.7, timeout-2.4.0, xdist-3.8.0
+collected 11 items
+
+tests\test_protocol_json.py ...........                                  [100%]
+
+============================= 11 passed in 0.42s ==============================
 ```
 
-Result: **12 passed in 17.35s** (9 pre-existing + 3 new). No regressions.
+**Result: 11/11 passed, no warnings.**
 
-Pre-implementation baseline (9 pre-existing tests alone): **9 passed in 11.63s** — confirmed clean before starting.
+## Self-Review Checklist
 
-## Files Changed
+- [x] Overwrote `src/protocols/json_protocol.py` with the corrected code from the updated brief.
+- [x] `src/protocols/__init__.py` exports `JsonProtocol` (via `from src.protocols.json_protocol import JsonProtocol` and `__all__`).
+- [x] P4.1 repair-path bug fix (`return action, diag` after successful repair) is present at line 116.
+- [x] All 11 tests pass with pristine output (no warnings).
+- [x] Committed with the exact message from the brief: `feat(protocols): add JsonProtocol baseline with independent diagnostics (P4.1b T2)`.
+- [x] Staged exactly the 3 files specified: `src/protocols/json_protocol.py`, `src/protocols/__init__.py`, `tests/test_protocol_json.py`.
 
-- `src/agent_evaluator.py` — `EvalResult` model (+1 field), `run()` (+1 local var, TEST_PASS branch rewritten, 2 call sites updated), `_make_result` (+1 param, +1 field in returned model)
-- `tests/test_agent_evaluator.py` — +3 tests appended under a new `# --- Task 2: ...` section
+## Concerns
 
-Diffstat: `2 files changed, 81 insertions(+), 1 deletion(-)`.
-
-## Self-Review Findings
-
-- **Surgical:** every changed line in `src/agent_evaluator.py` traces directly to a brief step. No adjacent formatting/style changes, no rename of pre-existing symbols.
-- **Backward compatibility:** `_make_result`'s new `finish_claim_mismatch` param has a default (`False`), so any external caller that doesn't pass it still compiles. No external callers exist outside the two in `run()` (verified via grep — only `src/agent_evaluator.py` and `tests/test_agent_evaluator.py` reference `_make_result` or `EvalResult` in code; other matches are docs/plans).
-- **Default-safe:** `EvalResult.finish_claim_mismatch` defaults to `False`, so the existing `test_all_metrics_present` test (which constructs an `EvalResult` without the field) continues to pass — verified.
-- **Field semantics for non-TEST_PASS criteria:** the brief only defines mismatch for TEST_PASS. For IDENTIFY_BUG / PATCH_APPLIED / max_steps-hit, `finish_claim_mismatch` stays `False`. This is the minimal interpretation; if a future task wants mismatch detection for other criteria it can extend this without breaking current behavior.
-- **Boolean comparison safety:** `fa.tests_passed != replay_passed` compares two `bool` values — well-defined, no truthiness ambiguity.
-
-## Issues or Concerns
-
-None. Implementation matches the brief exactly; all tests pass; no downstream callers affected.
+None. The implementation matches the corrected brief verbatim, all tests pass cleanly, and the commit contains only the three specified files.
