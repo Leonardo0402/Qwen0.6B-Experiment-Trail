@@ -188,3 +188,38 @@ def test_run_combination_with_mock_protocol():
         assert result["config"] == "mock-base"
         assert result["trajectories_written"] == 2
         assert "metrics" in result
+
+
+def test_generate_report_contains_all_protocols():
+    from scripts.run_protocol_ablation import generate_report
+    results = [
+        {"protocol": "json", "config": "base", "metrics": {"schema_valid_rate": 0.0}},
+        {"protocol": "json", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.0}},
+        {"protocol": "tag", "config": "base", "metrics": {"schema_valid_rate": 0.5}},
+        {"protocol": "tag", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.6}},
+        {"protocol": "dsl", "config": "base", "metrics": {"schema_valid_rate": 0.3}},
+        {"protocol": "dsl", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.4}},
+    ]
+    taxonomy = {"FORMAT_PARSE_FAIL": 10, "SCHEMA_VALIDATION_FAIL": 20}
+    report = generate_report(results, taxonomy)
+    assert "json" in report
+    assert "tag" in report
+    assert "dsl" in report
+    assert "schema_valid_rate" in report
+    assert "FORMAT_PARSE_FAIL" in report
+
+
+def test_generate_report_has_markdown_table():
+    from scripts.run_protocol_ablation import generate_report
+    results = [
+        {"protocol": "json", "config": "base",
+         "metrics": {"format_parse_rate": 1.0, "schema_valid_rate": 0.0,
+                     "safety_valid_rate": 0.0, "action_type_valid_rate": 0.5,
+                     "arguments_valid_rate": 0.0, "forbidden_action_count": 0,
+                     "task_success_rate": 0.0, "max_steps_hit_rate": 1.0,
+                     "runtime_crash_count": 0}},
+    ]
+    taxonomy = {"FORMAT_PARSE_FAIL": 5}
+    report = generate_report(results, taxonomy)
+    assert "|" in report  # markdown table
+    assert "format_parse_rate" in report

@@ -295,6 +295,67 @@ def _detect_repeated_loop(actions: list[dict]) -> bool:
     return False
 
 
+def generate_report(results: list[dict], taxonomy: dict) -> str:
+    """Generate markdown comparison report from ablation results."""
+    lines = [
+        "# P4.1b Protocol Ablation — Comparison Report",
+        "",
+        "## Overview",
+        "",
+        f"- Protocols: {len(set(r['protocol'] for r in results))}",
+        f"- Configs: {len(set(r['config'] for r in results))}",
+        f"- Total combinations: {len(results)}",
+        "",
+        "## Metrics by Protocol x Config",
+        "",
+        "| Protocol | Config | format_parse_rate | schema_valid_rate | safety_valid_rate | action_type_valid_rate | arguments_valid_rate | forbidden_count | unknown_count | task_success_rate | finish_no_tests | finish_mismatch | max_steps_hit_rate | crashes |",
+        "|----------|--------|-------------------|-------------------|-------------------|------------------------|----------------------|-----------------|----------------|-------------------|------------------|-----------------|---------------------|---------|",
+    ]
+
+    for r in sorted(results, key=lambda x: (x["protocol"], x["config"])):
+        m = r.get("metrics", {})
+        lines.append(
+            f"| {r['protocol']} | {r['config']} "
+            f"| {m.get('format_parse_rate', 0):.2%} "
+            f"| {m.get('schema_valid_rate', 0):.2%} "
+            f"| {m.get('safety_valid_rate', 0):.2%} "
+            f"| {m.get('action_type_valid_rate', 0):.2%} "
+            f"| {m.get('arguments_valid_rate', 0):.2%} "
+            f"| {m.get('forbidden_action_count', 0)} "
+            f"| {m.get('unknown_action_count', 0)} "
+            f"| {m.get('task_success_rate', 0):.2%} "
+            f"| {m.get('finish_without_tests_count', 0)} "
+            f"| {m.get('finish_claim_mismatch_count', 0)} "
+            f"| {m.get('max_steps_hit_rate', 0):.2%} "
+            f"| {m.get('runtime_crash_count', 0)} |"
+        )
+
+    lines.extend([
+        "",
+        "## Failure Taxonomy",
+        "",
+        "| Failure Class | Count |",
+        "|---------------|-------|",
+    ])
+    for fc, count in sorted(taxonomy.items()):
+        lines.append(f"| {fc} | {count} |")
+
+    lines.extend([
+        "",
+        "## Protocol Comparison Summary",
+        "",
+    ])
+
+    # Summarize by protocol (average across configs)
+    protocols = sorted(set(r["protocol"] for r in results))
+    for proto in protocols:
+        proto_results = [r for r in results if r["protocol"] == proto]
+        avg_schema = sum(r["metrics"].get("schema_valid_rate", 0) for r in proto_results) / len(proto_results)
+        lines.append(f"- **{proto}**: avg schema_valid_rate = {avg_schema:.2%}")
+
+    return "\n".join(lines)
+
+
 def main():
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     traj_dir = _REPORT_DIR / "trajectories"
@@ -353,6 +414,12 @@ def main():
     (_REPORT_DIR / "failure-taxonomy.json").write_text(
         json.dumps(taxonomy, indent=2), encoding="utf-8"
     )
+
+    # Step 5: Generate report
+    print("\n=== Step 5: Comparison Report ===")
+    report = generate_report(all_results, taxonomy)
+    (_REPORT_DIR / "comparison-report.md").write_text(report, encoding="utf-8")
+    print(f"Wrote {_REPORT_DIR / 'comparison-report.md'}")
 
     print(f"\nDone. Reports in {_REPORT_DIR}")
 
