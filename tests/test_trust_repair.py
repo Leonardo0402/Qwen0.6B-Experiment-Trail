@@ -483,3 +483,605 @@ class TestProtocolConsistency:
                 f"{proto.name} returned a real Action instead of SentinelAction "
                 f"for illegal arguments"
             )
+
+
+# ===========================================================================
+# Section 5 — Finish defaults tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestFinishDefaults:
+    """Issue #32 Final Trust Repair: finish business parameters must be
+    explicitly provided by the model. No semantic defaults injected."""
+
+    def test_tag_finish_missing_success_criterion_fails(self):
+        """Tag finish without success_criterion must fail."""
+        proto = TagProtocol()
+        raw = (
+            "<action>\ntool: finish\ntests_passed: true\n"
+            "identification_verified: true\nsummary: done\n</action>"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_tag_finish_missing_tests_passed_fails(self):
+        """Tag finish without tests_passed must fail."""
+        proto = TagProtocol()
+        raw = (
+            "<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            "identification_verified: true\nsummary: done\n</action>"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_tag_finish_missing_identification_verified_fails(self):
+        """Tag finish without identification_verified must fail."""
+        proto = TagProtocol()
+        raw = (
+            "<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            "tests_passed: true\nsummary: done\n</action>"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_finish_missing_success_criterion_fails(self):
+        """DSL finish without success_criterion must fail."""
+        proto = DslProtocol()
+        raw = (
+            "ACTION finish tests_passed=true "
+            "identification_verified=true summary=done"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_finish_missing_tests_passed_fails(self):
+        """DSL finish without tests_passed must fail."""
+        proto = DslProtocol()
+        raw = (
+            "ACTION finish success_criterion=test_pass "
+            "identification_verified=true summary=done"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_finish_missing_identification_verified_fails(self):
+        """DSL finish without identification_verified must fail."""
+        proto = DslProtocol()
+        raw = (
+            "ACTION finish success_criterion=test_pass "
+            "tests_passed=true summary=done"
+        )
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_complete_tag_finish_passes(self):
+        """Complete Tag finish with all required fields must pass."""
+        proto = TagProtocol()
+        raw = (
+            "<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            "tests_passed: true\nidentification_verified: true\n"
+            "summary: all tests pass\n</action>"
+        )
+        action, diag = proto.parse_output(raw)
+        assert not isinstance(action, SentinelAction)
+        assert diag.schema_valid
+
+    def test_complete_dsl_finish_passes(self):
+        """Complete DSL finish with all required fields must pass."""
+        proto = DslProtocol()
+        raw = (
+            "ACTION finish success_criterion=test_pass "
+            "tests_passed=true identification_verified=true "
+            "summary=all tests pass"
+        )
+        action, diag = proto.parse_output(raw)
+        assert not isinstance(action, SentinelAction)
+        assert diag.schema_valid
+
+    def test_tag_parser_does_not_inject_finish_business_fields(self):
+        """Tag parser must not inject success_criterion/tests_passed/
+        identification_verified when model omits them."""
+        proto = TagProtocol()
+        raw = "<action>\ntool: finish\nsummary: done\n</action>"
+        action, diag = proto.parse_output(raw)
+        # Must fail — not pass via injected defaults
+        assert isinstance(action, SentinelAction)
+        assert not diag.arguments_valid
+
+
+# ===========================================================================
+# Section 6 — Boolean strictness tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestBooleanStrictness:
+    """Issue #32 Final Trust Repair: strict boolean parsing.
+
+    Only true/false/yes/no/1/0 are valid. Everything else hard-fails.
+    Invalid booleans must NOT be silently converted to False.
+    """
+
+    def _tag_finish_with_tests_passed(self, value: str):
+        proto = TagProtocol()
+        raw = (
+            f"<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            f"tests_passed: {value}\nidentification_verified: true\n"
+            f"summary: done\n</action>"
+        )
+        return proto.parse_output(raw)
+
+    def _dsl_finish_with_tests_passed(self, value: str):
+        proto = DslProtocol()
+        raw = (
+            f"ACTION finish success_criterion=test_pass "
+            f"tests_passed={value} identification_verified=true "
+            f"summary=done"
+        )
+        return proto.parse_output(raw)
+
+    def test_tag_tests_passed_true(self):
+        action, diag = self._tag_finish_with_tests_passed("true")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is True
+
+    def test_tag_tests_passed_false(self):
+        action, diag = self._tag_finish_with_tests_passed("false")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is False
+
+    def test_tag_tests_passed_yes(self):
+        action, diag = self._tag_finish_with_tests_passed("yes")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is True
+
+    def test_tag_tests_passed_no(self):
+        action, diag = self._tag_finish_with_tests_passed("no")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is False
+
+    def test_tag_tests_passed_1(self):
+        action, diag = self._tag_finish_with_tests_passed("1")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is True
+
+    def test_tag_tests_passed_0(self):
+        action, diag = self._tag_finish_with_tests_passed("0")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is False
+
+    def test_tag_tests_passed_banana_hard_fails(self):
+        """tests_passed=banana must hard-fail, NOT become False."""
+        action, diag = self._tag_finish_with_tests_passed("banana")
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_tests_passed_2_hard_fails(self):
+        """tests_passed=2 must hard-fail (only 0/1 are valid)."""
+        action, diag = self._tag_finish_with_tests_passed("2")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_tests_passed_negative1_hard_fails(self):
+        """tests_passed=-1 must hard-fail."""
+        action, diag = self._tag_finish_with_tests_passed("-1")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_tests_passed_empty_hard_fails(self):
+        """Empty tests_passed must hard-fail."""
+        action, diag = self._tag_finish_with_tests_passed("")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_invalid_boolean_not_converted_to_false(self):
+        """Critical: banana must NOT silently become False.
+
+        If it became False, a complete finish action would PASS.
+        The fact that it FAILS proves no silent conversion happened.
+        """
+        action, diag = self._tag_finish_with_tests_passed("banana")
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_tests_passed_true(self):
+        action, diag = self._dsl_finish_with_tests_passed("true")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is True
+
+    def test_dsl_tests_passed_false(self):
+        action, diag = self._dsl_finish_with_tests_passed("false")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is False
+
+    def test_dsl_tests_passed_yes(self):
+        action, diag = self._dsl_finish_with_tests_passed("yes")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is True
+
+    def test_dsl_tests_passed_no(self):
+        action, diag = self._dsl_finish_with_tests_passed("no")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.tests_passed is False
+
+    def test_dsl_tests_passed_banana_hard_fails(self):
+        """DSL tests_passed=banana must hard-fail."""
+        action, diag = self._dsl_finish_with_tests_passed("banana")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_dsl_invalid_boolean_not_converted_to_false(self):
+        """DSL: banana must NOT silently become False."""
+        action, diag = self._dsl_finish_with_tests_passed("banana")
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+
+# ===========================================================================
+# Section 7 — Numeric strictness tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestNumericStrictness:
+    """Issue #32 Final Trust Repair: strict integer/float parsing.
+
+    Invalid numbers must hard-fail, not be kept as strings or use defaults.
+    """
+
+    def _tag_search_with_max_results(self, value: str):
+        proto = TagProtocol()
+        raw = f"<action>\ntool: search_text\nquery: def\nmax_results: {value}\n</action>"
+        return proto.parse_output(raw)
+
+    def _dsl_search_with_max_results(self, value: str):
+        proto = DslProtocol()
+        raw = f"ACTION search_text query=def max_results={value}"
+        return proto.parse_output(raw)
+
+    def _tag_run_tests_with_timeout(self, value: str):
+        proto = TagProtocol()
+        raw = f"<action>\ntool: run_tests\ntimeout_s: {value}\n</action>"
+        return proto.parse_output(raw)
+
+    def _dsl_run_tests_with_timeout(self, value: str):
+        proto = DslProtocol()
+        raw = f"ACTION run_tests timeout_s={value}"
+        return proto.parse_output(raw)
+
+    def test_tag_max_results_20_correct(self):
+        action, diag = self._tag_search_with_max_results("20")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.max_results == 20
+
+    def test_tag_max_results_abc_hard_fails(self):
+        action, diag = self._tag_search_with_max_results("abc")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_max_results_float_hard_fails(self):
+        """1.5 is not a valid integer."""
+        action, diag = self._tag_search_with_max_results("1.5")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_max_results_empty_hard_fails(self):
+        action, diag = self._tag_search_with_max_results("")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_timeout_s_1_5_correct(self):
+        action, diag = self._tag_run_tests_with_timeout("1.5")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.timeout_s == 1.5
+
+    def test_tag_timeout_s_10_correct(self):
+        action, diag = self._tag_run_tests_with_timeout("10")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.timeout_s == 10.0
+
+    def test_tag_timeout_s_abc_hard_fails(self):
+        action, diag = self._tag_run_tests_with_timeout("abc")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_timeout_s_nan_hard_fails(self):
+        action, diag = self._tag_run_tests_with_timeout("NaN")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_timeout_s_infinity_hard_fails(self):
+        action, diag = self._tag_run_tests_with_timeout("Infinity")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_dsl_max_results_20_correct(self):
+        action, diag = self._dsl_search_with_max_results("20")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.max_results == 20
+
+    def test_dsl_max_results_abc_hard_fails(self):
+        action, diag = self._dsl_search_with_max_results("abc")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_dsl_timeout_s_1_5_correct(self):
+        action, diag = self._dsl_run_tests_with_timeout("1.5")
+        assert not isinstance(action, SentinelAction)
+        assert action.arguments.timeout_s == 1.5
+
+    def test_dsl_timeout_s_abc_hard_fails(self):
+        action, diag = self._dsl_run_tests_with_timeout("abc")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_invalid_number_does_not_use_default(self):
+        """max_results=abc must fail, not use default 20.
+
+        If default were used, the action would pass with max_results=20.
+        The fact that it fails proves no default substitution happened.
+        """
+        action, diag = self._tag_search_with_max_results("abc")
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+
+# ===========================================================================
+# Section 8 — Semantic preservation tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestSemanticPreservation:
+    """Issue #32 Final Trust Repair: parser must not alter model semantics.
+
+    No field renaming, no field deletion, no business param injection,
+    no action replacement, no silent no-op.
+    """
+
+    def test_tag_does_not_rename_fields(self):
+        """Tag must not rename 'path' to 'pattern' for list_files."""
+        proto = TagProtocol()
+        raw = "<action>\ntool: list_files\npath: solution.py\n</action>"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_does_not_rename_fields(self):
+        """DSL must not rename 'path' to 'pattern' for list_files."""
+        proto = DslProtocol()
+        raw = "ACTION list_files path=solution.py"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_tag_does_not_delete_unknown_fields(self):
+        """Tag must not delete unknown fields to make payload valid."""
+        proto = TagProtocol()
+        raw = "<action>\ntool: read_file\npath: solution.py\nbadkey: value\n</action>"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_does_not_delete_unknown_fields(self):
+        """DSL must not delete unknown key=value pairs."""
+        proto = DslProtocol()
+        raw = "ACTION read_file path=solution.py badkey=value"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_tag_does_not_inject_business_params(self):
+        """Tag must not inject finish business params."""
+        proto = TagProtocol()
+        raw = "<action>\ntool: finish\nsummary: done\n</action>"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_does_not_inject_business_params(self):
+        """DSL must not inject finish business params."""
+        proto = DslProtocol()
+        raw = "ACTION finish summary=done"
+        action, diag = proto.parse_output(raw)
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_tag_semantic_error_returns_sentinel(self):
+        """All Tag semantic errors must return SentinelAction."""
+        proto = TagProtocol()
+        # Unknown action type
+        action, diag = proto.parse_output(
+            "<action>\ntool: run_terminal\ncommand: rm\n</action>"
+        )
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "UNKNOWN_ACTION_TYPE"
+        # Invalid scalar
+        action, diag = proto.parse_output(
+            "<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            "tests_passed: banana\nidentification_verified: true\n"
+            "summary: done\n</action>"
+        )
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_dsl_semantic_error_returns_sentinel(self):
+        """All DSL semantic errors must return SentinelAction."""
+        proto = DslProtocol()
+        # Unknown action type
+        action, diag = proto.parse_output("ACTION run_terminal command=rm")
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "UNKNOWN_ACTION_TYPE"
+        # Invalid scalar
+        action, diag = proto.parse_output(
+            "ACTION finish success_criterion=test_pass "
+            "tests_passed=banana identification_verified=true summary=done"
+        )
+        assert isinstance(action, SentinelAction)
+        assert diag.failure_class == "SCHEMA_VALIDATION_FAIL"
+
+    def test_tag_no_silent_coercion(self):
+        """Tag must not silently coerce invalid values to valid ones."""
+        proto = TagProtocol()
+        # banana must not become False
+        action, diag = proto.parse_output(
+            "<action>\ntool: finish\nsuccess_criterion: test_pass\n"
+            "tests_passed: banana\nidentification_verified: true\n"
+            "summary: done\n</action>"
+        )
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+    def test_dsl_no_silent_coercion(self):
+        """DSL must not silently coerce invalid values to valid ones."""
+        proto = DslProtocol()
+        action, diag = proto.parse_output(
+            "ACTION finish success_criterion=test_pass "
+            "tests_passed=banana identification_verified=true summary=done"
+        )
+        assert isinstance(action, SentinelAction)
+        assert not diag.schema_valid
+
+
+# ===========================================================================
+# Section 9 — Reproducibility tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestReproducibility:
+    """Issue #32 Final Trust Repair: experiment must be reproducible from
+    a committed state. No uncommitted working-tree code allowed."""
+
+    def test_git_worktree_clean_check_returns_bool(self):
+        """_git_worktree_clean_for_experiment must return a bool."""
+        from scripts.run_protocol_ablation import _git_worktree_clean_for_experiment
+        result = _git_worktree_clean_for_experiment()
+        assert isinstance(result, bool)
+
+    def test_assert_clean_experiment_state_exists(self):
+        """assert_clean_experiment_state must be callable."""
+        from scripts.run_protocol_ablation import assert_clean_experiment_state
+        assert callable(assert_clean_experiment_state)
+
+    def test_assert_clean_experiment_state_exits_on_dirty(self):
+        """assert_clean_experiment_state must sys.exit(1) if worktree dirty."""
+        from scripts.run_protocol_ablation import assert_clean_experiment_state
+        from unittest.mock import patch, MagicMock
+        with patch("scripts.run_protocol_ablation._git_worktree_clean_for_experiment",
+                   return_value=False):
+            with pytest.raises(SystemExit) as exc_info:
+                assert_clean_experiment_state()
+            assert exc_info.value.code == 1
+
+    def test_assert_clean_experiment_state_passes_on_clean(self):
+        """assert_clean_experiment_state must not exit if worktree clean."""
+        from scripts.run_protocol_ablation import assert_clean_experiment_state
+        from unittest.mock import patch
+        with patch("scripts.run_protocol_ablation._git_worktree_clean_for_experiment",
+                   return_value=True):
+            # Should not raise SystemExit
+            assert_clean_experiment_state()
+
+    def test_baseline_lock_includes_worktree_clean_field(self):
+        """baseline_lock must include git_worktree_clean_for_experiment."""
+        from scripts.run_protocol_ablation import baseline_lock
+        lock = baseline_lock()
+        assert "git_worktree_clean_for_experiment" in lock
+        assert isinstance(lock["git_worktree_clean_for_experiment"], bool)
+
+    def test_baseline_lock_commit_sha_matches_head(self):
+        """baseline_lock.experiment_commit_sha must equal git HEAD."""
+        import subprocess
+        from scripts.run_protocol_ablation import baseline_lock, _ROOT
+        lock = baseline_lock()
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True, text=True, cwd=str(_ROOT),
+        )
+        head_sha = result.stdout.strip()
+        assert lock["experiment_commit_sha"] == head_sha
+
+    def test_artifact_manifest_excludes_self(self):
+        """generate_artifact_manifest must not include artifact-manifest.json."""
+        import tempfile
+        from pathlib import Path
+        from scripts.run_protocol_ablation import generate_artifact_manifest
+        with tempfile.TemporaryDirectory() as tmpdir:
+            report_dir = Path(tmpdir)
+            # Create some test files
+            (report_dir / "baseline-lock.json").write_text('{"test": 1}')
+            (report_dir / "trajectories").mkdir()
+            (report_dir / "trajectories" / "json-base.jsonl").write_text(
+                '{"trajectory_id": "test"}\n'
+            )
+            # Generate manifest
+            manifest = generate_artifact_manifest(report_dir)
+            # Verify artifact-manifest.json is NOT in the artifacts list
+            for artifact in manifest["artifacts"]:
+                assert artifact["relative_path"] != "artifact-manifest.json"
+            assert manifest["artifact_count"] == 2  # baseline-lock + jsonl
+
+
+# ===========================================================================
+# Section 10 — Scalar parser unit tests (Issue #32 Final Trust Repair)
+# ===========================================================================
+
+class TestScalarParsers:
+    """Direct unit tests for _parse_bool, _parse_int, _parse_float."""
+
+    def test_parse_bool_true(self):
+        from src.protocols.base import _parse_bool
+        assert _parse_bool("true") is True
+        assert _parse_bool("True") is True
+        assert _parse_bool("TRUE") is True
+        assert _parse_bool("yes") is True
+        assert _parse_bool("1") is True
+
+    def test_parse_bool_false(self):
+        from src.protocols.base import _parse_bool
+        assert _parse_bool("false") is False
+        assert _parse_bool("False") is False
+        assert _parse_bool("no") is False
+        assert _parse_bool("0") is False
+
+    def test_parse_bool_invalid_raises(self):
+        from src.protocols.base import _parse_bool
+        for invalid in ("banana", "truthy", "null", "none", "2", "-1", ""):
+            with pytest.raises(ValueError):
+                _parse_bool(invalid)
+
+    def test_parse_bool_whitespace_trimmed(self):
+        from src.protocols.base import _parse_bool
+        assert _parse_bool("  true  ") is True
+        assert _parse_bool("  false  ") is False
+
+    def test_parse_int_valid(self):
+        from src.protocols.base import _parse_int
+        assert _parse_int("0") == 0
+        assert _parse_int("1") == 1
+        assert _parse_int("20") == 20
+        assert _parse_int("-1") == -1
+
+    def test_parse_int_invalid_raises(self):
+        from src.protocols.base import _parse_int
+        for invalid in ("1.5", "abc", "1px", ""):
+            with pytest.raises(ValueError):
+                _parse_int(invalid)
+
+    def test_parse_float_valid(self):
+        from src.protocols.base import _parse_float
+        assert _parse_float("0") == 0.0
+        assert _parse_float("1") == 1.0
+        assert _parse_float("1.5") == 1.5
+        assert _parse_float("10.0") == 10.0
+
+    def test_parse_float_invalid_raises(self):
+        from src.protocols.base import _parse_float
+        for invalid in ("abc", "1s", ""):
+            with pytest.raises(ValueError):
+                _parse_float(invalid)
+
+    def test_parse_float_non_finite_raises(self):
+        from src.protocols.base import _parse_float
+        for invalid in ("NaN", "Infinity", "-inf", "inf"):
+            with pytest.raises(ValueError):
+                _parse_float(invalid)

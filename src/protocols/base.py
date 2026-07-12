@@ -10,9 +10,16 @@ arguments_valid were all set to True together.
 Issue #32 Trust Repair: each check_* method validates ONE dimension only,
 without silently dropping unknown fields. All Args models now use
 ConfigDict(extra="forbid") so unknown fields hard-fail at every level.
+
+Issue #32 Final Trust Repair: strict scalar parsing helpers (_parse_bool,
+_parse_int, _parse_float) are provided for Tag/DSL protocols to convert
+string key=value pairs to typed values WITHOUT silent coercion. Invalid
+values raise ValueError, which the caller converts to SentinelAction with
+failure_class=SCHEMA_VALIDATION_FAIL.
 """
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
@@ -54,6 +61,55 @@ _ACTION_ARGS_MAP = {
 
 # Actions whose arguments have default_factory (may be omitted or None).
 _ARGS_OPTIONAL = frozenset({"list_files", "inspect_task", "run_tests"})
+
+
+# ---------------------------------------------------------------------------
+# Issue #32 Final Trust Repair: strict scalar parsing helpers
+# ---------------------------------------------------------------------------
+
+def _parse_bool(value: str) -> bool:
+    """Strict boolean parsing for Tag/DSL string values.
+
+    Accepts (case-insensitive, whitespace-trimmed):
+        true, false, yes, no, 1, 0
+
+    Rejects everything else (banana, truthy, null, none, 2, -1, "").
+
+    Raises ValueError on invalid input. The caller must convert this
+    to SentinelAction with failure_class=SCHEMA_VALIDATION_FAIL.
+    """
+    normalized = value.strip().lower()
+    if normalized in {"true", "yes", "1"}:
+        return True
+    if normalized in {"false", "no", "0"}:
+        return False
+    raise ValueError(f"invalid boolean: {value!r}")
+
+
+def _parse_int(value: str) -> int:
+    """Strict integer parsing for Tag/DSL string values.
+
+    Accepts valid integer strings (e.g. "0", "1", "20", "-1").
+    Rejects floats ("1.5"), non-numeric ("abc"), units ("1px"), empty.
+
+    Raises ValueError on invalid input.
+    """
+    return int(value)
+
+
+def _parse_float(value: str) -> float:
+    """Strict float parsing for Tag/DSL string values.
+
+    Accepts valid finite float strings (e.g. "0", "1", "1.5", "10.0").
+    Rejects non-numeric ("abc"), units ("1s"), non-finite
+    ("NaN", "Infinity", "-inf"), empty.
+
+    Raises ValueError on invalid or non-finite input.
+    """
+    result = float(value)
+    if not math.isfinite(result):
+        raise ValueError(f"non-finite float: {value!r}")
+    return result
 
 
 class ProtocolDiagnostics(BaseModel):

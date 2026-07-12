@@ -28,7 +28,7 @@ import time
 
 from src.agent_actions import Action
 from src.agent_model_provider import SentinelAction
-from src.protocols.base import ProtocolBase, ProtocolDiagnostics
+from src.protocols.base import ProtocolBase, ProtocolDiagnostics, _parse_bool, _parse_int, _parse_float
 
 _ACTION_LINE_RE = re.compile(r"^ACTION\s+(\w+)\s*(.*)$", re.MULTILINE)
 _HEREDOC_START_RE = re.compile(r"^(\w+)\s*<<EOF\s*$", re.MULTILINE)
@@ -166,14 +166,19 @@ class DslProtocol(ProtocolBase):
             "safety_flags": _default_safety_flags(action_type),
         }
 
-        # Fill in default argument values for finish (reduces model entropy)
-        if action_type == "finish":
-            arguments.setdefault("success_criterion", "test_pass")
-            arguments.setdefault("tests_passed", "false")
-            arguments.setdefault("identification_verified", "false")
+        # Issue #32 Final Trust Repair: finish business parameters
+        # (success_criterion, tests_passed, identification_verified) must
+        # be explicitly provided by the model. No semantic defaults are
+        # injected. Missing required fields cause Pydantic validation to
+        # fail naturally via FinishArgs (which has no defaults for these).
 
-        # Coerce argument types
-        arguments = self._coerce_arguments(action_type, arguments)
+        # Coerce argument types (strict — invalid values raise ValueError
+        # and produce SentinelAction with SCHEMA_VALIDATION_FAIL)
+        try:
+            arguments = self._coerce_arguments(action_type, arguments)
+        except ValueError as e:
+            diag.failure_class = "SCHEMA_VALIDATION_FAIL"
+            return SentinelAction(reason=f"invalid scalar argument: {e}"), diag
         if arguments:
             data["arguments"] = arguments
 
@@ -192,21 +197,26 @@ class DslProtocol(ProtocolBase):
 
     @staticmethod
     def _coerce_arguments(action_type: str, arguments: dict) -> dict:
-        """Coerce string values to correct types for known argument fields."""
+        """Coerce string values to correct types for known argument fields.
+
+        Issue #32 Final Trust Repair: strict scalar parsing.
+        - Boolean: only true/false/yes/no/1/0 (case-insensitive) accepted.
+        - Integer: only valid integer strings accepted.
+        - Float: only valid finite float strings accepted.
+        Any invalid value raises ValueError, which the caller converts to
+        SentinelAction with failure_class=SCHEMA_VALIDATION_FAIL.
+        """
         coerced = dict(arguments)
+        # Boolean coercion (strict — no silent False mapping)
         for bool_key in ("tests_passed", "identification_verified"):
             if bool_key in coerced:
-                coerced[bool_key] = coerced[bool_key].lower() in ("true", "yes", "1")
+                coerced[bool_key] = _parse_bool(coerced[bool_key])
+        # Integer coercion (strict — no silent pass-through)
         for int_key in ("max_results", "start_line", "end_line"):
             if int_key in coerced:
-                try:
-                    coerced[int_key] = int(coerced[int_key])
-                except ValueError:
-                    pass
+                coerced[int_key] = _parse_int(coerced[int_key])
+        # Float coercion (strict — rejects NaN/Infinity)
         for float_key in ("timeout_s",):
             if float_key in coerced:
-                try:
-                    coerced[float_key] = float(coerced[float_key])
-                except ValueError:
-                    pass
+                coerced[float_key] = _parse_float(coerced[float_key])
         return coerced

@@ -74,6 +74,52 @@ def _git_sha():
         return "unknown"
 
 
+def _git_worktree_clean_for_experiment() -> bool:
+    """Issue #32 Final Trust Repair: check that no experiment-affecting
+    tracked files have uncommitted modifications.
+
+    Experiment-affecting paths:
+    - src/ (all protocol and action code)
+    - scripts/run_protocol_ablation.py (experiment harness)
+    - data/p4-agent/micro-tasks-v0/ (task definitions)
+
+    Unrelated files (AGENTS.md, docs/, reports/p4/p4-1-*, data/p3-limited/*,
+    test-results.xml) may have working-tree modifications without blocking
+    the experiment.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--"],
+            capture_output=True, text=True, cwd=str(_ROOT),
+        )
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
+            path = line[3:]
+            if (path.startswith("src/")
+                    or path == "scripts/run_protocol_ablation.py"
+                    or path.startswith("data/p4-agent/")):
+                return False
+        return True
+    except Exception:
+        return False
+
+
+def assert_clean_experiment_state() -> None:
+    """Issue #32 Final Trust Repair: hard-fail if experiment-affecting
+    tracked files have uncommitted modifications.
+
+    Call this before running the experiment to guarantee reproducibility
+    from the recorded experiment_commit_sha.
+    """
+    if not _git_worktree_clean_for_experiment():
+        print("FATAL: working tree has uncommitted modifications to "
+              "experiment-affecting files (src/, scripts/, data/p4-agent/).")
+        print("Commit all experiment code before running the ablation.")
+        print("Run: git status --porcelain -- src/ scripts/run_protocol_ablation.py data/p4-agent/")
+        sys.exit(1)
+
+
 def _file_sha256(path: Path) -> str:
     h = hashlib.sha256()
     h.update(path.read_bytes())
@@ -130,6 +176,7 @@ def baseline_lock() -> dict:
 
     return {
         "experiment_commit_sha": _git_sha(),
+        "git_worktree_clean_for_experiment": _git_worktree_clean_for_experiment(),
         "report_dir_name": _REPORT_DIR_NAME,
         "micro_task_manifest_path": str(manifest_path.relative_to(_ROOT)),
         "micro_task_manifest_sha256": _file_sha256(manifest_path),
@@ -467,10 +514,18 @@ def generate_artifact_manifest(report_dir: Path) -> dict:
     """Generate manifest with SHA256, size, row count for each artifact.
 
     Issue #32: required for reproducibility audit.
+    Issue #32 Final Trust Repair: the manifest must NOT include itself
+    (方案 A). Self-reference causes the recorded SHA to become invalid
+    once the manifest is written to disk.
     """
     artifacts = []
     for path in sorted(report_dir.rglob("*")):
         if path.is_file():
+            # Skip self-reference: artifact-manifest.json must not
+            # record its own SHA (it doesn't exist yet at generation
+            # time, but skip it explicitly in case of re-runs).
+            if path.name == "artifact-manifest.json":
+                continue
             rel = path.relative_to(report_dir)
             sha = _file_sha256(path)
             size = path.stat().st_size
@@ -566,6 +621,10 @@ def compute_verdict(results: list[dict]) -> str:
 
 
 def main():
+    # Issue #32 Final Trust Repair: ensure experiment runs from a clean
+    # committed state so experiment_commit_sha is reproducible.
+    assert_clean_experiment_state()
+
     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
     traj_dir = _REPORT_DIR / "trajectories"
     traj_dir.mkdir(parents=True, exist_ok=True)

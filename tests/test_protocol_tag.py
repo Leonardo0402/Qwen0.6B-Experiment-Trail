@@ -100,10 +100,33 @@ def test_build_system_prompt_contains_format_instructions():
     assert "Fix the bug" in prompt
 
 
-def test_minimal_tag_parses_with_defaults():
-    """Tag protocol should fill in defaults for missing fields."""
+def test_finish_missing_required_fields_fails():
+    """Issue #32 Final Trust Repair: finish with only summary must FAIL.
+
+    Previously the parser injected defaults for success_criterion,
+    tests_passed, and identification_verified. Now the model must
+    explicitly provide all required business parameters.
+    """
     proto = _make_protocol()
     raw = "<action>\ntool: finish\nsummary: done\n</action>"
+    action, diag = proto.parse_output(raw)
+    assert isinstance(action, SentinelAction)
+    assert not diag.schema_valid
+    assert not diag.arguments_valid
+
+
+def test_complete_finish_passes():
+    """A complete finish action with all required fields must pass."""
+    proto = _make_protocol()
+    raw = (
+        "<action>\n"
+        "tool: finish\n"
+        "success_criterion: test_pass\n"
+        "tests_passed: true\n"
+        "identification_verified: true\n"
+        "summary: all tests pass\n"
+        "</action>"
+    )
     action, diag = proto.parse_output(raw)
     assert not isinstance(action, SentinelAction)
     assert action.action_type == "finish"
