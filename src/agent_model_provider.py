@@ -214,7 +214,14 @@ class ModelActionProvider(ActionProvider):
         return action
 
     def _next_action_legacy(self, state: AgentState) -> Action | SentinelAction:
-        """Legacy path: existing JSON parsing (backward-compatible)."""
+        """Legacy path: existing JSON parsing (backward-compatible).
+
+        Issue #32 Trust Repair: each diagnostic dimension is computed
+        independently via ProtocolBase.check_* methods. Previously all
+        four were set to True together when validate_action succeeded.
+        """
+        from src.protocols.base import ProtocolBase
+
         prompt = build_prompt(state, task_description="", last_observation=None)
         t0 = time.monotonic()
         raw_output = self._generate(prompt)
@@ -240,14 +247,16 @@ class ModelActionProvider(ActionProvider):
         # Try direct validation
         try:
             data = json.loads(json_str)
-            action = _validate_action(data)
-            if action is not None:
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.action_type_valid = True
-                diag.arguments_valid = True
-                self._diagnostics.append(diag)
-                return action
+            if isinstance(data, dict):
+                # Issue #32: independent dimension checks
+                diag.action_type_valid = ProtocolBase.check_action_type_valid(data)
+                diag.safety_valid = ProtocolBase.check_safety_valid(data)
+                diag.arguments_valid = ProtocolBase.check_arguments_valid(data)
+                action = _validate_action(data)
+                diag.schema_valid = action is not None
+                if action is not None:
+                    self._diagnostics.append(diag)
+                    return action
         except (json.JSONDecodeError, Exception):
             pass
 
@@ -256,15 +265,16 @@ class ModelActionProvider(ActionProvider):
         repaired = repair_json(json_str)
         try:
             data = json.loads(repaired)
-            action = _validate_action(data)
-            if action is not None:
-                diag.repair_success = True
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.action_type_valid = True
-                diag.arguments_valid = True
-                self._diagnostics.append(diag)
-                return action  # FIX: was missing return (P4.1 bug)
+            if isinstance(data, dict):
+                diag.action_type_valid = ProtocolBase.check_action_type_valid(data)
+                diag.safety_valid = ProtocolBase.check_safety_valid(data)
+                diag.arguments_valid = ProtocolBase.check_arguments_valid(data)
+                action = _validate_action(data)
+                diag.schema_valid = action is not None
+                if action is not None:
+                    diag.repair_success = True
+                    self._diagnostics.append(diag)
+                    return action  # FIX: was missing return (P4.1 bug)
         except (json.JSONDecodeError, Exception):
             pass
 

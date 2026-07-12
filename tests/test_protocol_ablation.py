@@ -47,15 +47,22 @@ class MockProtocol(ProtocolBase):
 def test_baseline_lock_records_all_fields():
     from scripts.run_protocol_ablation import baseline_lock
     lock = baseline_lock()
-    assert "commit_sha" in lock
+    # Issue #32: fields renamed/extended for trust repair
+    assert "experiment_commit_sha" in lock
     assert "micro_task_manifest_sha256" in lock
     assert "model_path" in lock
-    assert "adapter_path" in lock
+    assert "adapter_path_base" in lock
+    assert "adapter_path_repair_lora" in lock
     assert "generation_config" in lock
     assert lock["generation_config"]["temperature"] == 0.0
     assert lock["generation_config"]["do_sample"] is False
     assert "total_tasks" in lock
     assert lock["total_tasks"] == 40
+    # Issue #32: new fields for reproducibility audit
+    assert "source_file_shas" in lock
+    assert "environment" in lock
+    assert "task_ids" in lock
+    assert "created_at" in lock
 
 
 def test_aggregate_metrics_computes_all_fields():
@@ -66,15 +73,19 @@ def test_aggregate_metrics_computes_all_fields():
                 {"format_parse_ok": True, "schema_valid": True,
                  "safety_valid": True, "action_type_valid": True,
                  "arguments_valid": True, "failure_class": None},
+                # Issue #32 Task D: unknown_action_count now keyed on
+                # failure_class=="UNKNOWN_ACTION_TYPE" (not action_type_valid=False)
+                # because FORMAT_PARSE_FAIL steps also have action_type_valid=False.
                 {"format_parse_ok": True, "schema_valid": False,
                  "safety_valid": False, "action_type_valid": False,
-                 "arguments_valid": False, "failure_class": "SCHEMA_VALIDATION_FAIL"},
+                 "arguments_valid": False, "failure_class": "UNKNOWN_ACTION_TYPE"},
             ],
             "metrics": {"forbidden_action_count": 0, "tool_error_rate": 0.0,
-                        "max_step_exceeded_count": 1},
+                        "max_step_exceeded_count": 1, "finish_without_tests_count": 1},
             "success": False,
             "finish_claim_mismatch": True,
             "steps_executed": 12,
+            "max_steps_hit": True,
         },
     ]
     metrics = aggregate_metrics(trajectories, crashes=0)
@@ -91,9 +102,16 @@ def test_aggregate_metrics_computes_all_fields():
     assert "finish_claim_mismatch_count" in metrics
     assert "max_steps_hit_rate" in metrics
     assert "runtime_crash_count" in metrics
+    # Issue #32 Task F: numerator/denominator transparency
+    assert metrics["total_steps"] == 2
+    assert metrics["format_parse_success_steps"] == 2
     assert metrics["format_parse_rate"] == 1.0
+    assert metrics["schema_valid_steps"] == 1
     assert metrics["schema_valid_rate"] == 0.5
-    assert metrics["unknown_action_count"] == 1  # one step had action_type_valid=False
+    # Task D: unknown_action_count from failure_class, not action_type_valid
+    assert metrics["unknown_action_count"] == 1
+    # Task E: finish_without_tests_count from evaluator explicit field
+    assert metrics["finish_without_tests_count"] == 1
     assert metrics["finish_claim_mismatch_count"] == 1
 
 
@@ -217,12 +235,21 @@ def test_generate_report_has_markdown_table():
                      "safety_valid_rate": 0.0, "action_type_valid_rate": 0.5,
                      "arguments_valid_rate": 0.0, "forbidden_action_count": 0,
                      "task_success_rate": 0.0, "max_steps_hit_rate": 1.0,
-                     "runtime_crash_count": 0}},
+                     "runtime_crash_count": 0,
+                     # Issue #32 Task F: numerator/denominator fields
+                     "total_steps": 10, "format_parse_success_steps": 10,
+                     "schema_valid_steps": 0, "safety_valid_steps": 0,
+                     "action_type_valid_steps": 5, "arguments_valid_steps": 0,
+                     "total_trajectories": 5, "successful_trajectories": 0,
+                     "max_steps_hit_count": 5, "unknown_action_count": 2,
+                     "finish_without_tests_count": 3}},
     ]
     taxonomy = {"FORMAT_PARSE_FAIL": 5}
     report = generate_report(results, taxonomy)
     assert "|" in report  # markdown table
-    assert "format_parse_rate" in report
+    # Issue #32: report now uses numerator/denominator format
+    assert "schema_valid" in report
+    assert "format_parse" in report  # detailed step-level metrics section
 
 
 def test_verdict_keep_action_json_when_json_best():

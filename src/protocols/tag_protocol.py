@@ -192,18 +192,14 @@ class TagProtocol(ProtocolBase):
             "safety_flags": _default_safety_flags(action_type),
         }
 
-        # Map remaining keys to arguments
+        # Map remaining keys to arguments.
+        # Issue #32 Trust Repair: ALL keys are passed through to arguments,
+        # including unknown ones. Previously unknown keys were silently
+        # filtered out (like Pydantic's extra="ignore"). Now they are kept
+        # and rejected by check_arguments_valid via extra="forbid" on Args.
         arguments: dict = {}
-        has_unknown_key = False
         for key, value in kv.items():
-            if key in _ARGUMENT_KEYS or key in _FINISH_KEYS:
-                arguments[key] = value
-            else:
-                has_unknown_key = True
-
-        if has_unknown_key:
-            diag.failure_class = "SCHEMA_VALIDATION_FAIL"
-            return SentinelAction(reason="unknown key in action block"), diag
+            arguments[key] = value
 
         # Fill in default argument values for finish (reduces model entropy)
         if action_type == "finish":
@@ -216,15 +212,17 @@ class TagProtocol(ProtocolBase):
         if arguments:
             data["arguments"] = arguments
 
-        # Validate against Action schema
+        # Issue #32 Trust Repair: compute each dimension independently.
+        # Unknown keys in arguments will cause arguments_valid=False and
+        # schema_valid=False (via extra="forbid" on Args models).
+        diag.safety_valid = self.check_safety_valid(data)
+        diag.arguments_valid = self.check_arguments_valid(data)
         action = self.validate_action(data)
+        diag.schema_valid = action is not None
         if action is not None:
-            diag.schema_valid = True
-            diag.safety_valid = True
-            diag.arguments_valid = True
             return action, diag
 
-        diag.failure_class = "SCHEMA_VALIDATION_FAIL"
+        diag.failure_class = self.classify_failure(data, format_parse_ok=True)
         return SentinelAction(reason="tag action failed schema validation"), diag
 
     @staticmethod

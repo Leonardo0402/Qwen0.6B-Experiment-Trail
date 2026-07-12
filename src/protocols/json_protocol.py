@@ -83,45 +83,46 @@ class JsonProtocol(ProtocolBase):
         data = None
         try:
             data = json.loads(json_str)
-            if isinstance(data, dict):
-                action_type = data.get("action_type", "")
-                diag.action_type_valid = self.is_valid_action_type(action_type)
         except (json.JSONDecodeError, Exception):
             pass  # Fall through to repair path
 
         # Try direct validation (only if json.loads succeeded)
-        if data is not None:
+        if data is not None and isinstance(data, dict):
+            # Issue #32 Trust Repair: compute each dimension independently.
+            # Previously all four were set to True together when validate_action
+            # succeeded, and all False when it failed. Unknown fields were
+            # silently dropped by Pydantic's default extra="ignore".
+            diag.action_type_valid = self.check_action_type_valid(data)
+            diag.safety_valid = self.check_safety_valid(data)
+            diag.arguments_valid = self.check_arguments_valid(data)
             action = self.validate_action(data)
+            diag.schema_valid = action is not None
             if action is not None:
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.arguments_valid = True
                 return action, diag
 
-        # Attempt format-only repair
+        # Attempt format-only repair (syntax only, never changes semantics)
         diag.repair_attempted = True
         repaired = repair_json(json_str)
         try:
             data = json.loads(repaired)
-            if isinstance(data, dict):
-                action_type = data.get("action_type", "")
-                diag.action_type_valid = self.is_valid_action_type(action_type)
+        except (json.JSONDecodeError, Exception):
+            data = None
+
+        if data is not None and isinstance(data, dict):
+            # Recompute dimensions on repaired data
+            diag.action_type_valid = self.check_action_type_valid(data)
+            diag.safety_valid = self.check_safety_valid(data)
+            diag.arguments_valid = self.check_arguments_valid(data)
             action = self.validate_action(data)
+            diag.schema_valid = action is not None
             if action is not None:
                 # FIX: P4.1 bug — was missing `return action` here
                 diag.repair_success = True
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.arguments_valid = True
                 return action, diag
-        except (json.JSONDecodeError, Exception):
-            pass
 
-        # Classify failure
-        if data is None:
+        # Classify failure using independent dimension checks
+        if data is None or not isinstance(data, dict):
             diag.failure_class = "FORMAT_PARSE_FAIL"
-        elif not diag.action_type_valid:
-            diag.failure_class = "UNKNOWN_ACTION_TYPE"
         else:
-            diag.failure_class = "SCHEMA_VALIDATION_FAIL"
+            diag.failure_class = self.classify_failure(data, format_parse_ok=True)
         return SentinelAction(reason="schema validation failed after repair"), diag

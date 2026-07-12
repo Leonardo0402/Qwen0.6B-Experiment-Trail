@@ -46,7 +46,9 @@ _CONFIGS = [
 ]
 
 _TASKS_DIR = _ROOT / "data" / "p4-agent" / "micro-tasks-v0"
-_REPORT_DIR = _ROOT / "reports" / "p4" / "protocol-ablation"
+# Issue #32: parameterize report dir for v2 reruns
+_REPORT_DIR_NAME = os.environ.get("P4_1B_REPORT_DIR", "protocol-ablation")
+_REPORT_DIR = _ROOT / "reports" / "p4" / _REPORT_DIR_NAME
 MAX_STEPS = 12
 
 _FAILURE_CLASSES = [
@@ -79,14 +81,62 @@ def _file_sha256(path: Path) -> str:
 
 
 def baseline_lock() -> dict:
-    """Record experiment starting state for reproducibility."""
+    """Record experiment starting state for reproducibility.
+
+    Issue #32: enhanced to record source file SHAs, task IDs, and
+    environment details as required by Trust Repair spec.
+    """
     manifest_path = _TASKS_DIR / "manifest.json"
+    task_ids = _load_task_ids()
+
+    # Source file SHAs
+    src_files = {
+        "agent_actions": _ROOT / "src" / "agent_actions.py",
+        "agent_evaluator": _ROOT / "src" / "agent_evaluator.py",
+        "agent_model_provider": _ROOT / "src" / "agent_model_provider.py",
+        "protocols_base": _ROOT / "src" / "protocols" / "base.py",
+        "protocols_json": _ROOT / "src" / "protocols" / "json_protocol.py",
+        "protocols_tag": _ROOT / "src" / "protocols" / "tag_protocol.py",
+        "protocols_dsl": _ROOT / "src" / "protocols" / "dsl_protocol.py",
+    }
+    src_shas = {}
+    for name, path in src_files.items():
+        if path.exists():
+            src_shas[name] = _file_sha256(path)
+        else:
+            src_shas[name] = "NOT_FOUND"
+
+    # Environment info
+    import platform
+    env_info = {
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+    }
+    try:
+        import torch
+        env_info["torch_version"] = torch.__version__
+        env_info["cuda_available"] = torch.cuda.is_available()
+        if torch.cuda.is_available():
+            env_info["cuda_version"] = torch.version.cuda
+            env_info["gpu_name"] = torch.cuda.get_device_name(0)
+            env_info["bf16_supported"] = torch.cuda.is_bf16_supported()
+    except ImportError:
+        env_info["torch_version"] = "NOT_INSTALLED"
+    try:
+        import transformers
+        env_info["transformers_version"] = transformers.__version__
+    except ImportError:
+        env_info["transformers_version"] = "NOT_INSTALLED"
+
     return {
-        "commit_sha": _git_sha(),
+        "experiment_commit_sha": _git_sha(),
+        "report_dir_name": _REPORT_DIR_NAME,
         "micro_task_manifest_path": str(manifest_path.relative_to(_ROOT)),
         "micro_task_manifest_sha256": _file_sha256(manifest_path),
+        "task_ids": task_ids,
         "model_path": "models/Qwen3-0.6B",
-        "adapter_path": "adapters/p3/repair-limited",
+        "adapter_path_base": None,
+        "adapter_path_repair_lora": "adapters/p3/repair-limited",
         "generation_config": {
             "temperature": 0.0,
             "do_sample": False,
@@ -94,11 +144,14 @@ def baseline_lock() -> dict:
             "dtype": "float16",
         },
         "max_steps": MAX_STEPS,
-        "total_tasks": 40,
+        "total_tasks": len(task_ids),
         "protocols": [p["name"] for p in _PROTOCOLS],
         "configs": [c["name"] for c in _CONFIGS],
         "total_combinations": len(_PROTOCOLS) * len(_CONFIGS),
-        "total_runs": len(_PROTOCOLS) * len(_CONFIGS) * 40,
+        "total_runs": len(_PROTOCOLS) * len(_CONFIGS) * len(task_ids),
+        "source_file_shas": src_shas,
+        "environment": env_info,
+        "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }
 
 
@@ -208,55 +261,87 @@ def aggregate_metrics(trajectories: list[dict], crashes: int = 0,
                       model_load_ok: bool = True) -> dict:
     """Compute aggregated metrics from trajectory step_diagnostics.
 
-    Returns 13 metrics per spec §6.2 (12+ required by acceptance criteria).
+    Issue #32 Trust Repair:
+    - Task D: unknown_action_count uses failure_class=="UNKNOWN_ACTION_TYPE"
+      (not `not action_type_valid`) to avoid double-counting FORMAT_PARSE_FAIL
+      steps which also have action_type_valid=False.
+    - Task E: finish_without_tests_count uses evaluator's explicit metric
+      (not `success and not tests_passed`) so failed trajectories that
+      finished without tests are also counted.
+    - Task F: All rates include explicit numerator/denominator for transparency.
     """
     all_diags: list[dict] = []
     for traj in trajectories:
         all_diags.extend(traj.get("step_diagnostics", []))
 
-    total_diags = len(all_diags)
-    if total_diags > 0:
-        format_parse_rate = sum(1 for d in all_diags if d.get("format_parse_ok")) / total_diags
-        schema_valid_rate = sum(1 for d in all_diags if d.get("schema_valid")) / total_diags
-        safety_valid_rate = sum(1 for d in all_diags if d.get("safety_valid")) / total_diags
-        action_type_valid_rate = sum(1 for d in all_diags if d.get("action_type_valid")) / total_diags
-        arguments_valid_rate = sum(1 for d in all_diags if d.get("arguments_valid")) / total_diags
-    else:
-        format_parse_rate = 0.0
-        schema_valid_rate = 0.0
-        safety_valid_rate = 0.0
-        action_type_valid_rate = 0.0
-        arguments_valid_rate = 0.0
+    total_steps = len(all_diags)
+    total_trajectories = len(trajectories)
+
+    # Step-level metrics with numerator/denominator (Task F)
+    format_parse_success_steps = sum(1 for d in all_diags if d.get("format_parse_ok"))
+    schema_valid_steps = sum(1 for d in all_diags if d.get("schema_valid"))
+    safety_valid_steps = sum(1 for d in all_diags if d.get("safety_valid"))
+    action_type_valid_steps = sum(1 for d in all_diags if d.get("action_type_valid"))
+    arguments_valid_steps = sum(1 for d in all_diags if d.get("arguments_valid"))
+
+    format_parse_rate = format_parse_success_steps / total_steps if total_steps else 0.0
+    schema_valid_rate = schema_valid_steps / total_steps if total_steps else 0.0
+    safety_valid_rate = safety_valid_steps / total_steps if total_steps else 0.0
+    action_type_valid_rate = action_type_valid_steps / total_steps if total_steps else 0.0
+    arguments_valid_rate = arguments_valid_steps / total_steps if total_steps else 0.0
 
     forbidden_action_count = sum(
         t.get("metrics", {}).get("forbidden_action_count", 0) for t in trajectories
     )
-    unknown_action_count = sum(1 for d in all_diags if not d.get("action_type_valid"))
-    total_tasks = len(trajectories)
-    task_success_rate = sum(1 for t in trajectories if t.get("success")) / total_tasks if total_tasks else 0.0
-    max_steps_hit_rate = sum(1 for t in trajectories if t.get("max_steps_hit")) / total_tasks if total_tasks else 0.0
+    # Task D: Use failure_class to avoid double-counting.
+    # FORMAT_PARSE_FAIL steps also have action_type_valid=False, but they
+    # should NOT be counted as UNKNOWN_ACTION_TYPE.
+    unknown_action_count = sum(
+        1 for d in all_diags if d.get("failure_class") == "UNKNOWN_ACTION_TYPE"
+    )
 
-    # Finish-related metrics (from evaluator)
+    # Trajectory-level metrics with numerator/denominator (Task F)
+    successful_trajectories = sum(1 for t in trajectories if t.get("success"))
+    max_steps_hit_count = sum(1 for t in trajectories if t.get("max_steps_hit"))
+    task_success_rate = successful_trajectories / total_trajectories if total_trajectories else 0.0
+    max_steps_hit_rate = max_steps_hit_count / total_trajectories if total_trajectories else 0.0
+
+    # Task E: Use evaluator's explicit finish_without_tests_count.
+    # Previously: `success and not tests_passed` — missed failed trajectories
+    # that finished without tests (finish-without-tests usually causes failure).
     finish_without_tests_count = sum(
-        1 for t in trajectories
-        if t.get("success") and not t.get("metrics", {}).get("tests_passed", False)
+        t.get("metrics", {}).get("finish_without_tests_count", 0) for t in trajectories
     )
     finish_claim_mismatch_count = sum(
         1 for t in trajectories if t.get("finish_claim_mismatch")
     )
 
     return {
+        # Step-level rates with numerator/denominator (Task F)
+        "total_steps": total_steps,
+        "format_parse_success_steps": format_parse_success_steps,
         "format_parse_rate": format_parse_rate,
+        "schema_valid_steps": schema_valid_steps,
         "schema_valid_rate": schema_valid_rate,
+        "safety_valid_steps": safety_valid_steps,
         "safety_valid_rate": safety_valid_rate,
+        "action_type_valid_steps": action_type_valid_steps,
         "action_type_valid_rate": action_type_valid_rate,
+        "arguments_valid_steps": arguments_valid_steps,
         "arguments_valid_rate": arguments_valid_rate,
+        # Failure counts
         "forbidden_action_count": forbidden_action_count,
         "unknown_action_count": unknown_action_count,
+        # Trajectory-level metrics with numerator/denominator (Task F)
+        "total_trajectories": total_trajectories,
+        "successful_trajectories": successful_trajectories,
         "task_success_rate": task_success_rate,
+        "max_steps_hit_count": max_steps_hit_count,
+        "max_steps_hit_rate": max_steps_hit_rate,
+        # Finish-related metrics
         "finish_without_tests_count": finish_without_tests_count,
         "finish_claim_mismatch_count": finish_claim_mismatch_count,
-        "max_steps_hit_rate": max_steps_hit_rate,
+        # Runtime
         "runtime_crash_count": crashes,
         "model_load_ok": model_load_ok,
     }
@@ -296,38 +381,60 @@ def _detect_repeated_loop(actions: list[dict]) -> bool:
 
 
 def generate_report(results: list[dict], taxonomy: dict) -> str:
-    """Generate markdown comparison report from ablation results."""
+    """Generate markdown comparison report from ablation results.
+
+    Issue #32 Task F: Show numerator/denominator alongside rates so
+    percentages can be traced to raw counts (e.g. 462/480 = 96.25%).
+    """
     lines = [
-        "# P4.1b Protocol Ablation — Comparison Report",
+        f"# P4.1b Protocol Ablation — Comparison Report ({_REPORT_DIR_NAME})",
         "",
         "## Overview",
         "",
         f"- Protocols: {len(set(r['protocol'] for r in results))}",
         f"- Configs: {len(set(r['config'] for r in results))}",
         f"- Total combinations: {len(results)}",
+        f"- Report dir: {_REPORT_DIR_NAME}",
         "",
         "## Metrics by Protocol x Config",
         "",
-        "| Protocol | Config | format_parse_rate | schema_valid_rate | safety_valid_rate | action_type_valid_rate | arguments_valid_rate | forbidden_count | unknown_count | task_success_rate | finish_no_tests | finish_mismatch | max_steps_hit_rate | crashes |",
-        "|----------|--------|-------------------|-------------------|-------------------|------------------------|----------------------|-----------------|----------------|-------------------|------------------|-----------------|---------------------|---------|",
+        "Rates shown as `numerator / denominator = rate`.",
+        "",
+        "| Protocol | Config | schema_valid | arguments_valid | task_success | max_steps_hit | unknown_actions | finish_no_tests | crashes |",
+        "|----------|--------|--------------|-----------------|--------------|---------------|-----------------|-----------------|---------|",
     ]
 
     for r in sorted(results, key=lambda x: (x["protocol"], x["config"])):
         m = r.get("metrics", {})
+        ts = m.get("total_steps", 0)
+        tt = m.get("total_trajectories", 0)
         lines.append(
             f"| {r['protocol']} | {r['config']} "
-            f"| {m.get('format_parse_rate', 0):.2%} "
-            f"| {m.get('schema_valid_rate', 0):.2%} "
-            f"| {m.get('safety_valid_rate', 0):.2%} "
-            f"| {m.get('action_type_valid_rate', 0):.2%} "
-            f"| {m.get('arguments_valid_rate', 0):.2%} "
-            f"| {m.get('forbidden_action_count', 0)} "
+            f"| {m.get('schema_valid_steps', 0)}/{ts} = {m.get('schema_valid_rate', 0):.2%} "
+            f"| {m.get('arguments_valid_steps', 0)}/{ts} = {m.get('arguments_valid_rate', 0):.2%} "
+            f"| {m.get('successful_trajectories', 0)}/{tt} = {m.get('task_success_rate', 0):.2%} "
+            f"| {m.get('max_steps_hit_count', 0)}/{tt} = {m.get('max_steps_hit_rate', 0):.2%} "
             f"| {m.get('unknown_action_count', 0)} "
-            f"| {m.get('task_success_rate', 0):.2%} "
             f"| {m.get('finish_without_tests_count', 0)} "
-            f"| {m.get('finish_claim_mismatch_count', 0)} "
-            f"| {m.get('max_steps_hit_rate', 0):.2%} "
             f"| {m.get('runtime_crash_count', 0)} |"
+        )
+
+    lines.extend([
+        "",
+        "## Detailed Step-Level Metrics",
+        "",
+        "| Protocol | Config | total_steps | format_parse | safety_valid | action_type_valid |",
+        "|----------|--------|-------------|--------------|--------------|-------------------|",
+    ])
+    for r in sorted(results, key=lambda x: (x["protocol"], x["config"])):
+        m = r.get("metrics", {})
+        ts = m.get("total_steps", 0)
+        lines.append(
+            f"| {r['protocol']} | {r['config']} "
+            f"| {ts} "
+            f"| {m.get('format_parse_success_steps', 0)}/{ts} = {m.get('format_parse_rate', 0):.2%} "
+            f"| {m.get('safety_valid_steps', 0)}/{ts} = {m.get('safety_valid_rate', 0):.2%} "
+            f"| {m.get('action_type_valid_steps', 0)}/{ts} = {m.get('action_type_valid_rate', 0):.2%} |"
         )
 
     lines.extend([
@@ -354,6 +461,38 @@ def generate_report(results: list[dict], taxonomy: dict) -> str:
         lines.append(f"- **{proto}**: avg schema_valid_rate = {avg_schema:.2%}")
 
     return "\n".join(lines)
+
+
+def generate_artifact_manifest(report_dir: Path) -> dict:
+    """Generate manifest with SHA256, size, row count for each artifact.
+
+    Issue #32: required for reproducibility audit.
+    """
+    artifacts = []
+    for path in sorted(report_dir.rglob("*")):
+        if path.is_file():
+            rel = path.relative_to(report_dir)
+            sha = _file_sha256(path)
+            size = path.stat().st_size
+            entry = {
+                "relative_path": str(rel),
+                "sha256": sha,
+                "size": size,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "experiment_commit": _git_sha(),
+            }
+            # Add row count for JSONL files
+            if path.suffix == ".jsonl":
+                with open(path, encoding="utf-8") as f:
+                    row_count = sum(1 for line in f if line.strip())
+                entry["row_count"] = row_count
+            artifacts.append(entry)
+    return {
+        "report_dir": _REPORT_DIR_NAME,
+        "artifact_count": len(artifacts),
+        "artifacts": artifacts,
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
 
 
 _ALLOWED_VERDICTS = {
@@ -505,6 +644,15 @@ def main():
     (_REPORT_DIR / "verdict.json").write_text(
         json.dumps({"verdict": verdict}, indent=2), encoding="utf-8"
     )
+
+    # Step 7: Artifact manifest (Issue #32)
+    print("\n=== Step 7: Artifact Manifest ===")
+    manifest = generate_artifact_manifest(_REPORT_DIR)
+    (_REPORT_DIR / "artifact-manifest.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
+    print(f"Wrote {_REPORT_DIR / 'artifact-manifest.json'}")
+    print(f"  {manifest['artifact_count']} artifacts catalogued")
 
     print(f"\nDone. Reports in {_REPORT_DIR}")
 

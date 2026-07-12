@@ -177,15 +177,17 @@ class DslProtocol(ProtocolBase):
         if arguments:
             data["arguments"] = arguments
 
-        # Validate against Action schema
+        # Issue #32 Trust Repair: compute each dimension independently.
+        # Unknown keys in arguments (from key=value pairs) will cause
+        # arguments_valid=False and schema_valid=False via extra="forbid".
+        diag.safety_valid = self.check_safety_valid(data)
+        diag.arguments_valid = self.check_arguments_valid(data)
         action = self.validate_action(data)
+        diag.schema_valid = action is not None
         if action is not None:
-            diag.schema_valid = True
-            diag.safety_valid = True
-            diag.arguments_valid = True
             return action, diag
 
-        diag.failure_class = "SCHEMA_VALIDATION_FAIL"
+        diag.failure_class = self.classify_failure(data, format_parse_ok=True)
         return SentinelAction(reason="dsl action failed schema validation"), diag
 
     @staticmethod
