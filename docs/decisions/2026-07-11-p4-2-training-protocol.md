@@ -1,83 +1,122 @@
 # Decision Record: P4.2 Agent SFT Training Protocol
 
-**Date:** 2026-07-11
-**Status:** PROPOSED (awaiting user approval)
+**Date:** 2026-07-11 (corrected 2026-07-12 per Issue #32)
+**Status:** PROPOSED / DEFERRED_TO_TWO_ARM_PILOT
 **Issue:** #27
-**Depends on:** #29 (P4.1b Protocol Ablation, verdict produced)
+**Depends on:** #29 (P4.1b Protocol Ablation), #32 (Trust Repair)
 
 ## Context
 
 P4.1 delivered 1350 SFT trajectories with GO_FOR_P4_AGENT_SFT verdict. P4.1b
-ablation (Issue #29) produced a verdict (`KEEP_ACTION_JSON`) that constrains
-the training protocol choice. This decision record selects the training
-protocol for P4.2 Agent SFT.
+ablation (Issue #29) was intended to produce a verdict constraining the
+training protocol choice. However, Issue #32 (Trust Repair) discovered that
+the original ablation results were **not trustworthy** due to silent field
+dropping (Pydantic `extra="ignore"`).
 
-## Evidence Base (P4.1b Ablation, 240 runs)
+This decision record is corrected to clearly separate two independent
+decisions that were previously conflated:
 
-Full ablation report: `reports/p4/protocol-ablation/comparison-report.md`
+1. **Decision 1 — Action Protocol**: Which protocol format to use (JSON/Tag/DSL)
+2. **Decision 2 — Agent SFT Initialization**: Which base/adapter to start from
 
-| Protocol | Config | schema_valid_rate | task_success_rate |
-|----------|--------|-------------------|-------------------|
-| json     | repair-lora | 96.25% | 0.00% |
-| dsl      | repair-lora | 8.12%  | 0.00% |
-| tag      | repair-lora | 1.67%  | 0.00% |
-| json     | base        | 0.00%  | 0.00% |
-| tag      | base        | 2.29%  | 0.00% |
-| dsl      | base        | 0.00%  | 0.00% |
+P4.1b ablation **only** informs Decision 1. Decision 2 must be resolved by a
+matched two-arm Agent SFT pilot, not by zero-shot protocol ablation results.
 
-Key findings:
+## Decision 1 — Action Protocol (informed by P4.1b)
 
-1. **base model (no LoRA) is 0% schema_valid across all 3 protocols** —
-   independent training from base must learn protocol format from scratch
-   and carries high risk of failure.
-2. **P3 repair-lora + JSON is the only usable combination (96.25%)** —
-   the repair LoRA already provides JSON protocol compliance.
-3. **tag/dsl protocols fail even with repair-lora (1.67% / 8.12%)** —
-   LoRA training is protocol-bound and does not transfer.
-4. **task_success_rate is 0% for all combinations** — schema compliance
-   is necessary but not sufficient; P4.2 must improve task-level success.
+### Evidence Base (P4.1b v2 Ablation, 240 runs)
 
-## Options Considered
+Full ablation report: `reports/p4/protocol-ablation-v2/comparison-report.md`
 
-| Option | Load | Train on | Pros | Cons | Ablation support |
-|--------|------|----------|------|------|------------------|
-| A. Continual (P2 stage3) | P2 stage3 adapter | MBPP + Agent SFT | Extends existing curriculum | P2 stage3 JSON compatibility unverified | None — P2 stage3 not in ablation |
-| B. Continual (P3-limited) | P3-limited adapter | Agent SFT only | Proven 96.25% JSON schema_valid | P3 was limited experiment | **Direct evidence: only working config** |
-| C. Independent (base) | Qwen3-0.6B base | Agent SFT only | Clean baseline | 0% schema_valid from base | **Directly contradicted by ablation** |
-| D. Multi-task (all) | P2 stage3 | P2 + P3 + Agent SFT | Maximal retention | Highest VRAM risk, out of P4.2 scope | None |
+**IMPORTANT**: The v1 ablation results (`reports/p4/protocol-ablation/`) are
+SUPERSEDED and must not be used. See
+`reports/p4/protocol-ablation/SUPERSEDED.md` for details.
 
-## Selected Protocol (PROPOSED)
+The v2 ablation uses strict schema validation (`extra="forbid"` on all
+Pydantic models) and independent diagnostic dimensions. Results are
+recorded in the v2 comparison report after the 240-run is re-executed.
 
-**Option B: Continual (P3-limited → Agent SFT)**
+### Protocol Selection
 
-### Rationale
+The protocol verdict from v2 ablation determines which of JSON/Tag/DSL
+is the most schema-stable protocol **under the current model, current
+prompt, and current absence of Agent SFT**.
 
-- Ablation directly proves P3-limited + JSON is the only configuration that
-  achieves usable schema validity (96.25%).
-- Option A (P2 stage3) lacks ablation evidence and requires additional
-  verification before commitment.
-- Option C (Independent) is directly contradicted by the 0% base-model
-  schema_valid_rate across all protocols.
-- Option D (Multi-task) exceeds the P4.2 single-purpose Agent SFT scope and
-  carries the highest VRAM risk on RTX 3050 4GB.
+**Accurate framing of the verdict:**
 
-### Training Configuration (proposal, subject to P4.2a readiness gate)
+> In the current model, current prompt, and current no-Agent-SFT condition,
+> Action JSON is the three candidate protocols with the highest format and
+> schema stability.
 
-- Base: `adapters/p3/repair-limited` (frozen, parent artifact locked)
+**Prohibited framings:**
+
+- "Repair-LoRA has been proven to be the best Agent SFT training starting point"
+- "Base has been proven unsuitable for Agent SFT"
+
+### Protocol Decision Status
+
+Determined by P4.1b v2 verdict. See `reports/p4/protocol-ablation-v2/verdict.json`.
+
+## Decision 2 — Agent SFT Initialization (DEFERRED)
+
+### Why Zero-Shot Ablation Cannot Decide This
+
+The original decision record used zero-shot `schema_valid_rate` to select
+the training initialization (Option B: P3-limited). This is invalid because:
+
+1. **Zero-shot failure does not imply post-SFT failure**: A base model that
+   produces 0% schema_valid zero-shot may learn protocol compliance during
+   Agent SFT. The ablation cannot predict post-training behavior.
+2. **Zero-shot success does not imply best training start**: A repair-LoRA
+   that achieves high schema_valid zero-shot may plateau or overfit during
+   continual training, while a fresh base may generalize better.
+3. **Selection bias**: Using the same data (repair-LoRA) that was trained
+   on JSON format to validate JSON format is circular reasoning.
+
+### Two Candidate Arms
+
+Both arms must be preserved for a matched comparison:
+
+**Arm A: Base → Agent SFT**
+- Load: `models/Qwen3-0.6B` (no adapter)
 - Train data: P4.1 Agent SFT trajectories (1350 samples)
-- Protocol: JSON (frozen, per ablation verdict)
-- Precision: float16
-- LoRA: rank TBD in P4.2a
+- Protocol: Decision 1 verdict
+- Rationale: Clean baseline, no protocol-bound pretraining bias
+
+**Arm B: P3 Repair-Limited LoRA → Agent SFT**
+- Load: `adapters/p3/repair-limited` (frozen parent)
+- Train data: P4.1 Agent SFT trajectories (1350 samples)
+- Protocol: Decision 1 verdict
+- Rationale: Continual from repair curriculum, may benefit from code repair priors
+
+### Required Evidence
+
+The final selection between Arm A and Arm B must be based on:
+
+1. Matched two-arm Agent SFT pilot (same data, same protocol, same hyperparameters)
+2. Post-training evaluation on frozen held-out set
+3. Composite score comparison (schema_valid_rate, task_success_rate, safety_valid_rate)
+4. Statistical significance assessment
+
+### Initialization Decision Status
+
+**DEFERRED_TO_TWO_ARM_PILOT** — not authorized until:
+- P4.2a two-arm readiness gate passes
+- User explicitly approves the two-arm pilot
+- TRAINING_AUTHORIZATION_GATE returns AUTHORIZED_FOR_DECLARED_PILOT_ONLY
+
+## Training Configuration (proposal, subject to P4.2a readiness gate)
+
+- Protocol: Decision 1 verdict
+- Train data: P4.1 Agent SFT trajectories (1350 samples)
+- Precision: float16 (BF16 if `torch.cuda.is_bf16_supported()` returns True)
+- LoRA: rank TBD in P4.2a (must fit 4GB VRAM)
 - Max seq len: TBD in P4.2a (must fit 4GB VRAM)
 - Batch/accumulation: TBD in P4.2a
-- Output path: `adapters/p4/agent-sft-v0` (versioned, empty)
+- Output paths:
+  - Arm A: `adapters/p4/agent-sft-arm-a-v0` (versioned, empty)
+  - Arm B: `adapters/p4/agent-sft-arm-b-v0` (versioned, empty)
 - Determinism: seed recorded
-
-### Reversibility
-
-- Parent adapter `adapters/p3/repair-limited` is locked (read-only).
-- New adapter is written to a new versioned path.
-- Rollback = delete `adapters/p4/agent-sft-v0`.
 
 ## Safety and Resource Constraints
 
@@ -85,19 +124,21 @@ Key findings:
 - No overwrite of existing adapters (append-only rule).
 - No training execution without explicit user approval (TRAINING_AUTHORIZATION_GATE).
 - No silent CPU/precision/config fallback.
+- Parent adapter `adapters/p3/repair-limited` is locked (read-only).
 
 ## Required Approvals Before P4.2a
 
-This decision record is **PROPOSED**, not authorized. The following are
-required before P4.2a training readiness:
+This decision record is **PROPOSED / DEFERRED_TO_TWO_ARM_PILOT**, not authorized.
+The following are required before P4.2a training readiness:
 
-1. **User explicitly approves Option B** (or selects another option with
-   justification that overrides the ablation evidence).
+1. User explicitly approves the two-arm pilot design.
 2. P4.2a training readiness gate passes (separate issue).
 3. TRAINING_AUTHORIZATION_GATE returns AUTHORIZED_FOR_DECLARED_PILOT_ONLY.
+4. Decision 1 (protocol) is confirmed from v2 ablation verdict.
 
 ## PR Relationship
 
 - Refs #27 (this decision record)
-- Refs #29 (ablation evidence base)
+- Refs #29 (ablation evidence base, v1 SUPERSEDED)
+- Refs #32 (Trust Repair, v2 ablation evidence base)
 - Refs #19 (P4.1 SFT data)
