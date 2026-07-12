@@ -63,9 +63,14 @@ The following artifacts are preserved as experimental history:
 - **Do NOT** use any metrics from this directory for training decisions.
 - **Do NOT** cite the 96.25% schema_valid_rate as evidence.
 - **Do NOT** use the verdict (KEEP_ACTION_JSON) as final.
-- **DO** refer to `reports/p4/protocol-ablation-v2/` for trusted results.
-- **DO** refer to `reports/2026-07-12/p4-1b-trust-repair-report.md` for
-  the full trust repair report.
+- **DO** refer to `reports/p4/protocol-ablation-v3/` for the final
+  reproducible committed-state results.
+- **DO** refer to `reports/2026-07-12/p4-1b-trust-repair-final-report.md`
+  for the full final trust repair report.
+
+Note: v2 (`reports/p4/protocol-ablation-v2/`) is also superseded for
+reproducibility reasons — see v2's `SUPERSEDED_FOR_REPRODUCIBILITY.md`.
+v3 is the only final candidate.
 
 ## Related
 
