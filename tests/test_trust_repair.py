@@ -1085,3 +1085,202 @@ class TestScalarParsers:
         for invalid in ("NaN", "Infinity", "-inf", "inf"):
             with pytest.raises(ValueError):
                 _parse_float(invalid)
+
+
+# ---------------------------------------------------------------------------
+# Issue #32 Evidence Closure: model/adapter fingerprint tests
+# ---------------------------------------------------------------------------
+
+
+class TestModelAdapterFingerprint:
+    """Tests for model/adapter fingerprint computation and pre/post
+    experiment comparison (Issue #32 Evidence Closure)."""
+
+    def test_compute_dir_fingerprint_basic(self, tmp_path):
+        """_compute_dir_fingerprint returns file list with size and SHA256."""
+        import hashlib
+        import sys
+        sys.path.insert(0, str(tmp_path))
+        # Create a fake directory structure
+        d = tmp_path / "fake_model"
+        d.mkdir()
+        (d / "config.json").write_text('{"test": true}', encoding="utf-8")
+        (d / "model.safetensors").write_bytes(b"\x00\x01\x02\x03")
+        sub = d / "subdir"
+        sub.mkdir()
+        (sub / "tokenizer.json").write_text('{"tk": 1}', encoding="utf-8")
+
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp = _compute_dir_fingerprint(d)
+        assert fp["exists"] is True
+        assert fp["file_count"] == 3
+        assert "config.json" in fp["files"]
+        assert "model.safetensors" in fp["files"]
+        assert "subdir/tokenizer.json" in fp["files"]
+        assert fp["files"]["config.json"]["size"] == len('{"test": true}')
+        assert fp["files"]["model.safetensors"]["sha256"] == hashlib.sha256(b"\x00\x01\x02\x03").hexdigest()
+        assert len(fp["aggregate_sha256"]) == 64
+
+    def test_compute_dir_fingerprint_nonexistent(self, tmp_path):
+        """_compute_dir_fingerprint handles nonexistent directory."""
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp = _compute_dir_fingerprint(tmp_path / "does_not_exist")
+        assert fp["exists"] is False
+        assert fp["file_count"] == 0
+        assert fp["aggregate_sha256"] == ""
+        assert fp["files"] == {}
+
+    def test_compute_dir_fingerprint_exclude_dirs(self, tmp_path):
+        """_compute_dir_fingerprint excludes specified subdirectories."""
+        d = tmp_path / "fake_adapter"
+        d.mkdir()
+        (d / "adapter_config.json").write_text('{"r": 16}', encoding="utf-8")
+        (d / "adapter_model.safetensors").write_bytes(b"\xff\xfe")
+        ckpt = d / "checkpoint-100"
+        ckpt.mkdir()
+        (ckpt / "adapter_model.safetensors").write_bytes(b"\x00")
+
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp = _compute_dir_fingerprint(d, exclude_dirs={"checkpoint-100"})
+        assert fp["file_count"] == 2
+        assert "adapter_config.json" in fp["files"]
+        assert "adapter_model.safetensors" in fp["files"]
+        assert "checkpoint-100/adapter_model.safetensors" not in fp["files"]
+
+    def test_fingerprint_deterministic(self, tmp_path):
+        """Same directory content produces same aggregate SHA256."""
+        import hashlib
+        d1 = tmp_path / "m1"
+        d1.mkdir()
+        (d1 / "a.txt").write_text("hello", encoding="utf-8")
+        (d1 / "b.txt").write_text("world", encoding="utf-8")
+
+        d2 = tmp_path / "m2"
+        d2.mkdir()
+        (d2 / "a.txt").write_text("hello", encoding="utf-8")
+        (d2 / "b.txt").write_text("world", encoding="utf-8")
+
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp1 = _compute_dir_fingerprint(d1)
+        fp2 = _compute_dir_fingerprint(d2)
+        assert fp1["aggregate_sha256"] == fp2["aggregate_sha256"]
+
+    def test_fingerprint_detects_content_change(self, tmp_path):
+        """Different content produces different aggregate SHA256."""
+        d1 = tmp_path / "m1"
+        d1.mkdir()
+        (d1 / "a.txt").write_text("hello", encoding="utf-8")
+
+        d2 = tmp_path / "m2"
+        d2.mkdir()
+        (d2 / "a.txt").write_text("HELLO", encoding="utf-8")
+
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp1 = _compute_dir_fingerprint(d1)
+        fp2 = _compute_dir_fingerprint(d2)
+        assert fp1["aggregate_sha256"] != fp2["aggregate_sha256"]
+
+    def test_fingerprint_detects_filename_change(self, tmp_path):
+        """Different filename produces different aggregate SHA256."""
+        d1 = tmp_path / "m1"
+        d1.mkdir()
+        (d1 / "a.txt").write_text("hello", encoding="utf-8")
+
+        d2 = tmp_path / "m2"
+        d2.mkdir()
+        (d2 / "b.txt").write_text("hello", encoding="utf-8")
+
+        from scripts.run_protocol_ablation import _compute_dir_fingerprint
+        fp1 = _compute_dir_fingerprint(d1)
+        fp2 = _compute_dir_fingerprint(d2)
+        assert fp1["aggregate_sha256"] != fp2["aggregate_sha256"]
+
+    def test_assert_fingerprint_unchanged_passes(self):
+        """_assert_fingerprint_unchanged does not fail when fingerprints match."""
+        fp = {"aggregate_sha256": "abc123", "files": {"a": {"sha256": "x"}}}
+        from scripts.run_protocol_ablation import _assert_fingerprint_unchanged
+        # Should not raise
+        _assert_fingerprint_unchanged(fp, fp, "test")
+
+    def test_assert_fingerprint_unchanged_fails_on_mismatch(self):
+        """_assert_fingerprint_unchanged calls sys.exit on mismatch."""
+        pre = {"aggregate_sha256": "abc123", "files": {"a.txt": {"sha256": "x"}}}
+        post = {"aggregate_sha256": "def456", "files": {"a.txt": {"sha256": "y"}}}
+        from scripts.run_protocol_ablation import _assert_fingerprint_unchanged
+        with pytest.raises(SystemExit):
+            _assert_fingerprint_unchanged(pre, post, "test")
+
+    def test_assert_fingerprint_unchanged_detects_added_file(self):
+        """_assert_fingerprint_unchanged fails when a file is added."""
+        pre = {"aggregate_sha256": "abc", "files": {"a.txt": {"sha256": "x"}}}
+        post = {"aggregate_sha256": "def", "files": {"a.txt": {"sha256": "x"}, "b.txt": {"sha256": "y"}}}
+        from scripts.run_protocol_ablation import _assert_fingerprint_unchanged
+        with pytest.raises(SystemExit):
+            _assert_fingerprint_unchanged(pre, post, "test")
+
+    def test_assert_fingerprint_unchanged_detects_removed_file(self):
+        """_assert_fingerprint_unchanged fails when a file is removed."""
+        pre = {"aggregate_sha256": "abc", "files": {"a.txt": {"sha256": "x"}, "b.txt": {"sha256": "y"}}}
+        post = {"aggregate_sha256": "def", "files": {"a.txt": {"sha256": "x"}}}
+        from scripts.run_protocol_ablation import _assert_fingerprint_unchanged
+        with pytest.raises(SystemExit):
+            _assert_fingerprint_unchanged(pre, post, "test")
+
+    def test_adapter_fingerprint_none_path(self):
+        """_adapter_fingerprint returns empty for None path."""
+        from scripts.run_protocol_ablation import _adapter_fingerprint
+        fp = _adapter_fingerprint(None)
+        assert fp["exists"] is False
+        assert fp["file_count"] == 0
+        assert fp["aggregate_sha256"] == ""
+
+    def test_model_fingerprint_real_model(self):
+        """_model_fingerprint returns valid fingerprint for real model dir."""
+        from scripts.run_protocol_ablation import _model_fingerprint
+        fp = _model_fingerprint()
+        assert fp["exists"] is True
+        assert fp["file_count"] > 0
+        assert len(fp["aggregate_sha256"]) == 64
+        assert "config.json" in fp["files"]
+        assert "model.safetensors" in fp["files"]
+
+    def test_adapter_fingerprint_real_adapter(self):
+        """_adapter_fingerprint returns valid fingerprint for real adapter."""
+        from scripts.run_protocol_ablation import _adapter_fingerprint
+        fp = _adapter_fingerprint("adapters/p3/repair-limited")
+        assert fp["exists"] is True
+        assert fp["file_count"] > 0
+        assert len(fp["aggregate_sha256"]) == 64
+        assert "adapter_config.json" in fp["files"]
+        assert "adapter_model.safetensors" in fp["files"]
+        # checkpoint-* dirs should be excluded
+        assert "checkpoint-100/adapter_model.safetensors" not in fp["files"]
+        assert "checkpoint-200/adapter_model.safetensors" not in fp["files"]
+
+    def test_baseline_lock_includes_fingerprints(self):
+        """baseline_lock() includes model and adapter fingerprints."""
+        from scripts.run_protocol_ablation import baseline_lock
+        lock = baseline_lock()
+        assert "model_fingerprint" in lock
+        assert "adapter_fingerprint_base" in lock
+        assert "adapter_fingerprint_repair_lora" in lock
+        assert lock["model_fingerprint"]["exists"] is True
+        assert lock["adapter_fingerprint_base"]["exists"] is False
+        assert lock["adapter_fingerprint_repair_lora"]["exists"] is True
+        assert len(lock["model_fingerprint"]["aggregate_sha256"]) == 64
+        assert len(lock["adapter_fingerprint_repair_lora"]["aggregate_sha256"]) == 64
+
+    def test_post_experiment_fingerprint_check_passes(self):
+        """post_experiment_fingerprint_check passes when model unchanged."""
+        from scripts.run_protocol_ablation import (
+            baseline_lock, post_experiment_fingerprint_check,
+        )
+        pre_lock = baseline_lock()
+        result = post_experiment_fingerprint_check(pre_lock)
+        assert result["fingerprint_check_passed"] is True
+        assert "model_fingerprint_post" in result
+        assert "adapter_fingerprint_repair_lora_post" in result
+        assert (result["model_fingerprint_post"]["aggregate_sha256"]
+                == pre_lock["model_fingerprint"]["aggregate_sha256"])
+        assert (result["adapter_fingerprint_repair_lora_post"]["aggregate_sha256"]
+                == pre_lock["adapter_fingerprint_repair_lora"]["aggregate_sha256"])

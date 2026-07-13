@@ -126,11 +126,122 @@ def _file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+# Issue #32 Evidence Closure: adapter checkpoint subdirs (checkpoint-*) are
+# training intermediate states and are NOT loaded by PeftModel.from_pretrained.
+# Only top-level files in the adapter directory are loaded at inference time.
+_ADAPTER_EXCLUDE_DIRS = {"checkpoint-100", "checkpoint-200", "checkpoint-300", "checkpoint-320"}
+
+
+def _compute_dir_fingerprint(dir_path: Path, exclude_dirs: set[str] | None = None) -> dict:
+    """Issue #32 Evidence Closure: compute fingerprint of a directory.
+
+    Returns file list with size and SHA256, plus an aggregate SHA256 over
+    the sorted (filename, sha) pairs. This fingerprint is used to detect
+    any model/adapter modification between experiment start and end.
+    """
+    if dir_path is None or not dir_path.exists():
+        return {
+            "exists": False,
+            "path": str(dir_path) if dir_path else None,
+            "file_count": 0,
+            "aggregate_sha256": "",
+            "files": {},
+        }
+
+    try:
+        rel_root = str(dir_path.relative_to(_ROOT))
+    except ValueError:
+        rel_root = str(dir_path)
+
+    files = {}
+    for path in sorted(dir_path.rglob("*")):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(dir_path).as_posix()
+        # Skip excluded subdirectories (e.g., adapter checkpoint-*)
+        if exclude_dirs:
+            top = rel.split("/")[0] if "/" in rel else rel
+            if top in exclude_dirs:
+                continue
+        files[rel] = {
+            "size": path.stat().st_size,
+            "sha256": _file_sha256(path),
+        }
+
+    # Aggregate SHA256 over sorted (name, sha) pairs
+    h = hashlib.sha256()
+    for name in sorted(files.keys()):
+        h.update(name.encode("utf-8"))
+        h.update(files[name]["sha256"].encode("utf-8"))
+    aggregate_sha = h.hexdigest()
+
+    return {
+        "exists": True,
+        "path": rel_root,
+        "file_count": len(files),
+        "aggregate_sha256": aggregate_sha,
+        "files": files,
+    }
+
+
+def _model_fingerprint() -> dict:
+    """Fingerprint of the base model directory (models/Qwen3-0.6B)."""
+    return _compute_dir_fingerprint(_ROOT / "models" / "Qwen3-0.6B")
+
+
+def _adapter_fingerprint(adapter_path: str | None) -> dict:
+    """Fingerprint of an adapter directory.
+
+    Excludes checkpoint-* subdirectories since they are training intermediate
+    states, not loaded by PeftModel.from_pretrained at inference time.
+    """
+    if adapter_path is None:
+        return {
+            "exists": False,
+            "path": None,
+            "file_count": 0,
+            "aggregate_sha256": "",
+            "files": {},
+        }
+    return _compute_dir_fingerprint(
+        _ROOT / adapter_path, exclude_dirs=_ADAPTER_EXCLUDE_DIRS
+    )
+
+
+def _assert_fingerprint_unchanged(
+    pre: dict, post: dict, label: str
+) -> None:
+    """Issue #32 Evidence Closure: hard-fail if fingerprint changed.
+
+    Compares aggregate_sha256 and per-file SHA256 between pre-experiment
+    and post-experiment fingerprints. Any mismatch indicates the model or
+    adapter was modified during the experiment, invalidating reproducibility.
+    """
+    if pre["aggregate_sha256"] != post["aggregate_sha256"]:
+        print(f"FATAL: {label} fingerprint changed during experiment!")
+        print(f"  pre  aggregate_sha256: {pre['aggregate_sha256']}")
+        print(f"  post aggregate_sha256: {post['aggregate_sha256']}")
+        # Identify which files changed
+        pre_files = pre.get("files", {})
+        post_files = post.get("files", {})
+        all_names = sorted(set(pre_files.keys()) | set(post_files.keys()))
+        for name in all_names:
+            pre_sha = pre_files.get(name, {}).get("sha256", "MISSING")
+            post_sha = post_files.get(name, {}).get("sha256", "MISSING")
+            if pre_sha != post_sha:
+                print(f"  CHANGED: {name}")
+                print(f"    pre:  {pre_sha}")
+                print(f"    post: {post_sha}")
+        sys.exit(1)
+
+
 def baseline_lock() -> dict:
     """Record experiment starting state for reproducibility.
 
     Issue #32: enhanced to record source file SHAs, task IDs, and
     environment details as required by Trust Repair spec.
+    Issue #32 Evidence Closure: record model and adapter fingerprints
+    (file list, size, SHA256) for pre/post experiment comparison.
     """
     manifest_path = _TASKS_DIR / "manifest.json"
     task_ids = _load_task_ids()
@@ -174,6 +285,11 @@ def baseline_lock() -> dict:
     except ImportError:
         env_info["transformers_version"] = "NOT_INSTALLED"
 
+    # Issue #32 Evidence Closure: model and adapter fingerprints
+    model_fp = _model_fingerprint()
+    adapter_base_fp = _adapter_fingerprint(None)
+    adapter_repair_fp = _adapter_fingerprint("adapters/p3/repair-limited")
+
     return {
         "experiment_commit_sha": _git_sha(),
         "git_worktree_clean_for_experiment": _git_worktree_clean_for_experiment(),
@@ -184,6 +300,9 @@ def baseline_lock() -> dict:
         "model_path": "models/Qwen3-0.6B",
         "adapter_path_base": None,
         "adapter_path_repair_lora": "adapters/p3/repair-limited",
+        "model_fingerprint": model_fp,
+        "adapter_fingerprint_base": adapter_base_fp,
+        "adapter_fingerprint_repair_lora": adapter_repair_fp,
         "generation_config": {
             "temperature": 0.0,
             "do_sample": False,
@@ -199,6 +318,32 @@ def baseline_lock() -> dict:
         "source_file_shas": src_shas,
         "environment": env_info,
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+
+
+def post_experiment_fingerprint_check(pre_lock: dict) -> dict:
+    """Issue #32 Evidence Closure: verify model/adapter unchanged.
+
+    Recomputes model and adapter fingerprints after the experiment and
+    hard-fails if any fingerprint changed. Returns the post-experiment
+    fingerprint record for inclusion in the baseline lock update.
+    """
+    model_fp_post = _model_fingerprint()
+    adapter_repair_fp_post = _adapter_fingerprint("adapters/p3/repair-limited")
+
+    _assert_fingerprint_unchanged(
+        pre_lock["model_fingerprint"], model_fp_post, "model"
+    )
+    _assert_fingerprint_unchanged(
+        pre_lock["adapter_fingerprint_repair_lora"],
+        adapter_repair_fp_post,
+        "adapter (repair-lora)",
+    )
+
+    return {
+        "model_fingerprint_post": model_fp_post,
+        "adapter_fingerprint_repair_lora_post": adapter_repair_fp_post,
+        "fingerprint_check_passed": True,
     }
 
 
@@ -712,6 +857,18 @@ def main():
     )
     print(f"Wrote {_REPORT_DIR / 'artifact-manifest.json'}")
     print(f"  {manifest['artifact_count']} artifacts catalogued")
+
+    # Step 8: Post-experiment fingerprint check (Issue #32 Evidence Closure)
+    print("\n=== Step 8: Post-Experiment Fingerprint Check ===")
+    post_fp = post_experiment_fingerprint_check(lock)
+    # Update baseline-lock.json with post-experiment fingerprints
+    lock.update(post_fp)
+    lock["fingerprint_check_completed_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    (_REPORT_DIR / "baseline-lock.json").write_text(
+        json.dumps(lock, indent=2), encoding="utf-8"
+    )
+    print("Fingerprint check PASSED: model and adapter unchanged")
+    print(f"Updated {_REPORT_DIR / 'baseline-lock.json'} with post-experiment fingerprints")
 
     print(f"\nDone. Reports in {_REPORT_DIR}")
 
