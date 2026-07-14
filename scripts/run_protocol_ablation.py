@@ -306,7 +306,7 @@ def baseline_lock() -> dict:
         "generation_config": {
             "temperature": 0.0,
             "do_sample": False,
-            "max_new_tokens": 128,
+            "max_new_tokens": 256,
             "dtype": "float16",
         },
         "max_steps": MAX_STEPS,

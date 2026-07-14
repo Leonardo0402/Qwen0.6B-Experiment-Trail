@@ -47,11 +47,8 @@ class JsonProtocol(ProtocolBase):
             '  "network_required": false, "reads_sensitive_path": false, "is_terminal": bool}',
             '- "arguments": action-specific arguments',
             "",
-            "Example:",
-            '{"action_type": "read_file", "action_id": "a1", "reason_short": "inspect file",',
-            ' "expected_observation": "file contents", "safety_flags": {"modifies_workspace": false,',
-            ' "executes_code": false, "network_required": false, "reads_sensitive_path": false,',
-            ' "is_terminal": false}, "arguments": {"path": "solution.py"}}',
+            "Output ONLY the JSON object. No preamble, no explanation, no markdown fence.",
+            'Start with { and end with }.',
         ])
 
     def parse_output(self, raw: str) -> tuple[Action | SentinelAction, ProtocolDiagnostics]:

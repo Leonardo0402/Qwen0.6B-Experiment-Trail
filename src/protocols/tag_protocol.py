@@ -144,6 +144,8 @@ class TagProtocol(ProtocolBase):
             "old_text: <content>def old():\n    pass</content>",
             "new_text: <content>def new():\n    return 42</content>",
             "</action>",
+            "",
+            "Output ONLY the <action> block. No preamble, no explanation.",
         ])
 
     def parse_output(self, raw: str) -> tuple[Action | SentinelAction, ProtocolDiagnostics]:

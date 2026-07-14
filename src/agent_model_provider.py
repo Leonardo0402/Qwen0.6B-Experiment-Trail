@@ -129,7 +129,7 @@ class ModelActionProvider(ActionProvider):
         self,
         model_path: str = "models/Qwen3-0.6B",
         adapter_path: str | None = None,
-        max_new_tokens: int = 128,
+        max_new_tokens: int = 256,
         protocol: "ProtocolBase | None" = None,
     ):
         self._model_path = model_path

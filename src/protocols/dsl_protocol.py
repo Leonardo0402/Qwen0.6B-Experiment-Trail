@@ -96,6 +96,8 @@ class DslProtocol(ProtocolBase):
             "def new():",
             "    return 42",
             "EOF",
+            "",
+            "Output ONLY the ACTION line(s). No preamble, no explanation.",
         ])
 
     def parse_output(self, raw: str) -> tuple[Action | SentinelAction, ProtocolDiagnostics]:
