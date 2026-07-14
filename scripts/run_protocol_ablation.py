@@ -309,7 +309,7 @@ def baseline_lock() -> dict:
             "max_new_tokens": 256,
             "dtype": "float16",
         },
-        "max_steps": MAX_STEPS,
+        "max_steps": int(os.environ.get("P4_1B_MAX_STEPS", MAX_STEPS)),
         "total_tasks": len(task_ids),
         "protocols": [p["name"] for p in _PROTOCOLS],
         "configs": [c["name"] for c in _CONFIGS],
@@ -795,7 +795,8 @@ def main():
         for config in _CONFIGS:
             print(f"\n--- Protocol: {proto_spec['name']} | Config: {config['name']} ---")
             proto = proto_spec["class"]()
-            result = run_combination(proto, config, all_task_ids)
+            _max_steps = int(os.environ.get("P4_1B_MAX_STEPS", MAX_STEPS))
+            result = run_combination(proto, config, all_task_ids, max_steps=_max_steps)
             # Write trajectories JSONL
             out_file = traj_dir / f"{proto_spec['name']}-{config['name']}.jsonl"
             with open(out_file, "w", encoding="utf-8") as f:
