@@ -4,7 +4,7 @@ import json
 import os
 import sys
 
-BASE = os.path.join("reports", "p4", "protocol-ablation-v3")
+BASE = os.path.join("reports", "p4", "protocol-ablation-v4")
 
 
 def sha256_file(path: str) -> str:

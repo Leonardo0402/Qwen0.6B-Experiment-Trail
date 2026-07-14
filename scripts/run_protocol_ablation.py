@@ -849,17 +849,10 @@ def main():
         json.dumps({"verdict": verdict}, indent=2), encoding="utf-8"
     )
 
-    # Step 7: Artifact manifest (Issue #32)
-    print("\n=== Step 7: Artifact Manifest ===")
-    manifest = generate_artifact_manifest(_REPORT_DIR)
-    (_REPORT_DIR / "artifact-manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
-    print(f"Wrote {_REPORT_DIR / 'artifact-manifest.json'}")
-    print(f"  {manifest['artifact_count']} artifacts catalogued")
-
-    # Step 8: Post-experiment fingerprint check (Issue #32 Evidence Closure)
-    print("\n=== Step 8: Post-Experiment Fingerprint Check ===")
+    # Step 7: Post-experiment fingerprint check (Issue #32 Evidence Closure)
+    # NOTE: This must run BEFORE the artifact manifest so that baseline-lock.json
+    # is finalized (with post-experiment fingerprints) before its SHA is recorded.
+    print("\n=== Step 7: Post-Experiment Fingerprint Check ===")
     post_fp = post_experiment_fingerprint_check(lock)
     # Update baseline-lock.json with post-experiment fingerprints
     lock.update(post_fp)
@@ -869,6 +862,15 @@ def main():
     )
     print("Fingerprint check PASSED: model and adapter unchanged")
     print(f"Updated {_REPORT_DIR / 'baseline-lock.json'} with post-experiment fingerprints")
+
+    # Step 8: Artifact manifest (Issue #32) — generated last so all files are final
+    print("\n=== Step 8: Artifact Manifest ===")
+    manifest = generate_artifact_manifest(_REPORT_DIR)
+    (_REPORT_DIR / "artifact-manifest.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
+    print(f"Wrote {_REPORT_DIR / 'artifact-manifest.json'}")
+    print(f"  {manifest['artifact_count']} artifacts catalogued")
 
     print(f"\nDone. Reports in {_REPORT_DIR}")
 
