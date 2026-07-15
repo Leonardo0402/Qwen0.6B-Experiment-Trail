@@ -36,19 +36,11 @@ class JsonProtocol(ProtocolBase):
         return "\n".join([
             f"Task: {task_context}",
             "",
-            f"Choose ONE action from: {_TOOL_LIST}",
+            f"Actions: {_TOOL_LIST}",
             "",
-            "Respond with a single JSON object with these fields:",
-            '- "action_type": one of the 11 action types above',
-            '- "action_id": a short unique identifier',
-            '- "reason_short": why you chose this action (max 120 chars)',
-            '- "expected_observation": what you expect to see',
-            '- "safety_flags": {"modifies_workspace": bool, "executes_code": bool,',
-            '  "network_required": false, "reads_sensitive_path": false, "is_terminal": bool}',
-            '- "arguments": action-specific arguments',
+            'Example: {"action_type":"read_file","action_id":"a1","reason_short":"inspect file","expected_observation":"file contents","safety_flags":{"modifies_workspace":false,"executes_code":false,"network_required":false,"reads_sensitive_path":false,"is_terminal":false},"arguments":{"path":"solution.py"}}',
             "",
-            "Output ONLY the JSON object. No preamble, no explanation, no markdown fence.",
-            'Start with { and end with }.',
+            "Output ONLY ONE JSON object like the example. No preamble, no markdown, no explanation.",
         ])
 
     def parse_output(self, raw: str) -> tuple[Action | SentinelAction, ProtocolDiagnostics]:
@@ -83,6 +75,15 @@ class JsonProtocol(ProtocolBase):
         except (json.JSONDecodeError, Exception):
             pass  # Fall through to repair path
 
+        # Inject structural defaults for missing base fields (consistent
+        # with Tag/DSL protocols). Only structural metadata — never
+        # business parameters (success_criterion, tests_passed, etc.).
+        if data is not None and isinstance(data, dict):
+            at = data.get("action_type", "")
+            data.setdefault("action_id", f"json_{at}")
+            data.setdefault("reason_short", "no reason provided")
+            data.setdefault("expected_observation", "unknown")
+
         # Try direct validation (only if json.loads succeeded)
         if data is not None and isinstance(data, dict):
             # Issue #32 Trust Repair: compute each dimension independently.
@@ -106,6 +107,11 @@ class JsonProtocol(ProtocolBase):
             data = None
 
         if data is not None and isinstance(data, dict):
+            # Inject structural defaults (same as primary path)
+            at = data.get("action_type", "")
+            data.setdefault("action_id", f"json_{at}")
+            data.setdefault("reason_short", "no reason provided")
+            data.setdefault("expected_observation", "unknown")
             # Recompute dimensions on repaired data
             diag.action_type_valid = self.check_action_type_valid(data)
             diag.safety_valid = self.check_safety_valid(data)

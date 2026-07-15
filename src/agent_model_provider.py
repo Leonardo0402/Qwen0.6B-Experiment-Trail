@@ -83,16 +83,40 @@ def build_prompt(
     return "\n".join(lines)
 
 
-_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 _BARE_JSON_RE = re.compile(r"(\{.*\})", re.DOTALL)
 
 
 def extract_json(raw: str) -> str | None:
-    """Extract the first JSON object from raw model output. Returns the
-    JSON string or None if no JSON found."""
+    """Extract the first complete JSON object from raw model output.
+
+    Uses json.JSONDecoder.raw_decode to find the first balanced {}
+    object, which correctly handles nested braces and multiple
+    concatenated JSON objects (model repetition bug).
+    """
+    # Try fenced JSON first
     m = _JSON_FENCE_RE.search(raw)
     if m:
-        return m.group(1)
+        fence_content = m.group(1)
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(fence_content)
+            return json.dumps(obj)
+        except (json.JSONDecodeError, ValueError):
+            pass  # fall through to bare search
+
+    # Try raw_decode from the first '{' to extract the first complete
+    # JSON object (handles model repetition: multiple concatenated objects).
+    idx = raw.find("{")
+    if idx != -1:
+        try:
+            obj, end = json.JSONDecoder().raw_decode(raw[idx:])
+            if isinstance(obj, dict):
+                return raw[idx:idx + end]
+        except (json.JSONDecodeError, ValueError):
+            pass  # fall through to regex fallback
+
+    # Fallback: greedy regex for malformed JSON (trailing commas, etc.)
+    # that needs format-only repair
     m = _BARE_JSON_RE.search(raw)
     if m:
         return m.group(1)
