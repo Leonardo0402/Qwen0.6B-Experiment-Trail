@@ -18,6 +18,17 @@ from src.agent_actions import Action
 from src.agent_model_provider import SentinelAction, extract_json, repair_json
 from src.protocols.base import ProtocolBase, ProtocolDiagnostics
 
+
+def _default_safety_flags(action_type: str) -> dict:
+    """Infer safe safety_flags from action_type (same as Tag/DSL)."""
+    return {
+        "modifies_workspace": action_type in ("apply_patch", "rollback_patch"),
+        "executes_code": action_type == "run_tests",
+        "network_required": False,
+        "reads_sensitive_path": False,
+        "is_terminal": action_type == "finish",
+    }
+
 _TOOL_LIST = (
     "list_files, read_file, search_text, inspect_task, "
     "propose_patch, apply_patch, rollback_patch, run_tests, "
@@ -83,6 +94,8 @@ class JsonProtocol(ProtocolBase):
             data.setdefault("action_id", f"json_{at}")
             data.setdefault("reason_short", "no reason provided")
             data.setdefault("expected_observation", "unknown")
+            if "safety_flags" not in data:
+                data["safety_flags"] = _default_safety_flags(at)
 
         # Try direct validation (only if json.loads succeeded)
         if data is not None and isinstance(data, dict):
@@ -112,6 +125,8 @@ class JsonProtocol(ProtocolBase):
             data.setdefault("action_id", f"json_{at}")
             data.setdefault("reason_short", "no reason provided")
             data.setdefault("expected_observation", "unknown")
+            if "safety_flags" not in data:
+                data["safety_flags"] = _default_safety_flags(at)
             # Recompute dimensions on repaired data
             diag.action_type_valid = self.check_action_type_valid(data)
             diag.safety_valid = self.check_safety_valid(data)

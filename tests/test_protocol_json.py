@@ -130,3 +130,84 @@ def test_build_system_prompt_contains_format_instructions():
     assert "action_type" in prompt
     assert "read_file" in prompt
     assert "Fix the bug" in prompt
+
+
+def test_missing_safety_flags_gets_injected():
+    """Regression: model omits safety_flags field; JSON protocol injects
+    safe defaults consistent with Tag/DSL protocols."""
+    proto = _make_protocol()
+    data = {
+        "action_type": "read_file",
+        "action_id": "a1",
+        "reason_short": "inspect file",
+        "expected_observation": "contents",
+        "arguments": {"path": "solution.py"},
+    }
+    action, diag = proto.parse_output(json.dumps(data))
+    assert not isinstance(action, SentinelAction)
+    assert diag.safety_valid
+    assert diag.schema_valid
+
+
+def test_missing_safety_flags_terminal_action():
+    """Safety flag default for finish must mark is_terminal=True.
+
+    Note: business fields (success_criterion, tests_passed,
+    identification_verified) must be provided by the model —
+    structural default injection only covers safety_flags.
+    """
+    proto = _make_protocol()
+    data = {
+        "action_type": "finish",
+        "action_id": "a1",
+        "reason_short": "done",
+        "expected_observation": "task complete",
+        "arguments": {
+            "success_criterion": "test_pass",
+            "tests_passed": True,
+            "identification_verified": True,
+            "summary": "fixed the bug",
+        },
+    }
+    action, diag = proto.parse_output(json.dumps(data))
+    assert not isinstance(action, SentinelAction)
+    assert diag.safety_valid
+    assert action.safety_flags.is_terminal is True
+
+
+def test_explicit_safety_flags_not_overwritten():
+    """If model provides safety_flags, defaults must not override them."""
+    proto = _make_protocol()
+    data = {
+        "action_type": "read_file",
+        "action_id": "a1",
+        "reason_short": "x",
+        "expected_observation": "y",
+        "safety_flags": {
+            "modifies_workspace": False,
+            "executes_code": False,
+            "network_required": False,
+            "reads_sensitive_path": False,
+            "is_terminal": False,
+        },
+        "arguments": {"path": "solution.py"},
+    }
+    action, diag = proto.parse_output(json.dumps(data))
+    assert not isinstance(action, SentinelAction)
+    assert diag.safety_valid
+
+
+def test_missing_safety_flags_run_tests():
+    """Default for run_tests must mark executes_code=True."""
+    proto = _make_protocol()
+    data = {
+        "action_type": "run_tests",
+        "action_id": "a1",
+        "reason_short": "verify fix",
+        "expected_observation": "tests pass",
+        "arguments": {"test_path": "tests/test_solution.py"},
+    }
+    action, diag = proto.parse_output(json.dumps(data))
+    assert not isinstance(action, SentinelAction)
+    assert diag.safety_valid
+    assert action.safety_flags.executes_code is True
