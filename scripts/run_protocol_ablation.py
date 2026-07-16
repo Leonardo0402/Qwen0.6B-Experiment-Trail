@@ -793,12 +793,34 @@ def main():
     all_results = []
     for proto_spec in _PROTOCOLS:
         for config in _CONFIGS:
+            out_file = traj_dir / f"{proto_spec['name']}-{config['name']}.jsonl"
+            # Resume support: skip combinations whose trajectory file already
+            # exists with non-zero size (e.g. after a crash mid-experiment).
+            if out_file.exists() and out_file.stat().st_size > 0:
+                print(f"\n--- Protocol: {proto_spec['name']} | Config: {config['name']} (cached) ---")
+                # Rebuild summary from cached trajectories
+                cached_trajs = []
+                with open(out_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            cached_trajs.append(json.loads(line))
+                crashes = sum(1 for t in cached_trajs if not t.get("model_load_ok", True))
+                summary = {
+                    "protocol": proto_spec["name"],
+                    "config": config["name"],
+                    "total_tasks": len(all_task_ids),
+                    "trajectories_written": len(cached_trajs),
+                    "model_load_ok": True,
+                    "metrics": aggregate_metrics(cached_trajs, crashes, True),
+                }
+                all_results.append(summary)
+                print(f"  schema_valid_rate: {summary['metrics'].get('schema_valid_rate', 0):.2%} (cached)")
+                continue
             print(f"\n--- Protocol: {proto_spec['name']} | Config: {config['name']} ---")
             proto = proto_spec["class"]()
             _max_steps = int(os.environ.get("P4_1B_MAX_STEPS", MAX_STEPS))
             result = run_combination(proto, config, all_task_ids, max_steps=_max_steps)
             # Write trajectories JSONL
-            out_file = traj_dir / f"{proto_spec['name']}-{config['name']}.jsonl"
             with open(out_file, "w", encoding="utf-8") as f:
                 for traj in result["trajectories"]:
                     f.write(json.dumps(traj) + "\n")
