@@ -1,0 +1,380 @@
+{
+  "experiment_commit_sha": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+  "git_worktree_clean_for_experiment": true,
+  "report_dir_name": "protocol-ablation-v4",
+  "micro_task_manifest_path": "data\\p4-agent\\micro-tasks-v0\\manifest.json",
+  "micro_task_manifest_sha256": "bdcc2eaa268b8965ff764ac6c710c97ba90298e11b7c05d0133cdb7103f692bc",
+  "task_ids": [
+    "task_001",
+    "task_002",
+    "task_003",
+    "task_004",
+    "task_005",
+    "task_006",
+    "task_007",
+    "task_008",
+    "task_009",
+    "task_010",
+    "task_011",
+    "task_012",
+    "task_013",
+    "task_014",
+    "task_015",
+    "task_016",
+    "task_017",
+    "task_018",
+    "task_019",
+    "task_020",
+    "task_021",
+    "task_022",
+    "task_023",
+    "task_024",
+    "task_025",
+    "task_026",
+    "task_027",
+    "task_028",
+    "task_029",
+    "task_030",
+    "task_031",
+    "task_032",
+    "task_033",
+    "task_034",
+    "task_035",
+    "task_036",
+    "task_037",
+    "task_038",
+    "task_039",
+    "task_040"
+  ],
+  "model_path": "models/Qwen3-0.6B",
+  "adapter_path_base": null,
+  "adapter_path_repair_lora": "adapters/p3/repair-limited",
+  "model_fingerprint": {
+    "exists": true,
+    "path": "models\\Qwen3-0.6B",
+    "file_count": 22,
+    "aggregate_sha256": "5b935e4a160c011081dcf16bdb2c84bf1184caefa114ee4657d21c417fcb963f",
+    "files": {
+      ".cache/huggingface/.gitignore": {
+        "size": 1,
+        "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+      },
+      ".cache/huggingface/CACHEDIR.TAG": {
+        "size": 195,
+        "sha256": "e8893e2dcb3f4545ef67a0a5b7b769113d38eef1aa61c7c7ba14659b02af955f"
+      },
+      ".cache/huggingface/download/.gitattributes.metadata": {
+        "size": 104,
+        "sha256": "0121f322b84dfbb8bae736b9614b8bafcd62dbf7b9f06f40db47a66c98d5d35f"
+      },
+      ".cache/huggingface/download/config.json.metadata": {
+        "size": 103,
+        "sha256": "7afe58d2cac123aa4508fb7c81d6b7e53d53fc1fcf1f5c2fb5aba8f46403e187"
+      },
+      ".cache/huggingface/download/generation_config.json.metadata": {
+        "size": 104,
+        "sha256": "920e6b5e33756dac74edd9067d6638d4740642abf409124f00c35650abebb537"
+      },
+      ".cache/huggingface/download/LICENSE.metadata": {
+        "size": 104,
+        "sha256": "e2ea78a7ac6c01ac6a5de7fbec2c5b520741dee397032e738f9c5804c3b055c8"
+      },
+      ".cache/huggingface/download/merges.txt.metadata": {
+        "size": 104,
+        "sha256": "e504a7863acabbe0714057acce49ef49e33dd069985f65cd01b688f200f651ab"
+      },
+      ".cache/huggingface/download/model.safetensors.metadata": {
+        "size": 127,
+        "sha256": "6974268ede608787a6742f4358b7912b16f6e592a3f1f762f55e483431561016"
+      },
+      ".cache/huggingface/download/README.md.metadata": {
+        "size": 104,
+        "sha256": "311db104f4bbb4706b9fc920cb33be038c28aca022422ddfc2409be13bfa3c4a"
+      },
+      ".cache/huggingface/download/tokenizer.json.metadata": {
+        "size": 128,
+        "sha256": "285cc048d838c7e12ac2b96c759b6544085ee89d7eb36827c75f7c5a11395dc6"
+      },
+      ".cache/huggingface/download/tokenizer_config.json.metadata": {
+        "size": 104,
+        "sha256": "85f0bb2030d47e77f4433471b23ba01a1e2f72b8afd907bed64969010f51c949"
+      },
+      ".cache/huggingface/download/vocab.json.metadata": {
+        "size": 104,
+        "sha256": "4970598a29ef771b6af8a5889b1319615c8a3601a0c0265af58eb86bdaebdd4f"
+      },
+      ".gitattributes": {
+        "size": 1570,
+        "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+      },
+      "config.json": {
+        "size": 726,
+        "sha256": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
+      },
+      "generation_config.json": {
+        "size": 239,
+        "sha256": "2325da0f15bb848e018c5ae071b7943332e9f871d6b60e2ed22ca97d4cb993d2"
+      },
+      "LICENSE": {
+        "size": 11343,
+        "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e"
+      },
+      "merges.txt": {
+        "size": 1671853,
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      "model.safetensors": {
+        "size": 1503300328,
+        "sha256": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b"
+      },
+      "README.md": {
+        "size": 13965,
+        "sha256": "1ab64a26fcb3b461423b89a433a8c858f1bf8d4086f979cbb3ff878d47cf20e9"
+      },
+      "tokenizer.json": {
+        "size": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+      },
+      "tokenizer_config.json": {
+        "size": 9732,
+        "sha256": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101"
+      },
+      "vocab.json": {
+        "size": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    }
+  },
+  "adapter_fingerprint_base": {
+    "exists": false,
+    "path": null,
+    "file_count": 0,
+    "aggregate_sha256": "",
+    "files": {}
+  },
+  "adapter_fingerprint_repair_lora": {
+    "exists": true,
+    "path": "adapters\\p3\\repair-limited",
+    "file_count": 9,
+    "aggregate_sha256": "5a3602be1890eefe297cedec04fd4217757ff4f5cfeae18eec1168a281345434",
+    "files": {
+      "adapter_config.json": {
+        "size": 1144,
+        "sha256": "25c6e217026271ce2fd60cabc0dec21d44c6fc87cc091234702d44ed01bff989"
+      },
+      "adapter_model.safetensors": {
+        "size": 40422168,
+        "sha256": "6119657cc6ce456a60d98a6a20634f84e557d13d79a5d615fc7c695f46139a07"
+      },
+      "chat_template.jinja": {
+        "size": 4256,
+        "sha256": "51fa65c79bb57f058dc7ef8734884bd325fe9d45bb03a61bfef59785d3bc2da9"
+      },
+      "evaluator_state.json": {
+        "size": 5270,
+        "sha256": "9130cb544b29b885ab7dfdb5873d606ccd0d0dad9e18f2254778d99e4b1ebf99"
+      },
+      "metrics.json": {
+        "size": 1237,
+        "sha256": "5d7969264f0cc3214bb677171665cd3e95af9c7c5a2e576d4a428ac17702ad77"
+      },
+      "README.md": {
+        "size": 5394,
+        "sha256": "ef55e63aa36e18a927cf00ada519bba05a6339912d8391e2228e98c9459f6d95"
+      },
+      "tokenizer.json": {
+        "size": 11422650,
+        "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+      },
+      "tokenizer_config.json": {
+        "size": 723,
+        "sha256": "1f18fb516a5b9ec1286b09ef8df6cbe736ad8298c77d99953d85f182572b273e"
+      },
+      "training_config.yaml": {
+        "size": 3583,
+        "sha256": "338bbfa1cf6479e11bb2dc7765853386606591eb6263c4cb4a463addb774094e"
+      }
+    }
+  },
+  "generation_config": {
+    "temperature": 0.0,
+    "do_sample": false,
+    "max_new_tokens": 256,
+    "dtype": "float16"
+  },
+  "max_steps": 12,
+  "total_tasks": 40,
+  "protocols": [
+    "json",
+    "tag",
+    "dsl"
+  ],
+  "configs": [
+    "base",
+    "repair-lora"
+  ],
+  "total_combinations": 6,
+  "total_runs": 240,
+  "source_file_shas": {
+    "agent_actions": "66baf2d768ccbd9ab851aa627a1fa3fe8b586ab2049cf3b3ae8c5c3a58810f39",
+    "agent_evaluator": "7804bf1c93164469dd79aa2be6d6f763df59a7172dad9310a6fab9e4fb748c75",
+    "agent_model_provider": "91200e77ea8cbe1f901fd664f76e0855314c50c0860bc4ec5fb389aeb3323476",
+    "protocols_base": "23a3a889caa4f83863f727d4c68978f51faa036657bc0d18937d88a5e6a90de1",
+    "protocols_json": "e3ad2af92613aa96f4d7390ea847c255f59dc59e60b2f4fc2bd63c14df4f263d",
+    "protocols_tag": "d6d308f112bf72209eaa9bb060f88e67e6e080df13df6cf91a6f3ae5c71c16f8",
+    "protocols_dsl": "8223ed06cad77e26ac7bb34de82b17ab59ea37903c00331b30f41563b2922bf5"
+  },
+  "environment": {
+    "python_version": "3.11.7",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch_version": "2.6.0+cu124",
+    "cuda_available": true,
+    "cuda_version": "12.4",
+    "gpu_name": "NVIDIA GeForce RTX 3050 Laptop GPU",
+    "bf16_supported": true,
+    "transformers_version": "5.12.1"
+  },
+  "created_at": "2026-07-19T20:27:24+0800",
+  "model_fingerprint_post": {
+    "exists": true,
+    "path": "models\\Qwen3-0.6B",
+    "file_count": 22,
+    "aggregate_sha256": "5b935e4a160c011081dcf16bdb2c84bf1184caefa114ee4657d21c417fcb963f",
+    "files": {
+      ".cache/huggingface/.gitignore": {
+        "size": 1,
+        "sha256": "684888c0ebb17f374298b65ee2807526c066094c701bcc7ebbe1c1095f494fc1"
+      },
+      ".cache/huggingface/CACHEDIR.TAG": {
+        "size": 195,
+        "sha256": "e8893e2dcb3f4545ef67a0a5b7b769113d38eef1aa61c7c7ba14659b02af955f"
+      },
+      ".cache/huggingface/download/.gitattributes.metadata": {
+        "size": 104,
+        "sha256": "0121f322b84dfbb8bae736b9614b8bafcd62dbf7b9f06f40db47a66c98d5d35f"
+      },
+      ".cache/huggingface/download/config.json.metadata": {
+        "size": 103,
+        "sha256": "7afe58d2cac123aa4508fb7c81d6b7e53d53fc1fcf1f5c2fb5aba8f46403e187"
+      },
+      ".cache/huggingface/download/generation_config.json.metadata": {
+        "size": 104,
+        "sha256": "920e6b5e33756dac74edd9067d6638d4740642abf409124f00c35650abebb537"
+      },
+      ".cache/huggingface/download/LICENSE.metadata": {
+        "size": 104,
+        "sha256": "e2ea78a7ac6c01ac6a5de7fbec2c5b520741dee397032e738f9c5804c3b055c8"
+      },
+      ".cache/huggingface/download/merges.txt.metadata": {
+        "size": 104,
+        "sha256": "e504a7863acabbe0714057acce49ef49e33dd069985f65cd01b688f200f651ab"
+      },
+      ".cache/huggingface/download/model.safetensors.metadata": {
+        "size": 127,
+        "sha256": "6974268ede608787a6742f4358b7912b16f6e592a3f1f762f55e483431561016"
+      },
+      ".cache/huggingface/download/README.md.metadata": {
+        "size": 104,
+        "sha256": "311db104f4bbb4706b9fc920cb33be038c28aca022422ddfc2409be13bfa3c4a"
+      },
+      ".cache/huggingface/download/tokenizer.json.metadata": {
+        "size": 128,
+        "sha256": "285cc048d838c7e12ac2b96c759b6544085ee89d7eb36827c75f7c5a11395dc6"
+      },
+      ".cache/huggingface/download/tokenizer_config.json.metadata": {
+        "size": 104,
+        "sha256": "85f0bb2030d47e77f4433471b23ba01a1e2f72b8afd907bed64969010f51c949"
+      },
+      ".cache/huggingface/download/vocab.json.metadata": {
+        "size": 104,
+        "sha256": "4970598a29ef771b6af8a5889b1319615c8a3601a0c0265af58eb86bdaebdd4f"
+      },
+      ".gitattributes": {
+        "size": 1570,
+        "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+      },
+      "config.json": {
+        "size": 726,
+        "sha256": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
+      },
+      "generation_config.json": {
+        "size": 239,
+        "sha256": "2325da0f15bb848e018c5ae071b7943332e9f871d6b60e2ed22ca97d4cb993d2"
+      },
+      "LICENSE": {
+        "size": 11343,
+        "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e"
+      },
+      "merges.txt": {
+        "size": 1671853,
+        "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+      },
+      "model.safetensors": {
+        "size": 1503300328,
+        "sha256": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b"
+      },
+      "README.md": {
+        "size": 13965,
+        "sha256": "1ab64a26fcb3b461423b89a433a8c858f1bf8d4086f979cbb3ff878d47cf20e9"
+      },
+      "tokenizer.json": {
+        "size": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+      },
+      "tokenizer_config.json": {
+        "size": 9732,
+        "sha256": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101"
+      },
+      "vocab.json": {
+        "size": 2776833,
+        "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      }
+    }
+  },
+  "adapter_fingerprint_repair_lora_post": {
+    "exists": true,
+    "path": "adapters\\p3\\repair-limited",
+    "file_count": 9,
+    "aggregate_sha256": "5a3602be1890eefe297cedec04fd4217757ff4f5cfeae18eec1168a281345434",
+    "files": {
+      "adapter_config.json": {
+        "size": 1144,
+        "sha256": "25c6e217026271ce2fd60cabc0dec21d44c6fc87cc091234702d44ed01bff989"
+      },
+      "adapter_model.safetensors": {
+        "size": 40422168,
+        "sha256": "6119657cc6ce456a60d98a6a20634f84e557d13d79a5d615fc7c695f46139a07"
+      },
+      "chat_template.jinja": {
+        "size": 4256,
+        "sha256": "51fa65c79bb57f058dc7ef8734884bd325fe9d45bb03a61bfef59785d3bc2da9"
+      },
+      "evaluator_state.json": {
+        "size": 5270,
+        "sha256": "9130cb544b29b885ab7dfdb5873d606ccd0d0dad9e18f2254778d99e4b1ebf99"
+      },
+      "metrics.json": {
+        "size": 1237,
+        "sha256": "5d7969264f0cc3214bb677171665cd3e95af9c7c5a2e576d4a428ac17702ad77"
+      },
+      "README.md": {
+        "size": 5394,
+        "sha256": "ef55e63aa36e18a927cf00ada519bba05a6339912d8391e2228e98c9459f6d95"
+      },
+      "tokenizer.json": {
+        "size": 11422650,
+        "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+      },
+      "tokenizer_config.json": {
+        "size": 723,
+        "sha256": "1f18fb516a5b9ec1286b09ef8df6cbe736ad8298c77d99953d85f182572b273e"
+      },
+      "training_config.yaml": {
+        "size": 3583,
+        "sha256": "338bbfa1cf6479e11bb2dc7765853386606591eb6263c4cb4a463addb774094e"
+      }
+    }
+  },
+  "fingerprint_check_passed": true,
+  "fingerprint_check_completed_at": "2026-07-20T02:00:03+0800"
+}
