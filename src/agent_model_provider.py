@@ -10,12 +10,15 @@ from __future__ import annotations
 import json
 import re
 import time
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from pydantic import BaseModel, Field, TypeAdapter
 
 from src.agent_actions import Action, SafetyFlags
 from src.agent_evaluator import AgentState, ActionProvider
+
+if TYPE_CHECKING:
+    from src.protocols.base import ProtocolBase, ProtocolDiagnostics
 
 _ACTION_ADAPTER = TypeAdapter(Action)
 
@@ -80,16 +83,40 @@ def build_prompt(
     return "\n".join(lines)
 
 
-_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+_JSON_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL)
 _BARE_JSON_RE = re.compile(r"(\{.*\})", re.DOTALL)
 
 
 def extract_json(raw: str) -> str | None:
-    """Extract the first JSON object from raw model output. Returns the
-    JSON string or None if no JSON found."""
+    """Extract the first complete JSON object from raw model output.
+
+    Uses json.JSONDecoder.raw_decode to find the first balanced {}
+    object, which correctly handles nested braces and multiple
+    concatenated JSON objects (model repetition bug).
+    """
+    # Try fenced JSON first
     m = _JSON_FENCE_RE.search(raw)
     if m:
-        return m.group(1)
+        fence_content = m.group(1)
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(fence_content)
+            return json.dumps(obj)
+        except (json.JSONDecodeError, ValueError):
+            pass  # fall through to bare search
+
+    # Try raw_decode from the first '{' to extract the first complete
+    # JSON object (handles model repetition: multiple concatenated objects).
+    idx = raw.find("{")
+    if idx != -1:
+        try:
+            obj, end = json.JSONDecoder().raw_decode(raw[idx:])
+            if isinstance(obj, dict):
+                return raw[idx:idx + end]
+        except (json.JSONDecodeError, ValueError):
+            pass  # fall through to regex fallback
+
+    # Fallback: greedy regex for malformed JSON (trailing commas, etc.)
+    # that needs format-only repair
     m = _BARE_JSON_RE.search(raw)
     if m:
         return m.group(1)
@@ -117,22 +144,26 @@ def repair_json(raw: str) -> str:
 class ModelActionProvider(ActionProvider):
     """Loads Qwen3-0.6B and generates actions. GPU required.
 
-    The actual model loading happens in __init__ (lazy torch import).
-    Non-GPU tests mock the _generate method.
+    When protocol is None: uses legacy JSON parsing (backward-compatible).
+    When protocol is set: delegates prompt building and output parsing
+    to the protocol object.
     """
 
     def __init__(
         self,
         model_path: str = "models/Qwen3-0.6B",
         adapter_path: str | None = None,
-        max_new_tokens: int = 128,
+        max_new_tokens: int = 256,
+        protocol: "ProtocolBase | None" = None,
     ):
         self._model_path = model_path
         self._adapter_path = adapter_path
         self._max_new_tokens = max_new_tokens
         self._model = None
         self._tokenizer = None
+        self._protocol = protocol
         self._diagnostics: list[ModelStepDiagnostics] = []
+        self._protocol_diagnostics: list["ProtocolDiagnostics"] = []
 
     def _load_model(self):
         """Lazy-load the model. Called on first next_action."""
@@ -175,9 +206,46 @@ class ModelActionProvider(ActionProvider):
             skip_special_tokens=True,
         )
 
+    def _build_user_prompt(self, state: AgentState) -> str:
+        """Build user prompt for protocol path (state info only)."""
+        lines = [
+            f"Task ID: {state.task_id}",
+            f"Step: {state.step_count}",
+        ]
+        if state.memory.notes:
+            lines.append(f"Notes: {state.memory.notes}")
+        if state.memory.hypothesis:
+            lines.append(f"Hypothesis: {state.memory.hypothesis}")
+        lines.append("What is your next action?")
+        return "\n".join(lines)
+
     def next_action(self, state: AgentState) -> Action | SentinelAction:
         if self._model is None:
             self._load_model()
+
+        if self._protocol is not None:
+            return self._next_action_protocol(state)
+        return self._next_action_legacy(state)
+
+    def _next_action_protocol(self, state: AgentState) -> Action | SentinelAction:
+        """Protocol path: delegate to protocol for prompt and parsing."""
+        system_prompt = self._protocol.build_system_prompt(state.task_id)
+        user_prompt = self._build_user_prompt(state)
+        prompt = system_prompt + "\n\n" + user_prompt
+        raw_output = self._generate(prompt)
+        action, diag = self._protocol.parse_output(raw_output)
+        self._protocol_diagnostics.append(diag)
+        return action
+
+    def _next_action_legacy(self, state: AgentState) -> Action | SentinelAction:
+        """Legacy path: existing JSON parsing (backward-compatible).
+
+        Issue #32 Trust Repair: each diagnostic dimension is computed
+        independently via ProtocolBase.check_* methods. Previously all
+        four were set to True together when validate_action succeeded.
+        """
+        from src.protocols.base import ProtocolBase
+
         prompt = build_prompt(state, task_description="", last_observation=None)
         t0 = time.monotonic()
         raw_output = self._generate(prompt)
@@ -203,14 +271,16 @@ class ModelActionProvider(ActionProvider):
         # Try direct validation
         try:
             data = json.loads(json_str)
-            action = _validate_action(data)
-            if action is not None:
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.action_type_valid = True
-                diag.arguments_valid = True
-                self._diagnostics.append(diag)
-                return action
+            if isinstance(data, dict):
+                # Issue #32: independent dimension checks
+                diag.action_type_valid = ProtocolBase.check_action_type_valid(data)
+                diag.safety_valid = ProtocolBase.check_safety_valid(data)
+                diag.arguments_valid = ProtocolBase.check_arguments_valid(data)
+                action = _validate_action(data)
+                diag.schema_valid = action is not None
+                if action is not None:
+                    self._diagnostics.append(diag)
+                    return action
         except (json.JSONDecodeError, Exception):
             pass
 
@@ -219,13 +289,16 @@ class ModelActionProvider(ActionProvider):
         repaired = repair_json(json_str)
         try:
             data = json.loads(repaired)
-            action = _validate_action(data)
-            if action is not None:
-                diag.repair_success = True
-                diag.schema_valid = True
-                diag.safety_valid = True
-                diag.action_type_valid = True
-                diag.arguments_valid = True
+            if isinstance(data, dict):
+                diag.action_type_valid = ProtocolBase.check_action_type_valid(data)
+                diag.safety_valid = ProtocolBase.check_safety_valid(data)
+                diag.arguments_valid = ProtocolBase.check_arguments_valid(data)
+                action = _validate_action(data)
+                diag.schema_valid = action is not None
+                if action is not None:
+                    diag.repair_success = True
+                    self._diagnostics.append(diag)
+                    return action  # FIX: was missing return (P4.1 bug)
         except (json.JSONDecodeError, Exception):
             pass
 
@@ -234,9 +307,13 @@ class ModelActionProvider(ActionProvider):
 
     def reset(self) -> None:
         self._diagnostics.clear()
+        self._protocol_diagnostics.clear()
 
     @property
-    def diagnostics(self) -> list[ModelStepDiagnostics]:
+    def diagnostics(self):
+        """Returns ProtocolDiagnostics if protocol set, else ModelStepDiagnostics."""
+        if self._protocol is not None:
+            return list(self._protocol_diagnostics)
         return list(self._diagnostics)
 
 

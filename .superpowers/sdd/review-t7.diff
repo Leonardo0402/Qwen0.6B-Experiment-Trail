@@ -1,0 +1,164 @@
+﻿111c266 feat(p4-1b): add comparison report generation (P4.1b T7)
+---STAT---
+ scripts/run_protocol_ablation.py | 67 ++++++++++++++++++++++++++++++++++++++++
+ tests/test_protocol_ablation.py  | 35 +++++++++++++++++++++
+ 2 files changed, 102 insertions(+)
+---DIFF---
+diff --git a/scripts/run_protocol_ablation.py b/scripts/run_protocol_ablation.py
+index daa7c46..1fd43e6 100644
+--- a/scripts/run_protocol_ablation.py
++++ b/scripts/run_protocol_ablation.py
+@@ -288,20 +288,81 @@ def _detect_repeated_loop(actions: list[dict]) -> bool:
+     for i in range(len(actions) - 2):
+         a1 = actions[i]
+         a2 = actions[i + 1]
+         a3 = actions[i + 2]
+         if (a1.get("action_type") == a2.get("action_type") == a3.get("action_type")
+                 and a1.get("arguments") == a2.get("arguments") == a3.get("arguments")):
+             return True
+     return False
+ 
+ 
++def generate_report(results: list[dict], taxonomy: dict) -> str:
++    """Generate markdown comparison report from ablation results."""
++    lines = [
++        "# P4.1b Protocol Ablation — Comparison Report",
++        "",
++        "## Overview",
++        "",
++        f"- Protocols: {len(set(r['protocol'] for r in results))}",
++        f"- Configs: {len(set(r['config'] for r in results))}",
++        f"- Total combinations: {len(results)}",
++        "",
++        "## Metrics by Protocol x Config",
++        "",
++        "| Protocol | Config | format_parse_rate | schema_valid_rate | safety_valid_rate | action_type_valid_rate | arguments_valid_rate | forbidden_count | unknown_count | task_success_rate | finish_no_tests | finish_mismatch | max_steps_hit_rate | crashes |",
++        "|----------|--------|-------------------|-------------------|-------------------|------------------------|----------------------|-----------------|----------------|-------------------|------------------|-----------------|---------------------|---------|",
++    ]
++
++    for r in sorted(results, key=lambda x: (x["protocol"], x["config"])):
++        m = r.get("metrics", {})
++        lines.append(
++            f"| {r['protocol']} | {r['config']} "
++            f"| {m.get('format_parse_rate', 0):.2%} "
++            f"| {m.get('schema_valid_rate', 0):.2%} "
++            f"| {m.get('safety_valid_rate', 0):.2%} "
++            f"| {m.get('action_type_valid_rate', 0):.2%} "
++            f"| {m.get('arguments_valid_rate', 0):.2%} "
++            f"| {m.get('forbidden_action_count', 0)} "
++            f"| {m.get('unknown_action_count', 0)} "
++            f"| {m.get('task_success_rate', 0):.2%} "
++            f"| {m.get('finish_without_tests_count', 0)} "
++            f"| {m.get('finish_claim_mismatch_count', 0)} "
++            f"| {m.get('max_steps_hit_rate', 0):.2%} "
++            f"| {m.get('runtime_crash_count', 0)} |"
++        )
++
++    lines.extend([
++        "",
++        "## Failure Taxonomy",
++        "",
++        "| Failure Class | Count |",
++        "|---------------|-------|",
++    ])
++    for fc, count in sorted(taxonomy.items()):
++        lines.append(f"| {fc} | {count} |")
++
++    lines.extend([
++        "",
++        "## Protocol Comparison Summary",
++        "",
++    ])
++
++    # Summarize by protocol (average across configs)
++    protocols = sorted(set(r["protocol"] for r in results))
++    for proto in protocols:
++        proto_results = [r for r in results if r["protocol"] == proto]
++        avg_schema = sum(r["metrics"].get("schema_valid_rate", 0) for r in proto_results) / len(proto_results)
++        lines.append(f"- **{proto}**: avg schema_valid_rate = {avg_schema:.2%}")
++
++    return "\n".join(lines)
++
++
+ def main():
+     _REPORT_DIR.mkdir(parents=True, exist_ok=True)
+     traj_dir = _REPORT_DIR / "trajectories"
+     traj_dir.mkdir(parents=True, exist_ok=True)
+ 
+     # Step 1: Baseline lock
+     print("=== Step 1: Baseline Lock ===")
+     lock = baseline_lock()
+     (_REPORT_DIR / "baseline-lock.json").write_text(
+         json.dumps(lock, indent=2), encoding="utf-8"
+@@ -347,15 +408,21 @@ def main():
+             traj_file = traj_dir / f"{proto_spec['name']}-{config['name']}.jsonl"
+             if traj_file.exists():
+                 for line in traj_file.read_text(encoding="utf-8").strip().split("\n"):
+                     if line:
+                         all_trajectories.append(json.loads(line))
+     taxonomy = classify_failures(all_trajectories)
+     (_REPORT_DIR / "failure-taxonomy.json").write_text(
+         json.dumps(taxonomy, indent=2), encoding="utf-8"
+     )
+ 
++    # Step 5: Generate report
++    print("\n=== Step 5: Comparison Report ===")
++    report = generate_report(all_results, taxonomy)
++    (_REPORT_DIR / "comparison-report.md").write_text(report, encoding="utf-8")
++    print(f"Wrote {_REPORT_DIR / 'comparison-report.md'}")
++
+     print(f"\nDone. Reports in {_REPORT_DIR}")
+ 
+ 
+ if __name__ == "__main__":
+     main()
+diff --git a/tests/test_protocol_ablation.py b/tests/test_protocol_ablation.py
+index 218b9d9..6772683 100644
+--- a/tests/test_protocol_ablation.py
++++ b/tests/test_protocol_ablation.py
+@@ -181,10 +181,45 @@ def test_run_combination_with_mock_protocol():
+                     )
+             provider.next_action = next_action
+             provider.reset = reset
+             return provider
+         MockProvider.side_effect = make_provider
+ 
+         result = run_combination(proto, config, task_ids, max_steps=5)
+         assert result["config"] == "mock-base"
+         assert result["trajectories_written"] == 2
+         assert "metrics" in result
++
++
++def test_generate_report_contains_all_protocols():
++    from scripts.run_protocol_ablation import generate_report
++    results = [
++        {"protocol": "json", "config": "base", "metrics": {"schema_valid_rate": 0.0}},
++        {"protocol": "json", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.0}},
++        {"protocol": "tag", "config": "base", "metrics": {"schema_valid_rate": 0.5}},
++        {"protocol": "tag", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.6}},
++        {"protocol": "dsl", "config": "base", "metrics": {"schema_valid_rate": 0.3}},
++        {"protocol": "dsl", "config": "repair-lora", "metrics": {"schema_valid_rate": 0.4}},
++    ]
++    taxonomy = {"FORMAT_PARSE_FAIL": 10, "SCHEMA_VALIDATION_FAIL": 20}
++    report = generate_report(results, taxonomy)
++    assert "json" in report
++    assert "tag" in report
++    assert "dsl" in report
++    assert "schema_valid_rate" in report
++    assert "FORMAT_PARSE_FAIL" in report
++
++
++def test_generate_report_has_markdown_table():
++    from scripts.run_protocol_ablation import generate_report
++    results = [
++        {"protocol": "json", "config": "base",
++         "metrics": {"format_parse_rate": 1.0, "schema_valid_rate": 0.0,
++                     "safety_valid_rate": 0.0, "action_type_valid_rate": 0.5,
++                     "arguments_valid_rate": 0.0, "forbidden_action_count": 0,
++                     "task_success_rate": 0.0, "max_steps_hit_rate": 1.0,
++                     "runtime_crash_count": 0}},
++    ]
++    taxonomy = {"FORMAT_PARSE_FAIL": 5}
++    report = generate_report(results, taxonomy)
++    assert "|" in report  # markdown table
++    assert "format_parse_rate" in report

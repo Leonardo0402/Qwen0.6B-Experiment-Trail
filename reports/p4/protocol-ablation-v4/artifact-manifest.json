@@ -1,0 +1,90 @@
+{
+  "report_dir": "protocol-ablation-v4",
+  "artifact_count": 11,
+  "artifacts": [
+    {
+      "relative_path": "baseline-lock.json",
+      "sha256": "29d47d486cf2681a1e692ba9d9ce82dc9b0cd08bf708c9af49640a634360b9fe",
+      "size": 13687,
+      "created_at": "2026-07-20T02:00:03+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df"
+    },
+    {
+      "relative_path": "comparison-matrix.json",
+      "sha256": "e63e861499024c6a273304395933bf411e6bbf602a58acea2e725afc15590d8e",
+      "size": 5698,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df"
+    },
+    {
+      "relative_path": "comparison-report.md",
+      "sha256": "732a2cc0740e779c7989a2a15866e87523d828d61594c9734c701e1e96fcee01",
+      "size": 2353,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df"
+    },
+    {
+      "relative_path": "failure-taxonomy.json",
+      "sha256": "07352ec42c02ff17b389474760b2b00989d6c99120be0fbcee2a2b89012774a9",
+      "size": 243,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df"
+    },
+    {
+      "relative_path": "trajectories\\dsl-base.jsonl",
+      "sha256": "b63f7a2ecc24d9ad97305225b2be19de5d18d920a885d5c7c170db1dc05d55df",
+      "size": 665220,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "trajectories\\dsl-repair-lora.jsonl",
+      "sha256": "e74c01734ce662fdcaa329a88a3d6982c7f853b00eef0f5433cea2369988de79",
+      "size": 602000,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "trajectories\\json-base.jsonl",
+      "sha256": "cb5310bb84970d374efa379e273a86976ae679f9a8aa6c6d4a80cbe001dac64c",
+      "size": 665997,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "trajectories\\json-repair-lora.jsonl",
+      "sha256": "f6839803e59d7cc4582dd58dea5cbcc4e2eb7a1d11d3ce1c3a8c46c111737fd0",
+      "size": 702532,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "trajectories\\tag-base.jsonl",
+      "sha256": "af1c838829679466ae5ede13657b195ba1ee56aea870a2fa7d68ec71721c2c83",
+      "size": 599137,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "trajectories\\tag-repair-lora.jsonl",
+      "sha256": "aa9cc20d55b1457b82e7f548d4cd8d6c8c0cc14e9c59ee1a3c1bb76481e36f3a",
+      "size": 277924,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df",
+      "row_count": 40
+    },
+    {
+      "relative_path": "verdict.json",
+      "sha256": "7d092c6c8e913fa163b3ecc514605857a2ee7025de5b5c1bed06d92b2256959d",
+      "size": 37,
+      "created_at": "2026-07-20T02:00:04+0800",
+      "experiment_commit": "a5577ba081c806aaf00627262a36cbb1c38e72df"
+    }
+  ],
+  "generated_at": "2026-07-20T02:00:04+0800"
+}

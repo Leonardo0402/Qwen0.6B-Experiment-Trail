@@ -1,148 +1,203 @@
-## Task 1: Phase A — P4.0 Baseline Lock
+### Task 1: ProtocolBase ABC + ProtocolDiagnostics
 
 **Files:**
-- Create: `scripts/lock_p4_0_baseline.py`
-- Create: `tests/test_p4_0_baseline_lock.py`
-- Generated: `reports/p4/p4-0-baseline-lock.json`
+- Create: `src/protocols/__init__.py`
+- Create: `src/protocols/base.py`
+- Test: `tests/test_protocol_base.py`
 
 **Interfaces:**
-- Consumes: `data/p4-agent/micro-tasks-v0/manifest.json`, `data/p4-agent/trajectories-v0/scripted.jsonl`, `src/agent_evaluator.py`, `reports/p4/p4-agent-foundation-readiness.md`
-- Produces: `reports/p4/p4-0-baseline-lock.json` with fields: `p4_0_merge_commit`, `micro_tasks_manifest_sha256`, `scripted_trajectories_sha256`, `agent_evaluator_sha256`, `readiness_report_sha256`, `p4_0_verdict`, `p4_0_test_count`
+- Produces: `ProtocolBase` (ABC with `name`, `build_system_prompt`, `parse_output`, `validate_action`, `is_valid_action_type`), `ProtocolDiagnostics` (Pydantic BaseModel with 10 fields)
 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# tests/test_p4_0_baseline_lock.py
-import hashlib
-import json
-from pathlib import Path
-
-_ROOT = Path(__file__).resolve().parent.parent
+# tests/test_protocol_base.py
+"""Tests for ProtocolBase and ProtocolDiagnostics."""
+import pytest
+from src.protocols.base import ProtocolBase, ProtocolDiagnostics
 
 
-def test_baseline_lock_exists():
-    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
-    assert lock_path.exists(), "p4-0-baseline-lock.json not found"
-
-
-def test_baseline_lock_has_required_fields():
-    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
-    data = json.loads(lock_path.read_text(encoding="utf-8"))
-    required = {
-        "p4_0_merge_commit", "micro_tasks_manifest_sha256",
-        "scripted_trajectories_sha256", "agent_evaluator_sha256",
-        "readiness_report_sha256", "p4_0_verdict", "p4_0_test_count",
-    }
-    assert required.issubset(data.keys()), f"missing: {required - data.keys()}"
-
-
-def test_baseline_lock_shas_match_files():
-    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
-    data = json.loads(lock_path.read_text(encoding="utf-8"))
-
-    def sha256(path):
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-
-    assert data["micro_tasks_manifest_sha256"] == sha256(
-        _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
+def test_protocol_diagnostics_has_all_fields():
+    diag = ProtocolDiagnostics(
+        raw_output="test",
+        format_parse_ok=True,
+        schema_valid=False,
+        safety_valid=False,
+        action_type_valid=True,
+        arguments_valid=False,
+        repair_attempted=False,
+        repair_success=False,
+        latency_ms=42,
     )
-    assert data["scripted_trajectories_sha256"] == sha256(
-        _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
+    assert diag.failure_class is None
+    assert diag.latency_ms == 42
+    assert diag.raw_output == "test"
+
+
+def test_protocol_diagnostics_failure_class_set():
+    diag = ProtocolDiagnostics(
+        raw_output="",
+        format_parse_ok=False,
+        schema_valid=False,
+        safety_valid=False,
+        action_type_valid=False,
+        arguments_valid=False,
+        repair_attempted=False,
+        repair_success=False,
+        latency_ms=0,
+        failure_class="FORMAT_PARSE_FAIL",
     )
-    assert data["agent_evaluator_sha256"] == sha256(
-        _ROOT / "src" / "agent_evaluator.py"
+    assert diag.failure_class == "FORMAT_PARSE_FAIL"
+
+
+def test_protocol_diagnostics_model_dump_works():
+    """ProtocolDiagnostics must support model_dump() for trajectory recording."""
+    diag = ProtocolDiagnostics(
+        raw_output="x", format_parse_ok=True, schema_valid=True,
+        safety_valid=True, action_type_valid=True, arguments_valid=True,
+        repair_attempted=False, repair_success=False, latency_ms=5,
     )
-    assert data["readiness_report_sha256"] == sha256(
-        _ROOT / "reports" / "p4" / "p4-agent-foundation-readiness.md"
-    )
+    d = diag.model_dump()
+    assert d["format_parse_ok"] is True
+    assert d["schema_valid"] is True
+    assert "failure_class" in d
 
 
-def test_baseline_lock_p4_0_merge_commit_is_7ccd06c():
-    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
-    data = json.loads(lock_path.read_text(encoding="utf-8"))
-    assert data["p4_0_merge_commit"].startswith("7ccd06c"), \
-        f"expected 7ccd06c..., got {data['p4_0_merge_commit']}"
+def test_validate_action_returns_none_for_invalid():
+    result = ProtocolBase.validate_action({"action_type": "nonexistent"})
+    assert result is None
 
 
-def test_baseline_lock_verdict_is_go():
-    lock_path = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
-    data = json.loads(lock_path.read_text(encoding="utf-8"))
-    assert data["p4_0_verdict"] == "GO_FOR_P4_AGENT_SFT_DATA"
-    assert data["p4_0_test_count"] == 81
+def test_validate_action_returns_none_for_empty():
+    result = ProtocolBase.validate_action({})
+    assert result is None
+
+
+def test_is_valid_action_type_recognizes_11_types():
+    for at in ["list_files", "read_file", "search_text", "inspect_task",
+               "propose_patch", "apply_patch", "rollback_patch", "run_tests",
+               "inspect_error", "write_memory", "finish"]:
+        assert ProtocolBase.is_valid_action_type(at), f"{at} should be valid"
+
+
+def test_is_valid_action_type_rejects_unknown():
+    assert not ProtocolBase.is_valid_action_type("run_terminal")
+    assert not ProtocolBase.is_valid_action_type("")
+    assert not ProtocolBase.is_valid_action_type("READ_FILE")
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3.11 -m pytest tests/test_p4_0_baseline_lock.py -v -p no:warnings`
-Expected: FAIL — `p4-0-baseline-lock.json not found`
+Run: `py -3.11 -m pytest tests/test_protocol_base.py -v`
+Expected: FAIL with `ModuleNotFoundError: No module named 'src.protocols'`
 
-- [ ] **Step 3: Write the lock script**
+- [ ] **Step 3: Write minimal implementation**
 
 ```python
-# scripts/lock_p4_0_baseline.py
-"""Phase A: lock P4.0 baseline SHAs into a JSON file.
+# src/protocols/__init__.py
+"""P4.1b Protocol abstraction layer.
 
-Idempotent: re-running produces the same JSON.
+Exports ProtocolBase, ProtocolDiagnostics, and protocol implementations.
+"""
+from src.protocols.base import ProtocolBase, ProtocolDiagnostics
+
+__all__ = ["ProtocolBase", "ProtocolDiagnostics"]
+```
+
+```python
+# src/protocols/base.py
+"""P4.1b Protocol abstraction layer.
+
+Defines ProtocolBase ABC and ProtocolDiagnostics used by all protocol
+implementations (JSON, Tag, DSL).
+
+ProtocolDiagnostics computes each validity dimension independently,
+fixing the P4.1 issue where schema_valid/safety_valid/action_type_valid/
+arguments_valid were all set to True together.
 """
 from __future__ import annotations
 
-import hashlib
-import json
-from pathlib import Path
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-_ROOT = Path(__file__).resolve().parent.parent
-_OUT = _ROOT / "reports" / "p4" / "p4-0-baseline-lock.json"
+from pydantic import BaseModel, TypeAdapter
 
-_P4_0_MERGE_COMMIT = "7ccd06c4d479b269f7708a6a430b9965af5f17e6"
-_P4_0_VERDICT = "GO_FOR_P4_AGENT_SFT_DATA"
-_P4_0_TEST_COUNT = 81
+from src.agent_actions import Action
 
+if TYPE_CHECKING:
+    from src.agent_model_provider import SentinelAction
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+_ACTION_ADAPTER = TypeAdapter(Action)
 
-
-def main() -> None:
-    lock = {
-        "p4_0_merge_commit": _P4_0_MERGE_COMMIT,
-        "micro_tasks_manifest_sha256": _sha256(
-            _ROOT / "data" / "p4-agent" / "micro-tasks-v0" / "manifest.json"
-        ),
-        "scripted_trajectories_sha256": _sha256(
-            _ROOT / "data" / "p4-agent" / "trajectories-v0" / "scripted.jsonl"
-        ),
-        "agent_evaluator_sha256": _sha256(_ROOT / "src" / "agent_evaluator.py"),
-        "readiness_report_sha256": _sha256(
-            _ROOT / "reports" / "p4" / "p4-agent-foundation-readiness.md"
-        ),
-        "p4_0_verdict": _P4_0_VERDICT,
-        "p4_0_test_count": _P4_0_TEST_COUNT,
-    }
-    _OUT.parent.mkdir(parents=True, exist_ok=True)
-    _OUT.write_text(json.dumps(lock, indent=2), encoding="utf-8")
-    print(f"wrote {_OUT}")
+_ALLOWED_ACTION_TYPES = frozenset({
+    "list_files", "read_file", "search_text", "inspect_task",
+    "propose_patch", "apply_patch", "rollback_patch", "run_tests",
+    "inspect_error", "write_memory", "finish",
+})
 
 
-if __name__ == "__main__":
-    main()
+class ProtocolDiagnostics(BaseModel):
+    """Per-step diagnostics computed independently by the protocol layer.
+
+    Unlike ModelStepDiagnostics which sets schema_valid/safety_valid/
+    action_type_valid/arguments_valid all-together, each field here is
+    computed independently for finer failure classification.
+    """
+    raw_output: str
+    format_parse_ok: bool       # Protocol format syntax correct
+    schema_valid: bool          # Pydantic Action validation passed
+    safety_valid: bool          # safety_flags check passed
+    action_type_valid: bool     # action_type in allowed 11 types
+    arguments_valid: bool       # Argument types and values valid
+    repair_attempted: bool      # Format repair was attempted
+    repair_success: bool        # Format repair succeeded
+    latency_ms: int             # Parse latency in milliseconds
+    failure_class: str | None = None  # Failure classification
+
+
+class ProtocolBase(ABC):
+    """Abstract base for action protocols.
+
+    A protocol defines:
+    - How to instruct the model to format its output (build_system_prompt)
+    - How to parse model output into an Action (parse_output)
+    """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Protocol identifier (e.g. 'json', 'tag', 'dsl')."""
+
+    @abstractmethod
+    def build_system_prompt(self, task_context: str) -> str:
+        """Build system prompt with protocol format instructions and tool semantics."""
+
+    @abstractmethod
+    def parse_output(self, raw: str) -> tuple[Action | "SentinelAction", ProtocolDiagnostics]:
+        """Parse model output into Action or SentinelAction with diagnostics."""
+
+    @staticmethod
+    def validate_action(data: dict) -> Action | None:
+        """Validate a dict against the Action union. Returns Action or None."""
+        try:
+            return _ACTION_ADAPTER.validate_python(data)
+        except Exception:
+            return None
+
+    @staticmethod
+    def is_valid_action_type(action_type: str) -> bool:
+        """Check if action_type string is one of the 11 allowed types."""
+        return action_type in _ALLOWED_ACTION_TYPES
 ```
 
-- [ ] **Step 4: Run the script to generate the lock file**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3.11 scripts/lock_p4_0_baseline.py`
-Expected: `wrote reports/p4/p4-0-baseline-lock.json`
+Run: `py -3.11 -m pytest tests/test_protocol_base.py -v`
+Expected: PASS (7 tests)
 
-- [ ] **Step 5: Run test to verify it passes**
-
-Run: `py -3.11 -m pytest tests/test_p4_0_baseline_lock.py -v -p no:warnings`
-Expected: 5 PASS
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/lock_p4_0_baseline.py tests/test_p4_0_baseline_lock.py reports/p4/p4-0-baseline-lock.json
-git commit -m "feat(p4-1): Phase A — P4.0 baseline lock"
+git add src/protocols/__init__.py src/protocols/base.py tests/test_protocol_base.py
+git commit -m "feat(protocols): add ProtocolBase ABC and ProtocolDiagnostics (P4.1b T1)"
 ```
-
----
-

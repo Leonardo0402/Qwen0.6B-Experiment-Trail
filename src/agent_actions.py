@@ -47,7 +47,7 @@ class SafetyFlags(BaseModel):
     P4.0 hard-reject: any action with network_required=True or
     reads_sensitive_path=True is rejected at action-validation time.
     """
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     modifies_workspace: bool
     executes_code: bool
@@ -105,7 +105,7 @@ def validate_path(rel_path: str) -> str:
 
 class ActionBase(BaseModel):
     """Base for all actions."""
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     action_id: str
     action_type: ActionType
@@ -127,10 +127,12 @@ class ActionBase(BaseModel):
 
 
 class ListFilesArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     pattern: str | None = None
 
 
 class ReadFileArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     path: str
     start_line: int | None = None
     end_line: int | None = None
@@ -142,16 +144,18 @@ class ReadFileArgs(BaseModel):
 
 
 class SearchTextArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     query: str
     file_glob: str | None = None
     max_results: int = 20
 
 
 class InspectTaskArgs(BaseModel):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProposePatchArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     file_path: str
     old_text: str
     new_text: str
@@ -165,6 +169,7 @@ class ProposePatchArgs(BaseModel):
 
 
 class ApplyPatchArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     file_path: str
     old_text: str
     new_text: str
@@ -179,23 +184,28 @@ class ApplyPatchArgs(BaseModel):
 
 
 class RollbackPatchArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     action_id: str
 
 
 class RunTestsArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     test_path: str | None = None
     timeout_s: float = 10.0
 
 
 class InspectErrorArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     error_source: Literal["last_test", "last_patch"]
 
 
 class WriteMemoryArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     memory: "AgentMemory"
 
 
 class FinishArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     success_criterion: TaskSuccessCriterion
     tests_passed: bool
     identification_verified: bool
