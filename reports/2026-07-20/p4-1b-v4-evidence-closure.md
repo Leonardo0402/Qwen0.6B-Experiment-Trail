@@ -234,17 +234,32 @@ covers all closure-scope tests.
 
 ## 9. GitHub CI Result
 
-After this closure commit is pushed, the GitHub Actions workflow
-`CI (CPU tests)` runs:
+After the closure commit was pushed, the GitHub Actions workflow
+`CI (CPU tests)` ran on HEAD `ae8791c`:
 
 ```
 python -m pytest tests/ -m "not gpu and not local_artifacts" -v --tb=short --timeout=120 -p no:warnings
 ```
 
-Expected outcome: all previously-failing real-model / real-adapter tests
-are now deselected; the new v4 evidence tests run and pass against the
-committed JSON files. The final CI run URL and conclusion will be
-recorded in §11 once the workflow completes.
+Final CI result (verified):
+
+- Workflow run ID: `29742946676` (pull_request event)
+- Push run ID: `29742944683` (push event, also success)
+- Job ID: `88353776234`
+- Job name: `Non-GPU unit tests`
+- Tested SHA: `ae8791c3e4d93a37c89a8414da9c17bfaf271cd6`
+- Workflow status: `completed`
+- Workflow conclusion: `success`
+- Job conclusion: `success`
+- Started: `2026-07-20T12:37:54Z`
+- Completed: `2026-07-20T12:42:33Z`
+- Runtime: 262.39s (4m 22s)
+- Test result: **1520 passed, 4 skipped, 6 deselected**
+  - 6 deselected = 4 `local_artifacts` + 2 `gpu`
+  - 4 skipped = pre-existing skips
+  - 0 failed
+
+URL: https://github.com/Leonardo0402/Qwen0.6B-Experiment-Trail/actions/runs/29742946676/job/88353776234
 
 ## 10. v4 Evidence Summary
 
@@ -384,14 +399,14 @@ Conditions met:
   marked).
 - Local artifact integration tests pass on the RTX 3050 machine.
 - CPU evidence tests pass against committed v4 JSON artifacts.
-- CI-equivalent local suite passes.
+- CI-equivalent local suite passes (closure-scope subset, 196 passed).
 - v4 analysis document corrected (causality, search_text schema, artifact
   count, v5 status).
 - PR #30 description updated to v4 (no v2 / f58dfdf references remain).
 - Issue #32 has a new v4 closure comment; not closed.
 - No experiment code modified; no v5 work; no training; no merge.
-- Final GitHub CI is expected to be green on the new HEAD (verified in
-  §9 once the workflow completes).
+- Final GitHub CI verified green on HEAD `ae8791c`:
+  1520 passed, 4 skipped, 6 deselected, 0 failed.
 
 Next step:
 
