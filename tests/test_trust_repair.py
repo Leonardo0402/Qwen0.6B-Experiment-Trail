@@ -1234,8 +1234,14 @@ class TestModelAdapterFingerprint:
         assert fp["file_count"] == 0
         assert fp["aggregate_sha256"] == ""
 
+    @pytest.mark.local_artifacts
     def test_model_fingerprint_real_model(self):
-        """_model_fingerprint returns valid fingerprint for real model dir."""
+        """_model_fingerprint returns valid fingerprint for real model dir.
+
+        Requires models/Qwen3-0.6B (~1.5GB) on disk. Excluded from CPU CI
+        via the local_artifacts marker; must pass on the local RTX 3050
+        machine before any v4 evidence is considered final.
+        """
         from scripts.run_protocol_ablation import _model_fingerprint
         fp = _model_fingerprint()
         assert fp["exists"] is True
@@ -1244,8 +1250,14 @@ class TestModelAdapterFingerprint:
         assert "config.json" in fp["files"]
         assert "model.safetensors" in fp["files"]
 
+    @pytest.mark.local_artifacts
     def test_adapter_fingerprint_real_adapter(self):
-        """_adapter_fingerprint returns valid fingerprint for real adapter."""
+        """_adapter_fingerprint returns valid fingerprint for real adapter.
+
+        Requires adapters/p3/repair-limited on disk. Excluded from CPU CI
+        via the local_artifacts marker; must pass on the local RTX 3050
+        machine before any v4 evidence is considered final.
+        """
         from scripts.run_protocol_ablation import _adapter_fingerprint
         fp = _adapter_fingerprint("adapters/p3/repair-limited")
         assert fp["exists"] is True
@@ -1257,8 +1269,15 @@ class TestModelAdapterFingerprint:
         assert "checkpoint-100/adapter_model.safetensors" not in fp["files"]
         assert "checkpoint-200/adapter_model.safetensors" not in fp["files"]
 
+    @pytest.mark.local_artifacts
     def test_baseline_lock_includes_fingerprints(self):
-        """baseline_lock() includes model and adapter fingerprints."""
+        """baseline_lock() includes model and adapter fingerprints.
+
+        Calls baseline_lock() which reads both models/Qwen3-0.6B and
+        adapters/p3/repair-limited. Excluded from CPU CI via the
+        local_artifacts marker; must pass locally before any v4 evidence
+        is considered final.
+        """
         from scripts.run_protocol_ablation import baseline_lock
         lock = baseline_lock()
         assert "model_fingerprint" in lock
@@ -1270,8 +1289,17 @@ class TestModelAdapterFingerprint:
         assert len(lock["model_fingerprint"]["aggregate_sha256"]) == 64
         assert len(lock["adapter_fingerprint_repair_lora"]["aggregate_sha256"]) == 64
 
+    @pytest.mark.local_artifacts
     def test_post_experiment_fingerprint_check_passes(self):
-        """post_experiment_fingerprint_check passes when model unchanged."""
+        """post_experiment_fingerprint_check passes when model unchanged.
+
+        Calls baseline_lock() and post_experiment_fingerprint_check() which
+        both read models/Qwen3-0.6B and adapters/p3/repair-limited. Although
+        the assertion could trivially pass on a machine without the
+        artifacts (pre/post both empty), the test's semantic intent is to
+        verify real artifact fingerprint equality, so it is marked
+        local_artifacts to enforce local execution on the RTX 3050 machine.
+        """
         from scripts.run_protocol_ablation import (
             baseline_lock, post_experiment_fingerprint_check,
         )

@@ -24,5 +24,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
 
-      - name: Run all tests (Issue #12: full P3 coverage)
-        run: python -m pytest tests/ -m "not gpu" -v --tb=short --timeout=120 -p no:warnings
+      - name: Run all tests (Issue #12: full P3 coverage; P4.1b: exclude local_artifacts)
+        run: python -m pytest tests/ -m "not gpu and not local_artifacts" -v --tb=short --timeout=120 -p no:warnings

@@ -9,6 +9,7 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "gpu: tests requiring a physical GPU (skipped in CI, run manually on RTX 3050 before PR merge)",
+    "local_artifacts: tests requiring local model or adapter files not present in CI (e.g. models/Qwen3-0.6B, adapters/p3/repair-limited)",
 ]
 
 [tool.ruff]
